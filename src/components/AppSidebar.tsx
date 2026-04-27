@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, LogOut, Compass, FileText, MessageCircle, ShieldCheck, ScanLine, ChevronLeft, ChevronRight, User, CalendarDays } from "lucide-react";
+import { BookOpen, Search, LogOut, Compass, FileText, MessageCircle, ShieldCheck, ScanLine, ChevronLeft, ChevronRight, User, CalendarDays } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +56,6 @@ export const AppSidebar = ({ collapsed, onCollapseToggle }: AppSidebarProps) => 
     { href: "/quiz",       label: "Quiz",       icon: BookOpen },
     { href: "/materials",  label: "Materials",  icon: FileText },
     { href: "/ar-scanner", label: "AR Scanner", icon: ScanLine },
-    ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: ShieldCheck }] : []),
   ];
 
   const avatarSrc = profileAvatar || user?.user_metadata?.avatar_url;
@@ -113,32 +112,28 @@ export const AppSidebar = ({ collapsed, onCollapseToggle }: AppSidebarProps) => 
             </button>
           );
         })}
-      </nav>
 
-      {/* Events & Deals cross-link */}
-      <div className={`px-3 pb-2 ${collapsed ? "flex justify-center" : ""}`}>
-        <a
-          href="https://events.aceterus.com"
-          target="_blank"
-          rel="noopener noreferrer"
+        {/* Events & Deals cross-link */}
+        <button
+          onClick={async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            const base = "https://events.aceterus.com";
+            if (session) {
+              const hash = `#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer&type=magiclink`;
+              window.open(`${base}/${hash}`, "_blank");
+            } else {
+              window.open(base, "_blank");
+            }
+          }}
           title={collapsed ? "Events & Deals" : undefined}
-          className={`
-            relative flex items-center rounded-xl transition-all duration-150 group cursor-pointer w-full
-            ${collapsed ? "justify-center px-0 py-4" : "px-5 py-4 space-x-4"}
-            text-foreground/70 hover:bg-muted/60 hover:text-foreground hover:-translate-y-0.5
-          `}
+          className={`relative flex items-center rounded-xl transition-all duration-150 group cursor-pointer text-foreground/70 hover:bg-muted/60 hover:text-foreground hover:-translate-y-0.5 ${collapsed ? "justify-center px-0 py-4" : "px-5 py-4 space-x-4"}`}
         >
           <div className="relative flex-shrink-0">
             <CalendarDays className="w-6 h-6 stroke-[1.8]" />
           </div>
-          {!collapsed && (
-            <div className="flex-1 flex items-center justify-between">
-              <span className="text-[17px]">Events &amp; Deals</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#2F7CFF]/10 text-[#2F7CFF] uppercase tracking-wide">New</span>
-            </div>
-          )}
-        </a>
-      </div>
+          {!collapsed && <span className="text-[17px] flex-1">Events &amp; Deals</span>}
+        </button>
+      </nav>
 
       {/* Collapse toggle */}
       <div className={`px-3 pb-2 ${collapsed ? "flex justify-center" : ""}`}>

@@ -1,13 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Coins, Calendar, Tag, LayoutDashboard, ArrowLeft, LogIn, User } from "lucide-react";
+import { Coins, Calendar, Tag, LayoutDashboard, ArrowLeft, LogIn, LogOut } from "lucide-react";
 import Logo from "@/assets/logo.png";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const EventsNavbar = () => {
-  const { user, aceCoins } = useAuth();
+  const { user, aceCoins, signOut } = useAuth();
   const location = useLocation();
   const [avatar, setAvatar] = useState<string | null>(null);
 
@@ -88,12 +88,22 @@ export const EventsNavbar = () => {
 
           {/* Auth */}
           {user ? (
-            <Link to="/profile" title="Your profile">
-              <Avatar className="h-9 w-9 border-[2.5px] border-[#0F172A]/20 hover:border-[#2F7CFF] hover:-translate-y-0.5 transition-all duration-150 cursor-pointer shadow-[2px_2px_0_0_rgba(15,23,42,0.08)]">
-                <AvatarImage src={avatarSrc} className="object-cover" />
-                <AvatarFallback className="bg-[#2F7CFF]/10 text-[#2F7CFF] font-bold text-sm">{initials}</AvatarFallback>
-              </Avatar>
-            </Link>
+            <>
+              <Link to="/profile" title="Your profile">
+                <Avatar className="h-9 w-9 border-[2.5px] border-[#0F172A]/20 hover:border-[#2F7CFF] hover:-translate-y-0.5 transition-all duration-150 cursor-pointer shadow-[2px_2px_0_0_rgba(15,23,42,0.08)]">
+                  <AvatarImage src={avatarSrc} className="object-cover" />
+                  <AvatarFallback className="bg-[#2F7CFF]/10 text-[#2F7CFF] font-bold text-sm">{initials}</AvatarFallback>
+                </Avatar>
+              </Link>
+              <button
+                onClick={() => signOut()}
+                title="Sign Out"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border-[2px] border-red-200 text-red-500 hover:bg-red-50 transition-all duration-150 text-[13px] font-bold font-['Nunito']"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
+            </>
           ) : (
             <a
               href="https://aceterus.com/auth"

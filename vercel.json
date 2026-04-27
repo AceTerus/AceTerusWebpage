@@ -5,8 +5,13 @@
       "dest": "/assets/$1"
     },
     {
-      "src": "/(.*\\.(png|jpg|svg|ico|gif|webp|js|css|woff2?|txt|xml|mp4|webm|ogg|mov)$)",
+      "src": "/(.*\\.(html|png|jpg|svg|ico|gif|webp|js|css|woff2?|txt|xml|mp4|webm|ogg|mov)$)",
       "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/admin.html",
+      "has": [{ "type": "host", "value": "admin.aceterus.com" }]
     },
     {
       "src": "/(.*)",

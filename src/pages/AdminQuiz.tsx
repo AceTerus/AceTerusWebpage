@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import {
   Plus, Pencil, Trash2, ChevronLeft, Loader2, ShieldAlert,
   ImagePlus, X, Globe, EyeOff, Sparkles, FolderOpen, BookOpen,
-  FileText, CheckSquare, Eye,
+  FileText, CheckSquare, Eye, BadgeCheck, Building2, MapPin,
+  Calendar, Clock, CheckCircle2, XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   fetchCategories, createCategory, updateCategory, deleteCategory, toggleCategoryPublished,
   fetchDecks, createDeck, updateDeck, deleteDeck, toggleDeckPublished,
@@ -58,6 +62,56 @@ const AdminQuiz = () => {
   const { user, isLoading: authLoading, isAdmin } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Top-level section: quiz admin vs events admin
+  const [section, setSection] = useState<"quiz" | "events">("quiz");
+  const qc = useQueryClient();
+
+  // Events admin queries
+  const { data: unverifiedOrgs = [], isLoading: orgsLoading } = useQuery({
+    queryKey: ["admin-unverified-orgs"],
+    enabled: !!user && isAdmin,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("event_organizers").select("*").eq("verified", false).order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const verifyOrgMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from("event_organizers").update({ verified: true }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "✅ Organisation verified!" });
+      qc.invalidateQueries({ queryKey: ["admin-unverified-orgs"] });
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
+
+  const { data: pendingEvents = [], isLoading: pendingLoading, error: pendingError, refetch: refetchEvents } = useQuery({
+    queryKey: ["admin-pending-events"],
+    enabled: !!user && isAdmin,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("events").select("*, event_organizers(name, verified)").eq("status", "pending").order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "published" | "rejected" }) => {
+      const { error } = await (supabase as any).from("events").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, { status }) => {
+      toast({ title: status === "published" ? "✅ Event published!" : "❌ Event rejected." });
+      qc.invalidateQueries({ queryKey: ["admin-pending-events"] });
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
 
   // View hierarchy: categories → decks → questions
   const [view, setView] = useState<"categories" | "decks" | "questions">("categories");
@@ -518,10 +572,19 @@ const AdminQuiz = () => {
     <div className="min-h-screen bg-transparent p-6 max-w-5xl mx-auto">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Quiz Admin</h1>
-          {breadcrumb}
+          {window.location.hostname.startsWith("admin.") ? (
+            <a href="https://aceterus.com" className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 rounded-md border border-input bg-background text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
+              <ChevronLeft className="w-4 h-4" /> Back to AceTerus Web
+            </a>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => navigate("/profile")} className="gap-2 mb-3">
+              <ChevronLeft className="w-4 h-4" /> Back to Profile
+            </Button>
+          )}
+          <h1 className="text-3xl font-bold">Admin Tools</h1>
+          {section === "quiz" && breadcrumb}
         </div>
 
         <div className="flex gap-2">
@@ -573,6 +636,125 @@ const AdminQuiz = () => {
           )}
         </div>
       </div>
+
+      {/* ── Section tabs ── */}
+      <div className="flex gap-2 mb-8 border-b border-border pb-4">
+        <Button variant={section === "quiz" ? "default" : "outline"} onClick={() => setSection("quiz")} className="gap-2">
+          <BookOpen className="w-4 h-4" /> Quiz Admin
+        </Button>
+        <Button variant={section === "events" ? "default" : "outline"} onClick={() => setSection("events")} className="gap-2 relative">
+          <BadgeCheck className="w-4 h-4" /> Events Admin
+          {(unverifiedOrgs.length + pendingEvents.length) > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1">
+              {unverifiedOrgs.length + pendingEvents.length}
+            </span>
+          )}
+        </Button>
+      </div>
+
+      {/* ── Events Admin ── */}
+      {section === "events" && (
+        <div className="space-y-6">
+
+          {/* Organiser verification */}
+          <div className="border-[2.5px] border-amber-400 rounded-[16px] shadow-[4px_4px_0_0_#D97706] bg-white overflow-hidden">
+            <div className="bg-gradient-to-r from-[#D97706] to-[#F59E0B] p-5 flex items-center gap-3">
+              <BadgeCheck className="w-5 h-5 text-white shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-bold text-[17px] text-white">Verify Organisers</h3>
+                <p className="text-white/70 text-[13px]">Grant the verified badge to registered organisations.</p>
+              </div>
+              <span className="px-3 py-1 rounded-xl bg-white/20 border-[2px] border-white/30 text-white font-extrabold text-[13px]">{unverifiedOrgs.length} pending</span>
+            </div>
+            {orgsLoading ? (
+              <div className="p-6 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-amber-500" /></div>
+            ) : unverifiedOrgs.length === 0 ? (
+              <div className="p-10 text-center text-muted-foreground">All organisations are verified ✅</div>
+            ) : (
+              <div className="divide-y">
+                {unverifiedOrgs.map((org: any) => (
+                  <div key={org.id} className="p-4 flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-[12px] bg-amber-100 border-[2px] border-amber-300 flex items-center justify-center shrink-0">
+                      <Building2 className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-[15px]">{org.name}</p>
+                      <p className="text-[12px] text-muted-foreground capitalize">{org.type} · Registered {format(new Date(org.created_at), "d MMM yyyy")}</p>
+                    </div>
+                    <Button size="sm" onClick={() => verifyOrgMutation.mutate(org.id)} disabled={verifyOrgMutation.isPending} className="gap-1.5 bg-amber-400 hover:bg-amber-500 text-[#0F172A] border border-amber-600">
+                      <BadgeCheck className="w-3.5 h-3.5" /> Verify
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Event review */}
+          <div className="border-[2.5px] border-indigo-400 rounded-[16px] shadow-[4px_4px_0_0_#2E2BE5] bg-white overflow-hidden">
+            <div className="bg-gradient-to-r from-[#2E2BE5] to-[#7C3AED] p-5 flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-white shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-bold text-[17px] text-white">Event Review</h3>
+                <p className="text-white/70 text-[13px]">Approve or reject organiser submissions.</p>
+              </div>
+              <span className="px-3 py-1 rounded-xl bg-white/20 border-[2px] border-white/30 text-white font-extrabold text-[13px]">{pendingEvents.length} pending</span>
+            </div>
+            {pendingLoading ? (
+              <div className="p-6 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-indigo-500" /></div>
+            ) : pendingError ? (
+              <div className="p-6 text-center space-y-2">
+                <p className="text-red-500 text-[13px] font-semibold">{(pendingError as Error).message}</p>
+                <Button size="sm" variant="outline" onClick={() => refetchEvents()}>Retry</Button>
+              </div>
+            ) : pendingEvents.length === 0 ? (
+              <div className="p-10 text-center space-y-2 text-muted-foreground">
+                <p>All caught up — no pending events 🎉</p>
+                <Button size="sm" variant="outline" onClick={() => refetchEvents()}>Refresh</Button>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {pendingEvents.map((ev: any) => (
+                  <div key={ev.id} className="p-5 space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-[15px]">{ev.title}</h4>
+                        <Badge>{ev.type}</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-3 text-[12px] text-muted-foreground">
+                        {ev.event_organizers && (
+                          <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{ev.event_organizers.name}{ev.event_organizers.verified && <BadgeCheck className="w-3 h-3 text-blue-500" />}</span>
+                        )}
+                        {ev.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{ev.location}</span>}
+                        {ev.start_date && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Start: {format(new Date(ev.start_date), "d MMM yyyy, h:mm a")}</span>}
+                        {ev.end_date && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />End: {format(new Date(ev.end_date), "d MMM yyyy, h:mm a")}</span>}
+                        <span className="flex items-center gap-1 opacity-60"><Clock className="w-3 h-3" />Submitted {format(new Date(ev.created_at), "d MMM, h:mm a")}</span>
+                      </div>
+                      {ev.description && <p className="text-[13px] text-muted-foreground line-clamp-2">{ev.description}</p>}
+                      {ev.registration_url && (
+                        <a href={ev.registration_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-600 hover:underline">
+                          <Eye className="w-3 h-3" /> Preview link
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => reviewMutation.mutate({ id: ev.id, status: "published" })} disabled={reviewMutation.isPending} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Approve &amp; Publish
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => reviewMutation.mutate({ id: ev.id, status: "rejected" })} disabled={reviewMutation.isPending} className="gap-1.5 text-red-600 border-red-300 hover:bg-red-50">
+                        <XCircle className="w-3.5 h-3.5" /> Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Quiz Admin (existing content below) ── */}
+      {section === "quiz" && <>
 
       {/* ── Categories view ── */}
       {view === "categories" && (
@@ -1273,6 +1455,9 @@ const AdminQuiz = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      </> /* end section === "quiz" */}
+
     </div>
   );
 };

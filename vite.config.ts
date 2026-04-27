@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => ({
       input: {
         main:   path.resolve(__dirname, "index.html"),
         events: path.resolve(__dirname, "events.html"),
+        admin:  path.resolve(__dirname, "admin.html"),
       },
     },
   },
