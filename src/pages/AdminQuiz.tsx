@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   fetchCategories, createCategory, updateCategory, deleteCategory, toggleCategoryPublished,
   fetchDecks, createDeck, updateDeck, deleteDeck, toggleDeckPublished,
@@ -71,7 +72,7 @@ const AdminQuiz = () => {
     queryKey: ["admin-unverified-orgs"],
     enabled: !!user && isAdmin,
     queryFn: async () => {
-      const { data, error } = await supabase.from("event_organizers").select("*").eq("verified", false).order("created_at", { ascending: true });
+      const { data, error } = await (supabase as any).from("event_organizers").select("*").eq("verified", false).order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as any[];
     },
@@ -79,7 +80,7 @@ const AdminQuiz = () => {
 
   const verifyOrgMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("event_organizers").update({ verified: true }).eq("id", id);
+      const { error } = await (supabase as any).from("event_organizers").update({ verified: true }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -89,11 +90,12 @@ const AdminQuiz = () => {
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
   });
 
-  const { data: pendingEvents = [], isLoading: pendingLoading } = useQuery({
+  const { data: pendingEvents = [], isLoading: pendingLoading, error: pendingError, refetch: refetchEvents } = useQuery({
     queryKey: ["admin-pending-events"],
     enabled: !!user && isAdmin,
+    staleTime: 0,
     queryFn: async () => {
-      const { data, error } = await supabase.from("events").select("*, event_organizers(name, verified)").eq("status", "pending").order("created_at", { ascending: true });
+      const { data, error } = await (supabase as any).from("events").select("*, event_organizers(name, verified)").eq("status", "pending").order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as any[];
     },
@@ -101,7 +103,7 @@ const AdminQuiz = () => {
 
   const reviewMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "published" | "rejected" }) => {
-      const { error } = await supabase.from("events").update({ status }).eq("id", id);
+      const { error } = await (supabase as any).from("events").update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_, { status }) => {
@@ -700,8 +702,16 @@ const AdminQuiz = () => {
             </div>
             {pendingLoading ? (
               <div className="p-6 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-indigo-500" /></div>
+            ) : pendingError ? (
+              <div className="p-6 text-center space-y-2">
+                <p className="text-red-500 text-[13px] font-semibold">{(pendingError as Error).message}</p>
+                <Button size="sm" variant="outline" onClick={() => refetchEvents()}>Retry</Button>
+              </div>
             ) : pendingEvents.length === 0 ? (
-              <div className="p-10 text-center text-muted-foreground">All caught up — no pending events 🎉</div>
+              <div className="p-10 text-center space-y-2 text-muted-foreground">
+                <p>All caught up — no pending events 🎉</p>
+                <Button size="sm" variant="outline" onClick={() => refetchEvents()}>Refresh</Button>
+              </div>
             ) : (
               <div className="divide-y">
                 {pendingEvents.map((ev: any) => (
@@ -716,8 +726,9 @@ const AdminQuiz = () => {
                           <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{ev.event_organizers.name}{ev.event_organizers.verified && <BadgeCheck className="w-3 h-3 text-blue-500" />}</span>
                         )}
                         {ev.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{ev.location}</span>}
-                        {ev.start_date && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(ev.start_date), "d MMM yyyy")}</span>}
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Submitted {format(new Date(ev.created_at), "d MMM, h:mm a")}</span>
+                        {ev.start_date && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Start: {format(new Date(ev.start_date), "d MMM yyyy, h:mm a")}</span>}
+                        {ev.end_date && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />End: {format(new Date(ev.end_date), "d MMM yyyy, h:mm a")}</span>}
+                        <span className="flex items-center gap-1 opacity-60"><Clock className="w-3 h-3" />Submitted {format(new Date(ev.created_at), "d MMM, h:mm a")}</span>
                       </div>
                       {ev.description && <p className="text-[13px] text-muted-foreground line-clamp-2">{ev.description}</p>}
                       {ev.registration_url && (
