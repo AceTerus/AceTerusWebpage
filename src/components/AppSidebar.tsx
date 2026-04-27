@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, Search, LogOut, Compass, FileText, MessageCircle, ScanLine, ChevronLeft, ChevronRight, User, CalendarDays } from "lucide-react";
+import { BookOpen, Search, LogOut, Compass, FileText, MessageCircle, ShieldCheck, ScanLine, ChevronLeft, ChevronRight, User, CalendarDays } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -47,7 +47,6 @@ export const AppSidebar = ({ collapsed, onCollapseToggle }: AppSidebarProps) => 
 
   const navItems = [
     { href: "/feed",       label: "Feed",       icon: Compass },
-    { href: "/discover",   label: "Discover",   icon: Search },
     {
       href: "/chat",
       label: "Chat",
