@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Coins, Calendar, Tag, LayoutDashboard, ArrowLeft, LogIn, LogOut } from "lucide-react";
-import Logo from "@/assets/logo.png";
+import Logo from "@/assets/logo.webp";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 

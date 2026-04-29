@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Mail, Lock, Sparkles, Star, Zap, Flame, Trophy, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import Logo from "@/assets/logo.png";
+import Logo from "@/assets/logo.webp";
 
 const C = {
   cyan: "#3BD6F5", blue: "#2F7CFF", indigo: "#2E2BE5",

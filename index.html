@@ -35,10 +35,11 @@
     <meta name="twitter:description" content="Free AI-powered study platform for Malaysian students. Practice SPM and PT3 quizzes, get instant AI tutoring, and track your progress." />
     <meta name="twitter:image" content="https://aceterus.com/og-image.png" />
 
-    <!-- Fonts -->
+    <!-- Fonts (async — non-blocking) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Baloo+2:wght@500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Baloo+2:wght@500;600;700;800&display=swap" /></noscript>
 
     <!-- Structured data -->
     <script type="application/ld+json">
