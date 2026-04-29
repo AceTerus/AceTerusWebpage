@@ -1,34 +1,36 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
-import { AppSidebar } from "./components/AppSidebar";
-import { MobileNav } from "./components/MobileNav";
-import Index from "./pages/Index";
-import { Profile } from "./pages/Profile";
-import { Discover } from "./pages/Discover";
-import { Feed } from "./pages/Feed";
-import { Materials } from "./pages/Materials";
-import Quiz from "./pages/Quiz";
-import OmrScanner from "./pages/OmrScanner";
-import ArScanner from "./pages/ArScanner";
-import AdminQuiz from "./pages/AdminQuiz";
-import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
-import NotFound from "./pages/NotFound";
-import { Chat } from "./pages/Chat";
 import { ChatNotificationsProvider } from "./context/ChatNotificationsContext";
 import { NotificationsProvider } from "./context/NotificationsContext";
 import { MascotProvider } from "./context/MascotContext";
-import MascotCompanion from "./components/MascotCompanion";
-import MascotGreeter from "./components/MascotGreeter";
-import MascotChat from "./components/MascotChat";
-import { useGoalReminders } from "./hooks/useGoalReminders";
 import { PomodoroProvider } from "./context/PomodoroContext";
-import { PomodoroFloatingWidget } from "./components/PomodoroFloatingWidget";
+import { useGoalReminders } from "./hooks/useGoalReminders";
+
+const AppSidebar = lazy(() => import("./components/AppSidebar").then(m => ({ default: m.AppSidebar })));
+const MobileNav = lazy(() => import("./components/MobileNav").then(m => ({ default: m.MobileNav })));
+const MascotCompanion = lazy(() => import("./components/MascotCompanion"));
+const MascotGreeter = lazy(() => import("./components/MascotGreeter"));
+const MascotChat = lazy(() => import("./components/MascotChat"));
+const PomodoroFloatingWidget = lazy(() => import("./components/PomodoroFloatingWidget").then(m => ({ default: m.PomodoroFloatingWidget })));
+
+const Index = lazy(() => import("./pages/Index"));
+const Profile = lazy(() => import("./pages/Profile").then(m => ({ default: m.Profile })));
+const Discover = lazy(() => import("./pages/Discover").then(m => ({ default: m.Discover })));
+const Feed = lazy(() => import("./pages/Feed").then(m => ({ default: m.Feed })));
+const Materials = lazy(() => import("./pages/Materials").then(m => ({ default: m.Materials })));
+const Quiz = lazy(() => import("./pages/Quiz"));
+const OmrScanner = lazy(() => import("./pages/OmrScanner"));
+const ArScanner = lazy(() => import("./pages/ArScanner"));
+const AdminQuiz = lazy(() => import("./pages/AdminQuiz"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Chat = lazy(() => import("./pages/Chat").then(m => ({ default: m.Chat })));
 
 const queryClient = new QueryClient();
 
@@ -86,22 +88,24 @@ const AnimatedRoutes = () => {
       <PageTransitionBar />
       <OnboardingGuard />
       <div key={location.pathname} className="page-enter">
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/feed" element={<Feed />} />
-          <Route path="/quiz" element={<Quiz />} />
-          <Route path="/omr-scan" element={<OmrScanner />} />
-          <Route path="/ar-scanner" element={<ArScanner />} />
-          <Route path="/admin" element={<AdminQuiz />} />
-          <Route path="/materials" element={<Materials />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/profile/:userId" element={<Profile />} />
-          <Route path="/discover" element={<Discover />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/feed" element={<Feed />} />
+            <Route path="/quiz" element={<Quiz />} />
+            <Route path="/omr-scan" element={<OmrScanner />} />
+            <Route path="/ar-scanner" element={<ArScanner />} />
+            <Route path="/admin" element={<AdminQuiz />} />
+            <Route path="/materials" element={<Materials />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:userId" element={<Profile />} />
+            <Route path="/discover" element={<Discover />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </div>
     </>
   );
@@ -121,13 +125,26 @@ const AppContent = () => {
 
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen w-full [overflow-x:clip]">
-        {user && <AppSidebar collapsed={sidebarCollapsed} onCollapseToggle={handleSidebarCollapse} />}
-        {user && <MobileNav />}
-        {user && <MascotGreeter />}
-        {user && <MascotCompanion />}
-        {user && <MascotChat />}
-        {user && <PomodoroFloatingWidget />}
+      <div
+        className="flex min-h-screen w-full [overflow-x:clip]"
+        style={{
+          backgroundImage: "url('/Test Background.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundAttachment: 'fixed',
+        }}
+      >
+        {user && (
+          <Suspense fallback={null}>
+            <AppSidebar collapsed={sidebarCollapsed} onCollapseToggle={handleSidebarCollapse} />
+            <MobileNav />
+            <MascotGreeter />
+            <MascotCompanion />
+            <MascotChat />
+            <PomodoroFloatingWidget />
+          </Suspense>
+        )}
         <main className={`flex-1 transition-all duration-300 ${user ? (sidebarCollapsed ? 'lg:pl-[70px]' : 'lg:pl-64') : ''}`}>
           <AnimatedRoutes />
         </main>

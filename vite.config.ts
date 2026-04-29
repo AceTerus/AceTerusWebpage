@@ -26,6 +26,14 @@ export default defineConfig(({ mode }) => ({
         events: path.resolve(__dirname, "events.html"),
         admin:  path.resolve(__dirname, "admin.html"),
       },
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+          supabase: ["@supabase/supabase-js"],
+          ui: ["@radix-ui/react-dialog", "@radix-ui/react-tooltip", "@radix-ui/react-avatar"],
+          query: ["@tanstack/react-query"],
+        },
+      },
     },
   },
 }));

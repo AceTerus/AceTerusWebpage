@@ -139,11 +139,7 @@ All colors MUST be HSL.
   }
 
   html {
-    background-image: url('/Test Background.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background-color: #F3FAFF;
   }
 
   body {
