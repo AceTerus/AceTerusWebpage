@@ -182,7 +182,7 @@ const Index = () => {
   useSmoothAnchor();
 
   React.useEffect(() => {
-    const load = () => setVideoSrc("/videos/promotional.mp4");
+    const load = () => setVideoSrc("/videos/PromotionalEdit.mp4");
     if (document.readyState === "complete") load();
     else window.addEventListener("load", load, { once: true });
     return () => window.removeEventListener("load", load);
