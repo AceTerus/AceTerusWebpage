@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import Logo from "../assets/logo.png";
+import Logo from "../assets/logo.webp";
 import { useChatNotifications } from "@/context/ChatNotificationsContext";
 import { NotificationsBell } from "@/components/NotificationsBell";
 

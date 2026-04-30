@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { BookOpen, User, Menu, X, LogOut, LogIn, Home, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import Logo from "../assets/logo.png";
+import Logo from "../assets/logo.webp";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);

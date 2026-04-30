@@ -128,7 +128,7 @@ const AppContent = () => {
       <div
         className="flex min-h-screen w-full [overflow-x:clip]"
         style={{
-          backgroundImage: "url('/Test Background.png')",
+          backgroundImage: "url('/Test Background.webp')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',

@@ -10,7 +10,7 @@ import {
   Camera, User, BookOpen, ArrowRight, ArrowLeft,
   CheckCircle2, Loader2, Sparkles,
 } from "lucide-react";
-import Logo from "@/assets/logo.png";
+import Logo from "@/assets/logo.webp";
 
 const C = {
   blue: "#2F7CFF", indigo: "#2E2BE5", ink: "#0F172A",

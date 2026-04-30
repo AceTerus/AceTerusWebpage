@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import Logo from "../assets/logo.png";
+import Logo from "../assets/logo.webp";
 
 /* ── brand colours ─────────────────────────────────────────────────────── */
 const C = {
@@ -178,7 +178,15 @@ function useSmoothAnchor() {
 const Index = () => {
   const { user, isLoading } = useAuth();
   const [videoError, setVideoError] = useState(false);
+  const [videoSrc, setVideoSrc] = useState<string | undefined>(undefined);
   useSmoothAnchor();
+
+  React.useEffect(() => {
+    const load = () => setVideoSrc("/videos/PromotionalEdit.mp4");
+    if (document.readyState === "complete") load();
+    else window.addEventListener("load", load, { once: true });
+    return () => window.removeEventListener("load", load);
+  }, []);
   React.useEffect(() => {
     document.title = "AceTerus – Free AI Tutor & SPM Quiz Platform for Malaysian Students";
   }, []);
@@ -283,11 +291,12 @@ const Index = () => {
         {!videoError ? (
           <video
             className="absolute inset-0 w-full h-full object-cover"
-            src="/videos/promotional.mp4"
+            src={videoSrc}
             autoPlay
             muted
             loop
             playsInline
+            preload="none"
             onError={() => setVideoError(true)}
           />
         ) : (
@@ -350,7 +359,7 @@ const Index = () => {
                 onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })} 
                 className={`${BTN} bg-white text-[#0F172A] atl-cta-btn flex items-center justify-center gap-2`}
               >
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" loading="lazy" />
                 Continue with Google
               </button>
               <Link to="/auth">
@@ -648,7 +657,7 @@ const Index = () => {
       <footer className="px-5 py-10">
         <div className={`${PILL} max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3`}>
           <div className="flex items-center gap-2">
-            <img src={Logo} className="w-8 h-8 rounded-lg" alt="AceTerus" />
+            <img src={Logo} className="w-8 h-8 rounded-lg" alt="AceTerus" loading="lazy" />
             <span className={`${DISPLAY} font-extrabold`}>AceTerus</span>
           </div>
           <div className="flex gap-5 font-bold text-sm">

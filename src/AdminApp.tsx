@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import AdminQuiz from "./pages/AdminQuiz";
-import Logo from "./assets/logo.png";
+import Logo from "./assets/logo.webp";
 import { Loader2, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
