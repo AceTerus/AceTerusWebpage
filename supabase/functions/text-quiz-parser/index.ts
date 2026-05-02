@@ -1,4 +1,4 @@
-// Supabase Edge Function: Raw text → Quiz parser via Gemini API
+// Supabase Edge Function: OCR text / raw text → Quiz parser via Gemini API
 import { serve } from "https://deno.land/std@0.213.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 
@@ -45,9 +45,13 @@ serve(async (req) => {
       return jsonError(400, "Request body must contain a non-empty 'text' field");
     }
 
-    const rawText: string = body.text.trim();
-    if (rawText.length > 100_000) {
-      return jsonError(400, "Text is too long (max 100,000 characters)");
+    // Strip control characters that can break JSON serialization of OCR output
+    const rawText: string = body.text
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
+      .trim();
+
+    if (rawText.length > 200_000) {
+      return jsonError(400, "Text is too long (max 200,000 characters)");
     }
 
     const geminiResponse = await fetch(
@@ -58,16 +62,12 @@ serve(async (req) => {
         body: JSON.stringify({
           contents: [
             {
-              parts: [
-                {
-                  text: buildPrompt(rawText),
-                },
-              ],
+              parts: [{ text: buildPrompt(rawText) }],
             },
           ],
           generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 8192,
+            temperature: 0.1,
+            maxOutputTokens: 16384,
           },
         }),
       }
@@ -87,7 +87,7 @@ serve(async (req) => {
     const questions = parseQuestionsFromResponse(responseText);
 
     if (!questions || questions.length === 0) {
-      return jsonError(422, "Could not find any questions in the pasted text. Make sure the text contains numbered questions with answer choices.");
+      return jsonError(422, "No questions could be extracted. Make sure the PDF contains numbered MCQ questions.");
     }
 
     return jsonOk({ questions });
@@ -99,41 +99,55 @@ serve(async (req) => {
 });
 
 function buildPrompt(rawText: string): string {
-  return `You are an expert exam question parser. The following raw text was pasted from an exam paper, textbook, or study material. It may be in Malay or English.
+  return `You are an expert exam question extractor for Malaysian education materials (SPM, STPM, university level).
 
-Your job is to extract all multiple-choice questions from the text and return them as a structured JSON array.
+The text below was extracted via OCR (Optical Character Recognition) from a scanned exam paper. It may contain:
+- OCR artifacts: misread characters (0 vs O, 1 vs I, rn vs m, etc.)
+- Broken or merged words due to scanning quality
+- Inconsistent spacing and line breaks
+- Page markers like [Page 1], [Page 2] etc.
 
-Rules for identifying questions:
-- Questions are typically numbered (1., 1), Q1, Soalan 1, etc.)
-- Answer choices are typically labeled A/B/C/D, a/b/c/d, (A)/(B), A., B., or Roman numerals I/II/III/IV
-- If the text explicitly marks a correct answer (e.g. "Answer: B", "Jawapan: C", an asterisk *, underline, or any other marker), mark that answer as is_correct: true
-- If NO correct answers are marked in the text, set ALL is_correct to false — the admin will mark them manually
-- Do NOT guess or invent correct answers if they are not clearly indicated in the source text
-- Preserve the original question and answer text exactly as written, including the original language
+YOUR TASK:
+Extract EVERY multiple-choice question from the text. Do NOT limit the count — if there are 40 questions, return all 40.
 
-Return ONLY a valid JSON array — no markdown, no explanation, no code fences, just the raw JSON.
+HOW TO IDENTIFY QUESTIONS:
+- Questions are numbered: 1, 2, 3 ... or 1. 2. 3. or Q1, Q2, Soalan 1, etc.
+- Answer options are labeled: A B C D, a b c d, (A)(B)(C)(D), A. B. C. D.
+- Questions may be in Malay (Bahasa Melayu) or English — preserve original language exactly
 
-Each question must follow this exact structure:
+CORRECT ANSWERS:
+- If the source marks a correct answer (asterisk *, bold, underline, "Answer: B", "Jawapan: C") → set is_correct: true for that option
+- If NO correct answer is marked in the source → set is_correct: false for ALL options (admin will mark them manually)
+- NEVER guess or invent which answer is correct
+
+OCR CLEANUP RULES:
+- Fix obvious OCR errors in question and answer text (e.g. "Apakah" not "Apakah" with garbled chars)
+- Reconstruct merged words where obvious
+- Do NOT change subject matter, numbers, names, or technical terms
+
+Return ONLY a valid JSON array — no markdown fences, no explanation, no extra text.
+
+Each item must follow this exact shape:
 [
   {
-    "text": "The question text here?",
+    "text": "Full question text here?",
     "answers": [
       {"text": "Option A text", "is_correct": false},
-      {"text": "Option B text", "is_correct": true},
+      {"text": "Option B text", "is_correct": false},
       {"text": "Option C text", "is_correct": false},
       {"text": "Option D text", "is_correct": false}
     ],
-    "explanation": "Brief explanation if any context clues exist, otherwise omit this field"
+    "explanation": "Brief explanation if the source provides one, otherwise omit this field"
   }
 ]
 
-Additional rules:
-- Each question must have between 2 and 4 answer choices
-- Do not duplicate questions
-- If the text is not a question-answer format, return an empty array []
+Rules:
+- Each question must have 2 to 4 answer choices
+- Exactly one is_correct: true per question IF the source marks a correct answer
+- Return ALL questions found — do not skip, summarise, or limit
 - Return ONLY the JSON array, nothing else
 
-Here is the raw text to parse:
+Here is the OCR text to process:
 
 ---
 ${rawText}
@@ -160,12 +174,12 @@ function parseQuestionsFromResponse(raw: string): GeneratedQuestion[] {
   return parsed
     .filter((q: any) => q.text && Array.isArray(q.answers) && q.answers.length >= 2)
     .map((q: any): GeneratedQuestion => ({
-      text: String(q.text),
+      text: String(q.text).trim(),
       answers: (q.answers as any[]).slice(0, 4).map((a: any) => ({
-        text: String(a.text ?? ""),
+        text: String(a.text ?? "").trim(),
         is_correct: Boolean(a.is_correct),
       })),
-      explanation: q.explanation ? String(q.explanation) : undefined,
+      explanation: q.explanation ? String(q.explanation).trim() : undefined,
     }));
 }
 

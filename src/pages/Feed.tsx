@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { SignInGate } from "@/components/SignInGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -65,6 +66,8 @@ export const Feed = () => {
   const [lightboxPostId, setLightboxPostId] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [lightboxLoading, setLightboxLoading] = useState(false);
+  const [lightboxError, setLightboxError] = useState(false);
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -194,17 +197,26 @@ export const Feed = () => {
     searchUsers(value);
   };
 
-  const openLightbox = (postId: string, index: number) => { setLightboxPostId(postId); setLightboxIndex(index); };
+  const openLightbox = (postId: string, index: number) => {
+    setLightboxPostId(postId);
+    setLightboxIndex(index);
+    setLightboxLoading(true);
+    setLightboxError(false);
+  };
   const closeLightbox = () => setLightboxPostId(null);
   const showPrev = () => {
     const post = posts.find((p) => p.id === lightboxPostId);
     if (!post?.images?.length) return;
     setLightboxIndex((prev) => (prev === 0 ? post.images!.length - 1 : prev - 1));
+    setLightboxLoading(true);
+    setLightboxError(false);
   };
   const showNext = () => {
     const post = posts.find((p) => p.id === lightboxPostId);
     if (!post?.images?.length) return;
     setLightboxIndex((prev) => (prev === post.images!.length - 1 ? 0 : prev + 1));
+    setLightboxLoading(true);
+    setLightboxError(false);
   };
   const handleTouchStart = (e: React.TouchEvent) => setTouchStartX(e.touches[0].clientX);
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -528,39 +540,56 @@ export const Feed = () => {
         </aside>
       </div>
 
-      {/* Fullscreen lightbox */}
-      {currentLightboxPost && currentLightboxImage && (
+      {/* Fullscreen lightbox — portalled to document.body to escape <main>'s compositing layer */}
+      {currentLightboxPost && currentLightboxImage && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+          className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
+          onClick={closeLightbox}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
           <button
             type="button"
             className="absolute top-4 right-4 text-white/80 hover:text-white text-2xl leading-none z-10"
-            onClick={closeLightbox}
+            onClick={(e) => { e.stopPropagation(); closeLightbox(); }}
             aria-label="Close"
           >✕</button>
           <button
             type="button"
-            className="absolute left-4 text-white/80 hover:text-white text-4xl leading-none z-10"
-            onClick={showPrev}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-4xl leading-none z-10"
+            onClick={(e) => { e.stopPropagation(); showPrev(); }}
             aria-label="Previous"
           >‹</button>
           <button
             type="button"
-            className="absolute right-4 text-white/80 hover:text-white text-4xl leading-none z-10"
-            onClick={showNext}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-4xl leading-none z-10"
+            onClick={(e) => { e.stopPropagation(); showNext(); }}
             aria-label="Next"
           >›</button>
-          <img
-            src={currentLightboxImage.file_url}
-            alt="Full size"
-            className="max-w-full max-h-[92vh] object-contain select-none"
-            draggable={false}
-          />
+          {lightboxLoading && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-8 h-8 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+            </div>
+          )}
+          {lightboxError ? (
+            <div className="flex flex-col items-center gap-2 text-white/60 text-sm" onClick={(e) => e.stopPropagation()}>
+              <span className="text-3xl">⚠</span>
+              <span>Image failed to load</span>
+            </div>
+          ) : (
+            <img
+              key={currentLightboxImage.file_url}
+              src={currentLightboxImage.file_url}
+              alt="Full size"
+              className="max-w-full max-h-[92vh] object-contain select-none"
+              draggable={false}
+              onClick={(e) => e.stopPropagation()}
+              onLoad={() => setLightboxLoading(false)}
+              onError={() => { setLightboxLoading(false); setLightboxError(true); }}
+            />
+          )}
           {currentLightboxPost.images && currentLightboxPost.images.length > 1 && (
-            <div className="absolute bottom-5 left-0 right-0 flex justify-center gap-1.5">
+            <div className="absolute bottom-5 left-0 right-0 flex justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               {currentLightboxPost.images.map((_, i) => (
                 <span
                   key={i}
@@ -571,7 +600,8 @@ export const Feed = () => {
               ))}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
