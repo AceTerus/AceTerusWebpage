@@ -42,7 +42,9 @@
       "Bash(python -c ':*)",
       "Bash(uvicorn main:socket_app --port 8000 --reload)",
       "Bash(python -m json.tool)",
-      "Bash(ls \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\"/.env*)"
+      "Bash(ls \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\"/.env*)",
+      "Bash(python *)",
+      "Bash(del patch_lint.py patch_edge.py verify_lint.py)"
     ]
   }
 }

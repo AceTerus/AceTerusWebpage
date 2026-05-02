@@ -70,7 +70,7 @@ const MascotGreeter = () => {
     };
 
     runGreeting();
-  }, [user, isLoading, streak, lastQuizDate]);
+  }, [user, isLoading, streak, lastQuizDate, pushMessage]);
 
   return null;
 };

@@ -47,7 +47,7 @@ serve(async (req) => {
 
     // Strip control characters that can break JSON serialization of OCR output
     const rawText: string = body.text
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ")
       .trim();
 
     if (rawText.length > 200_000) {

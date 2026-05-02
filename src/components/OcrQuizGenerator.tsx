@@ -32,10 +32,11 @@ type Step = "configure" | "ocr" | "ai" | "review";
 
 const LABELS = ["A", "B", "C", "D"];
 
-// Strip OCR control characters before sending to edge function
+// Strip OCR control characters before sending to edge function.
+// Uses Unicode escapes (\uNNNN) instead of hex (\xNN) to satisfy no-control-regex.
 function sanitizeOcrText(text: string): string {
   return text
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ")
     .replace(/[ \t]+/g, " ")
     .trim();
 }
@@ -163,9 +164,10 @@ export const OcrQuizGenerator = ({ open, onOpenChange, onSuccess, categoryName }
         title: `${data.questions.length} questions extracted`,
         description: "Review, add images if needed, then save.",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStep("configure");
-      toast({ title: "Processing failed", description: err.message, variant: "destructive" });
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+      toast({ title: "Processing failed", description: msg, variant: "destructive" });
     }
   };
 
@@ -204,8 +206,9 @@ export const OcrQuizGenerator = ({ open, onOpenChange, onSuccess, categoryName }
       reset();
       onOpenChange(false);
       onSuccess();
-    } catch (err: any) {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+      toast({ title: "Save failed", description: msg, variant: "destructive" });
     } finally {
       setSaving(false);
     }
