@@ -42,7 +42,20 @@
       "Bash(python -c ':*)",
       "Bash(uvicorn main:socket_app --port 8000 --reload)",
       "Bash(python -m json.tool)",
-      "Bash(ls \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\"/.env*)"
+      "Bash(ls \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\"/.env*)",
+      "WebFetch(domain:www.googleapis.com)",
+      "Bash(where chrome *)",
+      "Bash(where \"Google Chrome\")",
+      "Bash(dir \"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\")",
+      "Bash(npx lighthouse *)",
+      "Bash(node -e ' *)",
+      "Bash(where ffmpeg *)",
+      "Bash(where cwebp *)",
+      "Bash(node -e \"require\\('sharp'\\)\")",
+      "Bash(npx sharp-cli *)",
+      "Bash(npx @squoosh/cli --version)",
+      "Bash(node -e \"const s=require\\('child_process'\\);s.execSync\\('ffmpeg -version',{stdio:'pipe'}\\);console.log\\('ffmpeg ok'\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const s=fs.statSync\\('PromotionalEdit.mp4'\\).size;console.log\\('PromotionalEdit.mp4: '+\\(s/1024/1024\\).toFixed\\(2\\)+' MB'\\)\")"
     ]
   }
 }

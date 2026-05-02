@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Plus, Calendar, MapPin, Users, CheckCircle2,
-  Clock, XCircle, Building2, BadgeCheck, Send, LogIn, Rocket, ShieldCheck, Eye,
+  Clock, XCircle, Building2, BadgeCheck, Send, LogIn, Rocket, ExternalLink,
   ImagePlus, Loader2, X
 } from "lucide-react";
 import { toast } from "sonner";
@@ -157,61 +157,6 @@ export default function OrganiserDashboard() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  // Admin: fetch unverified organizers
-  const { data: unverifiedOrgs = [], isLoading: orgsLoading } = useQuery({
-    queryKey: ["unverified-orgs"],
-    enabled: !!user && isAdmin,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("event_organizers")
-        .select("*")
-        .eq("verified", false)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as any[];
-    },
-  });
-
-  const verifyOrgMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("event_organizers").update({ verified: true }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("✅ Organisation verified!");
-      qc.invalidateQueries({ queryKey: ["unverified-orgs"] });
-      qc.invalidateQueries({ queryKey: ["my-organizer"] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  // Admin: fetch all pending events
-  const { data: pendingEvents = [], isLoading: pendingLoading } = useQuery({
-    queryKey: ["pending-events"],
-    enabled: !!user && isAdmin,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("*, event_organizers(name, verified)")
-        .eq("status", "pending")
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as any[];
-    },
-  });
-
-  const reviewMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "published" | "rejected" }) => {
-      const { error } = await supabase.from("events").update({ status }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: (_, { status }) => {
-      toast.success(status === "published" ? "✅ Event published!" : "❌ Event rejected.");
-      qc.invalidateQueries({ queryKey: ["pending-events"] });
-      qc.invalidateQueries({ queryKey: ["events"] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
 
   // Derive step
   useEffect(() => {
@@ -431,143 +376,23 @@ export default function OrganiserDashboard() {
           </div>
         )}
 
-        {/* ── Admin: organiser verification ──────────────────────── */}
+        {/* Admin shortcut */}
         {isAdmin && (
-          <div className="border-[2.5px] border-[#D97706] rounded-[20px] shadow-[4px_4px_0_0_#D97706] bg-white overflow-hidden">
-            <div className="bg-gradient-to-r from-[#D97706] to-[#F59E0B] p-5 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/20 border-[2px] border-white/30 flex items-center justify-center shrink-0">
-                <BadgeCheck className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className={`${DISPLAY} font-bold text-[18px] text-white`}>Admin — Verify Organisers</h3>
-                <p className="text-white/70 text-[13px] font-['Nunito']">Grant the verified badge to registered organisations.</p>
-              </div>
-              <span className="px-3 py-1 rounded-xl bg-white/20 border-[2px] border-white/30 text-white font-extrabold font-['Nunito'] text-[13px]">
-                {unverifiedOrgs.length} pending
-              </span>
+          <a
+            href="https://admin.aceterus.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-4 p-5 border-[2.5px] border-[#2E2BE5] rounded-[20px] shadow-[4px_4px_0_0_#2E2BE5] bg-gradient-to-r from-[#2E2BE5]/5 to-[#7C3AED]/5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_#2E2BE5] transition-all group"
+          >
+            <div className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-[#2E2BE5] to-[#7C3AED] border-[2.5px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] flex items-center justify-center shrink-0">
+              <BadgeCheck className="w-5 h-5 text-white" />
             </div>
-
-            {orgsLoading ? (
-              <div className="p-5 space-y-3">
-                {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-[14px]" />)}
-              </div>
-            ) : unverifiedOrgs.length === 0 ? (
-              <div className="p-10 text-center space-y-2">
-                <div className="text-4xl">✅</div>
-                <p className={`${DISPLAY} font-bold text-[17px] text-[#0F172A]/40`}>All organisations are verified!</p>
-              </div>
-            ) : (
-              <div className="divide-y-[2px] divide-[#0F172A]/07">
-                {unverifiedOrgs.map((org: any) => (
-                  <div key={org.id} className="p-5 flex items-center gap-4">
-                    {org.logo_url ? (
-                      <img src={org.logo_url} alt={org.name} className="w-12 h-12 rounded-[14px] object-cover border-[2.5px] border-[#0F172A]/15 shrink-0" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-[14px] bg-amber-100 border-[2.5px] border-amber-300 flex items-center justify-center shrink-0">
-                        <Building2 className="w-6 h-6 text-amber-600" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className={`${DISPLAY} font-bold text-[16px] text-[#0F172A]`}>{org.name}</p>
-                      <p className="text-[12px] font-['Nunito'] text-[#0F172A]/50 capitalize">
-                        {ORG_TYPES.find(o => o.value === org.type)?.label ?? org.type}
-                        {" · "}Registered {format(new Date(org.created_at), "d MMM yyyy")}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => verifyOrgMutation.mutate(org.id)}
-                      disabled={verifyOrgMutation.isPending}
-                      className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl border-[2.5px] border-[#D97706] bg-amber-400 text-[#0F172A] font-bold font-['Nunito'] text-[13px] shadow-[2px_2px_0_0_#D97706] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#D97706] active:translate-y-0 transition-all disabled:opacity-60"
-                    >
-                      <BadgeCheck className="w-4 h-4" /> Verify
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Admin review panel ─────────────────────────────────── */}
-        {isAdmin && (
-          <div className="border-[2.5px] border-[#2E2BE5] rounded-[20px] shadow-[4px_4px_0_0_#2E2BE5] bg-white overflow-hidden">
-            <div className="bg-gradient-to-r from-[#2E2BE5] to-[#7C3AED] p-5 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/20 border-[2px] border-white/30 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className={`${DISPLAY} font-bold text-[18px] text-white`}>Admin — Event Review</h3>
-                <p className="text-white/65 text-[13px] font-['Nunito']">Approve or reject organiser submissions.</p>
-              </div>
-              <span className="px-3 py-1 rounded-xl bg-white/20 border-[2px] border-white/30 text-white font-extrabold font-['Nunito'] text-[13px]">
-                {pendingEvents.length} pending
-              </span>
+            <div className="flex-1">
+              <p className={`${DISPLAY} font-bold text-[16px] text-[#0F172A]`}>Admin Tools</p>
+              <p className="text-[13px] font-['Nunito'] text-[#0F172A]/50">Verify organisers &amp; review event submissions at admin.aceterus.com</p>
             </div>
-
-            {pendingLoading ? (
-              <div className="p-5 space-y-3">
-                {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-[14px]" />)}
-              </div>
-            ) : pendingEvents.length === 0 ? (
-              <div className="p-10 text-center space-y-2">
-                <div className="text-4xl">🎉</div>
-                <p className={`${DISPLAY} font-bold text-[17px] text-[#0F172A]/40`}>All caught up — no pending events!</p>
-              </div>
-            ) : (
-              <div className="divide-y-[2px] divide-[#0F172A]/07">
-                {pendingEvents.map((ev: any) => (
-                  <div key={ev.id} className="p-5 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className={`${DISPLAY} font-bold text-[16px] text-[#0F172A]`}>{ev.title}</h4>
-                          <span className="px-2 py-0.5 rounded-lg bg-[#FEF3C7] border-[1.5px] border-amber-300 text-[11px] font-extrabold text-amber-700 font-['Nunito'] capitalize">{ev.type}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-3 text-[12px] font-['Nunito'] text-[#0F172A]/50">
-                          {ev.event_organizers && (
-                            <span className="flex items-center gap-1">
-                              <Building2 className="w-3 h-3" />
-                              {ev.event_organizers.name}
-                              {ev.event_organizers.verified && <BadgeCheck className="w-3 h-3 text-[#2F7CFF]" />}
-                            </span>
-                          )}
-                          {ev.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{ev.location}</span>}
-                          {ev.start_date && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(ev.start_date), "d MMM yyyy")}</span>}
-                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Submitted {format(new Date(ev.created_at), "d MMM, h:mm a")}</span>
-                        </div>
-                        {ev.description && (
-                          <p className="text-[13px] font-['Nunito'] text-[#0F172A]/60 line-clamp-2 mt-1">{ev.description}</p>
-                        )}
-                        {ev.registration_url && (
-                          <a href={ev.registration_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12px] font-bold text-[#2F7CFF] hover:underline font-['Nunito']">
-                            <Eye className="w-3 h-3" /> Preview registration link
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Approve / Reject */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => reviewMutation.mutate({ id: ev.id, status: "published" })}
-                        disabled={reviewMutation.isPending}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl border-[2.5px] border-[#059669] bg-[#059669] text-white font-bold font-['Nunito'] text-[13px] shadow-[2px_2px_0_0_#047857] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#047857] active:translate-y-0 transition-all disabled:opacity-60"
-                      >
-                        <CheckCircle2 className="w-4 h-4" /> Approve &amp; Publish
-                      </button>
-                      <button
-                        onClick={() => reviewMutation.mutate({ id: ev.id, status: "rejected" })}
-                        disabled={reviewMutation.isPending}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl border-[2.5px] border-[#DC2626] bg-white text-[#DC2626] font-bold font-['Nunito'] text-[13px] shadow-[2px_2px_0_0_#DC2626] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#DC2626] active:translate-y-0 transition-all disabled:opacity-60"
-                      >
-                        <XCircle className="w-4 h-4" /> Reject
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            <ExternalLink className="w-4 h-4 text-[#2E2BE5] shrink-0 group-hover:translate-x-0.5 transition-transform" />
+          </a>
         )}
 
         {/* My events */}

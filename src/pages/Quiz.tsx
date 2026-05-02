@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,7 +7,7 @@ import {
   CheckCircle2, ChevronLeft, ChevronRight, Flame, GraduationCap,
   Layers, Loader2, PenLine, ScanLine, Search, Sparkles, Star, Target, Trophy, X, XCircle, Zap, Coins,
 } from "lucide-react";
-import StreakFireOverlay from "@/components/StreakFireOverlay";
+const StreakFireOverlay = lazy(() => import("@/components/StreakFireOverlay"));
 import { GoalSheet } from "@/components/GoalSheet";
 import { TodayGoalBanner } from "@/components/TodayGoalBanner";
 import QuizAnalysis from "@/components/QuizAnalysis";
@@ -15,7 +15,7 @@ import type { PerformanceAnalysis } from "@/components/QuizAnalysis";
 import PerformanceTracker from "@/components/PerformanceTracker";
 import type { SubjectAttempt } from "@/components/PerformanceTracker";
 import { BossRaidArena } from "@/components/BossRaidArena";
-import Logo from "@/assets/logo.png";
+import Logo from "@/assets/logo.webp";
 import { useAuth } from "@/hooks/useAuth";
 import { useStreak } from "@/hooks/useStreak";
 import { useMascot } from "@/context/MascotContext";
@@ -1647,7 +1647,9 @@ const Quiz = () => {
 
       {/* ── STREAK OVERLAY ── */}
       {fireOverlay.show && (
-        <StreakFireOverlay streak={fireOverlay.newStreak} onDismiss={() => setFireOverlay({ show: false, newStreak: 0 })} />
+        <Suspense fallback={null}>
+          <StreakFireOverlay streak={fireOverlay.newStreak} onDismiss={() => setFireOverlay({ show: false, newStreak: 0 })} />
+        </Suspense>
       )}
 
       {/* ── FLOATING BOOKMARKS (mobile) ── */}
