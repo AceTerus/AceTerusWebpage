@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { SignInGate } from '@/components/SignInGate';
 import { createPortal } from 'react-dom';
 import { ImageCropper } from '@/components/ImageCropper';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useStreak } from '@/hooks/useStreak';
@@ -23,7 +23,7 @@ import {
   Camera, Flame, Trash2, Users, Search, Lock,
   Settings, CheckCircle, XCircle, SkipForward, BarChart2,
   Zap, Target, PenLine, GraduationCap, MapPin, Plus,
-  BookOpen, BookMarked, Compass, Award, Building2, Microscope,
+  BookOpen, BookMarked, Compass, Award, Building2, Microscope, ShieldCheck,
 } from 'lucide-react';
 import { NotificationsBell } from '@/components/NotificationsBell';
 import { SchoolPicker } from '@/components/SchoolPicker';
@@ -191,7 +191,7 @@ interface Profile {
 
 export const Profile = () => {
   const { userId } = useParams<{ userId?: string }>();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { toast } = useToast();
   const { streak } = useStreak();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -841,6 +841,26 @@ export const Profile = () => {
                         </div>
                       </DialogContent>
                     </Dialog>
+
+                    {/* Admin Tools */}
+                    {isAdmin && (
+                      <button
+                        onClick={async () => {
+                          const { data: { session } } = await supabase.auth.getSession();
+                          const base = "https://admin.aceterus.com";
+                          if (session) {
+                            const hash = `#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer&type=magiclink`;
+                            window.open(`${base}/${hash}`, "_blank");
+                          } else {
+                            window.open(base, "_blank");
+                          }
+                        }}
+                        className={`${BTN_OUTLINE} w-full max-w-xs flex items-center justify-center gap-2`}
+                        style={{ borderColor: '#2E2BE5', color: '#2E2BE5' }}
+                      >
+                        <ShieldCheck className="w-4 h-4" /> Admin Tools
+                      </button>
+                    )}
 
                     {/* Quiz History */}
                     <Dialog open={isQuizHistoryOpen} onOpenChange={(open) => { setIsQuizHistoryOpen(open); if (open) fetchQuizHistory(); }}>

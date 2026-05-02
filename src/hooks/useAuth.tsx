@@ -24,6 +24,23 @@ export const useAuth = () => {
   return context;
 };
 
+// Cookie shared across all *.aceterus.com subdomains to signal a global sign-out.
+// We don't clear it immediately so all subdomains get a chance to read it; it expires in 5 min.
+const SIGNOUT_COOKIE = 'ace_signout';
+const COOKIE_DOMAIN = '.aceterus.com';
+
+function setSignOutCookie() {
+  document.cookie = `${SIGNOUT_COOKIE}=1; domain=${COOKIE_DOMAIN}; path=/; max-age=300; SameSite=Lax; Secure`;
+}
+
+function clearSignOutCookie() {
+  document.cookie = `${SIGNOUT_COOKIE}=; domain=${COOKIE_DOMAIN}; path=/; max-age=0; SameSite=Lax; Secure`;
+}
+
+function hasSignOutCookie() {
+  return document.cookie.split(';').some(c => c.trim().startsWith(`${SIGNOUT_COOKIE}=1`));
+}
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -39,7 +56,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const syncProfile = async (userId: string | undefined) => {
       if (!userId) { setIsAdmin(false); setAceCoins(0); return; }
-      
+
       const { data, error } = await supabase
         .from("profiles")
         .select("is_admin, ace_coins, username")
@@ -47,7 +64,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         .single();
 
       if (error && error.code === 'PGRST116') {
-        // Profile does not exist yet — brand new user.
         try {
           await (supabase as any).from('profiles').insert([{ user_id: userId, ace_coins: 1000 }]);
           setIsAdmin(false);
@@ -61,10 +77,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       setIsAdmin((data as any)?.is_admin ?? false);
       setIsNewUser(!(data as any)?.username);
-      
+
       let coins = (data as any)?.ace_coins ?? 0;
       if (coins < 1000) {
-        // Auto-grant 1000 ACE Coins for new players or those stuck at 0 
         try {
           await (supabase as any).from('profiles').update({ ace_coins: 1000 }).eq('user_id', userId);
           coins = 1000;
@@ -75,9 +90,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setAceCoins(coins);
     };
 
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (_event, session) => {
+        // A new sign-in cancels any pending global sign-out
+        if (session) clearSignOutCookie();
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
@@ -85,18 +101,58 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Check for a global sign-out signal; only act if this subdomain still has an active session.
+    const checkAndSignOut = async () => {
+      if (!hasSignOutCookie()) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.auth.signOut();
+        setIsAdmin(false);
+      }
+    };
+
+    window.addEventListener('focus', checkAndSignOut);
+    const pollInterval = setInterval(checkAndSignOut, 5000);
+
+    const init = async () => {
+      // Act on a pending global sign-out before anything else
+      if (hasSignOutCookie()) {
+        await checkAndSignOut();
+        setIsLoading(false);
+        return;
+      }
+
+      // Restore session from URL hash (cross-subdomain SSO)
+      const hashStr = window.location.hash.slice(1);
+      if (hashStr) {
+        const params = new URLSearchParams(hashStr);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        if (accessToken && refreshToken) {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          return; // onAuthStateChange fires and handles the rest
+        }
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
       syncProfile(session?.user?.id);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    init();
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('focus', checkAndSignOut);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const signOut = async () => {
+    setSignOutCookie(); // broadcast sign-out to all other subdomains
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error signing out:', error);

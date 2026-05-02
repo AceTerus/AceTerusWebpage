@@ -23,7 +23,9 @@
       "Bash(ls /tmp/lottie*.json)",
       "Bash(ls /tmp/*.json)",
       "Bash(python3:*)",
+      "Bash(python *)",
       "Bash(node -e \":*)",
+      "Bash(node -e ' *)",
       "Bash(wc:*)",
       "Bash(grep -r \"profiles\\\\|user\" /c/Users/Dhiren23/Documents/AceTerusRebrand-1/supabase/migrations/*.sql)",
       "Bash(supabase functions:*)",
@@ -42,9 +44,7 @@
       "Bash(python -c ':*)",
       "Bash(uvicorn main:socket_app --port 8000 --reload)",
       "Bash(python -m json.tool)",
-      "Bash(ls \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\"/.env*)",
-      "Bash(python *)",
-      "Bash(del patch_lint.py patch_edge.py verify_lint.py)"
+      "Bash(ls \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\"/.env*)"
     ]
   }
 }

@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronLeft, Loader2, MessageSquare, Search, Send, Users, UserPlus } from "lucide-react";
+import { ChevronLeft, Copy, Loader2, MessageSquare, MoreHorizontal, Search, Send, Share2, Trash2, Undo2, Users, UserPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { useChatNotifications } from "@/context/ChatNotificationsContext";
@@ -72,8 +72,17 @@ export const Chat = () => {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showContactsList, setShowContactsList] = useState(true);
+  const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
+  const [contactIsTyping, setContactIsTyping] = useState(false);
+  const [forwardModalOpen, setForwardModalOpen] = useState(false);
+  const [messageToForward, setMessageToForward] = useState<ChatMessage | null>(null);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const contactTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presenceHeartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const targetUserId = searchParams.get("userId");
 
   const fetchContacts = useCallback(async () => {
@@ -170,9 +179,12 @@ export const Chat = () => {
   useEffect(() => {
     if (!selectedContact || !userId) return;
     setMessages([]);
+    setActiveMessageMenu(null);
     fetchMessages(selectedContact.user_id);
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [fetchMessages, selectedContact, userId]);
 
+  /* ── Real-time: new messages + unsend propagation ── */
   useEffect(() => {
     if (!userId) return;
     const channel = supabase.channel(`chat-realtime-${userId}`)
@@ -185,13 +197,82 @@ export const Chat = () => {
           if (newMessage.sender_id !== userId) clearUnread(newMessage.sender_id);
           setMessages((prev) => [...prev, newMessage]);
         }
-      }).subscribe();
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_messages" }, (payload) => {
+        const deletedId = (payload.old as { id: string }).id;
+        if (deletedId) setMessages((prev) => prev.filter((m) => m.id !== deletedId));
+      })
+      .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [clearUnread, selectedContact, updateConversationPreview, userId]);
 
+  /* ── Realtime Presence: track who is online ── */
+  useEffect(() => {
+    if (!userId) return;
+
+    const FIVE_MIN_MS = 5 * 60 * 1000;
+
+    const rebuildOnlineSet = (channel: ReturnType<typeof supabase.channel>) => {
+      const state = channel.presenceState<{ userId: string; lastActive: string }>();
+      const now = Date.now();
+      const ids = new Set<string>();
+      Object.values(state).forEach((presences) => {
+        presences.forEach((p) => {
+          if (now - new Date(p.lastActive).getTime() < FIVE_MIN_MS) {
+            ids.add(p.userId);
+          }
+        });
+      });
+      setOnlineUserIds(ids);
+    };
+
+    const presenceChannel = supabase
+      .channel('chat-presence')
+      .on('presence', { event: 'sync' }, () => rebuildOnlineSet(presenceChannel))
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({ userId, lastActive: new Date().toISOString() });
+          // Heartbeat: refresh lastActive every 60 s so idle-open tabs stay online
+          presenceHeartbeatRef.current = setInterval(() => {
+            presenceChannel.track({ userId, lastActive: new Date().toISOString() });
+          }, 60_000);
+        }
+      });
+
+    return () => {
+      if (presenceHeartbeatRef.current) clearInterval(presenceHeartbeatRef.current);
+      presenceChannel.untrack();
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [userId]);
+
+  /* ── Typing indicator channel ── */
+  useEffect(() => {
+    if (!userId || !selectedContact) {
+      setContactIsTyping(false);
+      return;
+    }
+    const channelName = `typing-${[userId, selectedContact.user_id].sort().join('-')}`;
+    const channel = supabase.channel(channelName)
+      .on('broadcast', { event: 'typing' }, ({ payload }: { payload: { userId: string } }) => {
+        if (payload.userId !== selectedContact.user_id) return;
+        setContactIsTyping(true);
+        if (contactTypingTimeoutRef.current) clearTimeout(contactTypingTimeoutRef.current);
+        contactTypingTimeoutRef.current = setTimeout(() => setContactIsTyping(false), 3000);
+      })
+      .subscribe();
+    typingChannelRef.current = channel;
+    return () => {
+      supabase.removeChannel(channel);
+      typingChannelRef.current = null;
+      if (contactTypingTimeoutRef.current) clearTimeout(contactTypingTimeoutRef.current);
+      setContactIsTyping(false);
+    };
+  }, [userId, selectedContact]);
+
   useEffect(() => {
     if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-  }, [messages, selectedContact]);
+  }, [messages, selectedContact, contactIsTyping]);
 
   useEffect(() => {
     if (!contacts.length) return;
@@ -246,6 +327,8 @@ export const Chat = () => {
       toast({ title: "Message not sent", description: "Please try again.", variant: "destructive" });
     } finally {
       setIsSending(false);
+      // rAF defers focus until after React re-renders the now-enabled Textarea
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
   };
 
@@ -254,10 +337,70 @@ export const Chat = () => {
     setSearchParams(contact ? { userId: contact.user_id } : {});
     clearUnread(contact.user_id);
     setShowContactsList(false);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleMessageInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessageInput(e.target.value);
+    if (typingChannelRef.current && userId) {
+      typingChannelRef.current.send({ type: 'broadcast', event: 'typing', payload: { userId } });
+    }
   };
 
   const handleTextareaKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); handleSendMessage(); }
+  };
+
+  /* ── Message actions ── */
+  const closeMenu = () => {
+    setActiveMessageMenu(null);
+    inputRef.current?.focus();
+  };
+
+  const handleCopyMessage = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast({ title: "Copied to clipboard" });
+    closeMenu();
+  };
+
+  const handleUnsendMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase.from("chat_messages").delete().eq("id", messageId);
+      if (error) throw error;
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      closeMenu();
+    } catch {
+      toast({ title: "Failed to unsend", description: "Please try again.", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteMessage = (messageId: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    closeMenu();
+  };
+
+  const handleForwardMessage = (message: ChatMessage) => {
+    setMessageToForward(message);
+    setForwardModalOpen(true);
+    closeMenu();
+  };
+
+  const handleForwardTo = async (contact: ProfileSummary) => {
+    if (!messageToForward || !userId) return;
+    try {
+      const { data, error } = await supabase.from("chat_messages").insert({
+        content: messageToForward.content,
+        sender_id: userId,
+        receiver_id: contact.user_id,
+      }).select().single();
+      if (error) throw error;
+      if (data) updateConversationPreview(data);
+      setForwardModalOpen(false);
+      setMessageToForward(null);
+      toast({ title: `Forwarded to ${getDisplayName(contact)}` });
+    } catch {
+      toast({ title: "Failed to forward", description: "Please try again.", variant: "destructive" });
+    }
   };
 
   if (isLoading) {
@@ -271,7 +414,73 @@ export const Chat = () => {
   if (!user) return <Navigate to="/auth" replace />;
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] lg:h-screen w-full overflow-hidden bg-transparent">
+    <div
+      className="flex h-[calc(100vh-4rem)] lg:h-screen w-full overflow-hidden bg-transparent"
+      onClick={() => setActiveMessageMenu(null)}
+    >
+      {/* ── Forward modal ── */}
+      {forwardModalOpen && messageToForward && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(15,23,42,0.55)' }}
+          onClick={() => { setForwardModalOpen(false); setMessageToForward(null); }}
+        >
+          <div
+            className="w-full max-w-sm bg-white border-[2.5px] border-[#0F172A] shadow-[4px_4px_0_0_#0F172A] rounded-[20px] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b-[2px] border-[#0F172A]/10">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-7 h-7 rounded-[8px] border-[2px] border-[#0F172A] shadow-[1px_1px_0_0_#0F172A] flex items-center justify-center"
+                  style={{ background: C.indigo }}
+                >
+                  <Share2 className="w-3.5 h-3.5 text-white" />
+                </div>
+                <h2 className={`${DISPLAY} font-extrabold text-base`}>Forward message</h2>
+              </div>
+              <button
+                onClick={() => { setForwardModalOpen(false); setMessageToForward(null); }}
+                className="h-7 w-7 rounded-full flex items-center justify-center border-[1.5px] border-[#0F172A] bg-white shadow-[1px_1px_0_0_#0F172A] hover:shadow-[2px_2px_0_0_#0F172A] transition-shadow"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Message preview */}
+            <div className="px-5 py-3 border-b-[2px] border-[#0F172A]/10" style={{ background: C.skySoft }}>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Message</p>
+              <p className="text-sm font-medium text-[#0F172A] line-clamp-2 leading-relaxed">
+                {messageToForward.content}
+              </p>
+            </div>
+
+            {/* Contact list */}
+            <div className="max-h-64 overflow-y-auto px-3 py-2 scrollbar-hide">
+              {contacts.length === 0 ? (
+                <p className="text-center text-sm font-semibold text-slate-400 py-6">No contacts to forward to</p>
+              ) : (
+                contacts.map((contact) => (
+                  <button
+                    key={contact.user_id}
+                    onClick={() => handleForwardTo(contact)}
+                    className="w-full flex items-center gap-3 rounded-[12px] px-3 py-2.5 hover:bg-slate-50 transition-colors border-[2px] border-transparent hover:border-[#0F172A]/20 text-left"
+                  >
+                    <Avatar className="h-9 w-9 border-[2px] border-[#0F172A] shadow-[1px_1px_0_0_#0F172A]">
+                      <AvatarImage src={contact.avatar_url || undefined} className="object-cover" />
+                      <AvatarFallback className={`${DISPLAY} font-extrabold text-sm`} style={{ background: C.cyan, color: C.ink }}>
+                        {getAvatarFallback(contact)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className={`${DISPLAY} font-bold text-sm text-[#0F172A]`}>{getDisplayName(contact)}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Left panel: contacts ── */}
       <div className={`${showContactsList ? 'flex' : 'hidden'} lg:flex w-full lg:w-80 flex-shrink-0 flex-col bg-white border-r-[2.5px] border-[#0F172A]`}>
@@ -376,7 +585,9 @@ export const Chat = () => {
                         {getAvatarFallback(contact)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
+                    {onlineUserIds.has(contact.user_id) && (
+                      <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
+                    )}
                   </Link>
 
                   <div className="min-w-0 flex-1">
@@ -447,7 +658,9 @@ export const Chat = () => {
                       {getAvatarFallback(selectedContact)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
+                  {onlineUserIds.has(selectedContact.user_id) && (
+                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
+                  )}
                 </Link>
                 <div>
                   <Link
@@ -456,7 +669,22 @@ export const Chat = () => {
                   >
                     {getDisplayName(selectedContact)}
                   </Link>
-                  <p className="text-xs font-semibold text-emerald-500">Online</p>
+                  {(contactIsTyping || onlineUserIds.has(selectedContact.user_id)) && (
+                    <p className="text-xs font-semibold">
+                      {contactIsTyping ? (
+                        <span className="flex items-center gap-1" style={{ color: C.indigo }}>
+                          typing
+                          <span className="flex gap-0.5">
+                            <span className="inline-block h-1 w-1 rounded-full bg-current animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="inline-block h-1 w-1 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="inline-block h-1 w-1 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-emerald-500">Online</span>
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -513,6 +741,7 @@ export const Chat = () => {
                           const isLastInRun =
                             index === dayMessages.length - 1 ||
                             dayMessages[index + 1]?.sender_id !== message.sender_id;
+                          const isMenuOpen = activeMessageMenu === message.id;
 
                           return (
                             <div
@@ -534,20 +763,80 @@ export const Chat = () => {
                               </div>
 
                               <div className={cn("group flex flex-col gap-1", isOwn ? "items-end" : "items-start")}>
-                                <div
-                                  className={cn(
-                                    "max-w-[min(26rem,65vw)] break-words whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed font-medium border-[2px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A]",
-                                    isOwn
-                                      ? "text-white rounded-2xl rounded-br-sm"
-                                      : "bg-white text-[#0F172A] rounded-2xl rounded-bl-sm"
-                                  )}
-                                  style={isOwn ? { background: `linear-gradient(135deg, ${C.indigo}, ${C.blue})` } : {}}
-                                >
-                                  {message.content}
+                                {/* Bubble row with action trigger */}
+                                <div className={cn("flex items-center gap-1.5", isOwn ? "flex-row-reverse" : "flex-row")}>
+                                  <div
+                                    className={cn(
+                                      "max-w-[min(26rem,65vw)] break-words whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed font-medium border-[2px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A]",
+                                      isOwn
+                                        ? "text-white rounded-2xl rounded-br-sm"
+                                        : "bg-white text-[#0F172A] rounded-2xl rounded-bl-sm"
+                                    )}
+                                    style={isOwn ? { background: `linear-gradient(135deg, ${C.indigo}, ${C.blue})` } : {}}
+                                  >
+                                    {message.content}
+                                  </div>
+
+                                  {/* Three-dots menu trigger */}
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setActiveMessageMenu(isMenuOpen ? null : message.id); }}
+                                    className={cn(
+                                      "h-6 w-6 rounded-full flex items-center justify-center border-[1.5px] border-[#0F172A] bg-white shadow-[1px_1px_0_0_#0F172A] hover:shadow-[2px_2px_0_0_#0F172A] transition-all duration-150 flex-shrink-0",
+                                      "opacity-0 group-hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100",
+                                      isMenuOpen && "opacity-100"
+                                    )}
+                                    aria-label="Message options"
+                                  >
+                                    <MoreHorizontal className="h-3 w-3 text-slate-500" />
+                                  </button>
                                 </div>
+
+                                {/* Timestamp */}
                                 <span className="px-1 text-[10px] font-semibold text-slate-400 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                                   {format(new Date(message.created_at), "h:mm a")}
                                 </span>
+
+                                {/* Inline action buttons */}
+                                {isMenuOpen && (
+                                  <div
+                                    className={cn(
+                                      "flex items-center gap-1.5 flex-wrap",
+                                      isOwn ? "justify-end" : "justify-start"
+                                    )}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <button
+                                      onClick={() => handleCopyMessage(message.content)}
+                                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border-[1.5px] border-[#0F172A] bg-white shadow-[1px_1px_0_0_#0F172A] hover:shadow-[2px_2px_0_0_#0F172A] transition-shadow"
+                                    >
+                                      <Copy className="h-3 w-3" style={{ color: C.indigo }} />
+                                      Copy
+                                    </button>
+                                    <button
+                                      onClick={() => handleForwardMessage(message)}
+                                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border-[1.5px] border-[#0F172A] bg-white shadow-[1px_1px_0_0_#0F172A] hover:shadow-[2px_2px_0_0_#0F172A] transition-shadow"
+                                    >
+                                      <Share2 className="h-3 w-3" style={{ color: C.indigo }} />
+                                      Forward
+                                    </button>
+                                    {isOwn && (
+                                      <button
+                                        onClick={() => handleUnsendMessage(message.id)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border-[1.5px] border-[#0F172A] bg-white shadow-[1px_1px_0_0_#0F172A] hover:shadow-[2px_2px_0_0_#0F172A] transition-shadow text-red-500 hover:bg-red-50"
+                                      >
+                                        <Undo2 className="h-3 w-3" />
+                                        Unsend
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => handleDeleteMessage(message.id)}
+                                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border-[1.5px] border-[#0F172A] bg-white shadow-[1px_1px_0_0_#0F172A] hover:shadow-[2px_2px_0_0_#0F172A] transition-shadow text-red-500 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           );
@@ -555,14 +844,41 @@ export const Chat = () => {
                       </div>
                     </div>
                   ))}
+
+                  {/* Typing indicator */}
+                  {contactIsTyping && (
+                    <div className="flex items-end gap-2">
+                      <Avatar className="h-7 w-7 border-[1.5px] border-[#0F172A] flex-shrink-0">
+                        <AvatarImage src={selectedContact.avatar_url || undefined} className="object-cover" />
+                        <AvatarFallback className="text-[10px] font-bold" style={{ background: C.cyan, color: C.ink }}>
+                          {getAvatarFallback(selectedContact)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col items-start gap-1">
+                        <div
+                          className="px-4 py-3 rounded-2xl rounded-bl-sm bg-white border-[2px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A]"
+                        >
+                          <div className="flex gap-1 items-center">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        </div>
+                        <span className="px-1 text-[10px] font-semibold text-slate-400">
+                          {getDisplayName(selectedContact)} is typing...
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
 
-            {/* Input bar */}
-            <div className="border-t-[2.5px] border-[#0F172A] bg-white px-6 py-4">
-              <div className="flex items-end gap-3 rounded-2xl border-[2.5px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] bg-white px-4 py-3 focus-within:shadow-[3px_3px_0_0_#0F172A] transition-shadow">
+            {/* Input bar — single-level, no nested box */}
+            <div className="border-t-[2.5px] border-[#0F172A] bg-white">
+              <div className="flex items-end gap-3 px-4 py-3 sm:px-5 sm:py-3.5 lg:px-6 lg:py-4 w-full">
                 <Avatar className="mb-0.5 h-7 w-7 flex-shrink-0 self-end border-[1.5px] border-[#0F172A]">
                   <AvatarImage src={currentProfile?.avatar_url || undefined} className="object-cover" />
                   <AvatarFallback
@@ -573,18 +889,19 @@ export const Chat = () => {
                   </AvatarFallback>
                 </Avatar>
                 <Textarea
+                  ref={inputRef}
                   placeholder={`Message ${getDisplayName(selectedContact)}...`}
                   value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
+                  onChange={handleMessageInputChange}
                   onKeyDown={handleTextareaKeyDown}
                   rows={1}
-                  className="min-h-0 flex-1 resize-none border-0 bg-transparent p-0 text-sm font-semibold shadow-none focus-visible:ring-0 placeholder:text-slate-400"
+                  className="min-h-0 flex-1 resize-none rounded-xl border-[2px] border-[#0F172A]/20 bg-[#F8FAFF] px-3 py-2 text-sm font-semibold shadow-none focus-visible:ring-0 focus-visible:border-[#2E2BE5]/60 transition-colors placeholder:text-slate-400"
                   disabled={isSending}
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={!messageInput.trim() || isSending}
-                  className="h-8 w-8 flex-shrink-0 rounded-full flex items-center justify-center border-[2px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[3px_3px_0_0_#0F172A] transition-shadow"
+                  className="mb-0.5 h-8 w-8 flex-shrink-0 rounded-full flex items-center justify-center border-[2px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[3px_3px_0_0_#0F172A] transition-shadow"
                   style={{ background: C.indigo }}
                 >
                   {isSending ? (
@@ -594,7 +911,7 @@ export const Chat = () => {
                   )}
                 </button>
               </div>
-              <p className="mt-2 text-center text-[10px] font-semibold text-slate-400">
+              <p className="pb-2.5 text-center text-[10px] font-semibold text-slate-400">
                 Enter to send · Shift+Enter for new line
               </p>
             </div>
