@@ -32,6 +32,7 @@ import {
 import type { Category, Deck, Question } from "@/types/quiz";
 import { PdfQuizGenerator } from "@/components/PdfQuizGenerator";
 import { TextQuizImporter } from "@/components/TextQuizImporter";
+import { OcrQuizGenerator } from "@/components/OcrQuizGenerator";
 
 // ── Blank form shapes ─────────────────────────────────────────────────────────
 
@@ -153,6 +154,9 @@ const AdminQuiz = () => {
 
   // PDF generator
   const [pdfGeneratorOpen, setPdfGeneratorOpen] = useState(false);
+
+  // OCR generator
+  const [ocrGeneratorOpen, setOcrGeneratorOpen] = useState(false);
 
   // Text importer
   const [textImporterOpen, setTextImporterOpen] = useState(false);
@@ -602,6 +606,9 @@ const AdminQuiz = () => {
               <Button variant="outline" onClick={() => setPdfGeneratorOpen(true)} className="gap-2">
                 <Sparkles className="w-4 h-4" /> Generate from PDF
               </Button>
+              <Button variant="outline" onClick={() => setOcrGeneratorOpen(true)} className="gap-2">
+                <FileText className="w-4 h-4" /> Import from Scanned PDF
+              </Button>
               <Button onClick={openCreateDeck} className="gap-2">
                 <Plus className="w-4 h-4" /> New Quiz
               </Button>
@@ -1010,6 +1017,14 @@ const AdminQuiz = () => {
       <PdfQuizGenerator
         open={pdfGeneratorOpen}
         onOpenChange={setPdfGeneratorOpen}
+        onSuccess={() => selectedCategory && loadDecksForCategory(selectedCategory)}
+      />
+
+      {/* ── OCR Quiz Generator ── */}
+      <OcrQuizGenerator
+        open={ocrGeneratorOpen}
+        onOpenChange={setOcrGeneratorOpen}
+        categoryName={selectedCategory?.name}
         onSuccess={() => selectedCategory && loadDecksForCategory(selectedCategory)}
       />
 

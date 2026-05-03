@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PostImageCarouselProps {
   images: string[];
@@ -13,19 +14,18 @@ const isVideoUrl = (url: string) =>
 
 export const PostImageCarousel = ({ images, className, onImageClick }: PostImageCarouselProps) => {
   const [index, setIndex] = useState(0);
-  // height/width ratio — default 1:1 until first image loads
   const [aspectRatio, setAspectRatio] = useState<number>(1);
   const [aspectResolved, setAspectResolved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   if (!images || images.length === 0) return null;
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    // Only derive aspect from the first image
+    setLoaded(true);
     if (aspectResolved) return;
     const { naturalWidth, naturalHeight } = e.currentTarget;
     if (!naturalWidth || !naturalHeight) return;
     const ratio = naturalHeight / naturalWidth;
-    // Clamp: square (1:1) → portrait (4:5). Landscape images are treated as square.
     setAspectRatio(Math.min(1.25, Math.max(1, ratio)));
     setAspectResolved(true);
   };
@@ -42,9 +42,15 @@ export const PostImageCarousel = ({ images, className, onImageClick }: PostImage
 
   return (
     <div
-      className={cn("relative w-full overflow-hidden bg-black", className)}
+      className={cn("relative w-full overflow-hidden bg-muted", className)}
       style={{ paddingTop: `${aspectRatio * 100}%` }}
     >
+      {/* Skeleton shimmer while first image loads */}
+      {!loaded && (
+        <div className="absolute inset-0">
+          <Skeleton className="w-full h-full rounded-none" />
+        </div>
+      )}
       {/* Sliding strip — absolutely fills the padding-top container */}
       <div
         className="absolute inset-0 flex transition-transform duration-500 ease-out"
@@ -69,9 +75,10 @@ export const PostImageCarousel = ({ images, className, onImageClick }: PostImage
               <img
                 src={src}
                 alt={`Post image ${idx + 1}`}
-                onLoad={idx === 0 ? handleImageLoad : undefined}
+                onLoad={idx === index ? handleImageLoad : undefined}
                 className="w-full h-full object-cover select-none"
-                loading="lazy"
+                loading={idx === index ? "eager" : "lazy"}
+                decoding="async"
                 draggable={false}
               />
             )}
