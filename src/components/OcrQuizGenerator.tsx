@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 import {
   ChevronDown, ChevronUp, FileText, ImagePlus, Loader2, ScanText, Trash2, X,
 } from "lucide-react";
@@ -36,6 +36,7 @@ const LABELS = ["A", "B", "C", "D"];
 // Uses Unicode escapes (\uNNNN) instead of hex (\xNN) to satisfy no-control-regex.
 function sanitizeOcrText(text: string): string {
   return text
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ")
     .replace(/[ \t]+/g, " ")
     .trim();

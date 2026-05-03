@@ -1,4 +1,4 @@
-// Supabase Edge Function: OCR text / raw text → Quiz parser via Gemini API
+﻿// Supabase Edge Function: OCR text / raw text → Quiz parser via Gemini API
 import { serve } from "https://deno.land/std@0.213.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 
@@ -47,6 +47,7 @@ serve(async (req) => {
 
     // Strip control characters that can break JSON serialization of OCR output
     const rawText: string = body.text
+      // eslint-disable-next-line no-control-regex
       .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ")
       .trim();
 

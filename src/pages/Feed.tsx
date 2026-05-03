@@ -214,7 +214,6 @@ export const Feed = () => {
     if (e.key === "Enter") handleSearchSubmit();
   };
 
-  const openLightbox = (postId: string, index: number) => { setLightboxPostId(postId); setLightboxIndex(index); };
   const closeLightbox = () => setLightboxPostId(null);
   const showPrev = () => {
     const post = posts.find((p) => p.id === lightboxPostId);
