@@ -3,11 +3,16 @@ import { usePomodoro, WORK_SECS, BREAK_SECS } from "@/context/PomodoroContext";
 import {
   X, Plus, Sparkles, BookOpen, Check, Trash2,
   Bell, CalendarClock, Flag, ChevronDown, ChevronUp, Rocket,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format, parseISO, isPast } from "date-fns";
+import {
+  format, parseISO, isPast,
+  startOfMonth, endOfMonth, eachDayOfInterval,
+  startOfWeek, endOfWeek, isSameMonth, isSameDay, isToday,
+  addMonths, subMonths,
+} from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -408,6 +413,180 @@ const PomodoroTimer = () => {
   );
 };
 
+/* ── heat helpers ───────────────────────────────────────────────────────── */
+const getHeatStyle = (count: number): { bg: string; text: string } => {
+  if (count === 0) return { bg: "#ebedf0", text: "#57606a" };
+  if (count === 1) return { bg: "#4575b4", text: "#fff"     };
+  if (count <= 3) return { bg: "#74c476", text: "#1a3a1a"  };
+  if (count <= 5) return { bg: "#fecc5c", text: "#5a3a00"  };
+  return             { bg: "#d7191c", text: "#fff"     };
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HEATMAP CALENDAR
+══════════════════════════════════════════════════════════════════════════ */
+interface HeatmapCalendarProps {
+  selectedDate: Date;
+  viewMonth: Date;
+  onSelectDate: (date: Date) => void;
+  onChangeMonth: (month: Date) => void;
+  goalsDateSet: Set<string>;
+  activityMap: Record<string, number>;
+}
+
+const HeatmapCalendar = ({
+  selectedDate, viewMonth, onSelectDate, onChangeMonth, goalsDateSet, activityMap,
+}: HeatmapCalendarProps) => {
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+
+  const monthStart = startOfMonth(viewMonth);
+  const monthEnd   = endOfMonth(viewMonth);
+  const gridStart  = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const gridEnd    = endOfWeek(monthEnd, { weekStartsOn: 0 });
+  const allDays    = eachDayOfInterval({ start: gridStart, end: gridEnd });
+  const weeks: Date[][] = [];
+  for (let i = 0; i < allDays.length; i += 7) weeks.push(allDays.slice(i, i + 7));
+
+  return (
+    <div className={`${STICKER}`} style={{ overflow: "visible" }}>
+      {/* Month navigation */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b-[2.5px] border-[#0F172A]" style={{ background: C.cloud }}>
+        <button
+          onClick={() => onChangeMonth(subMonths(viewMonth, 1))}
+          className="w-8 h-8 flex items-center justify-center rounded-[10px] border-[2px] border-[#0F172A] bg-white shadow-[2px_2px_0_0_#0F172A] hover:-translate-y-0.5 transition-all cursor-pointer"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className={`${DISPLAY} font-extrabold text-base`}>{format(viewMonth, "MMMM yyyy")}</span>
+        <button
+          onClick={() => onChangeMonth(addMonths(viewMonth, 1))}
+          className="w-8 h-8 flex items-center justify-center rounded-[10px] border-[2px] border-[#0F172A] bg-white shadow-[2px_2px_0_0_#0F172A] hover:-translate-y-0.5 transition-all cursor-pointer"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Day-of-week headers */}
+      <div className="grid grid-cols-7 border-b-[2px] border-[#0F172A]" style={{ background: "#f6f8fa" }}>
+        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+          <div key={d} className={`text-center text-[10px] font-extrabold py-1.5 ${DISPLAY}`} style={{ color: C.ink, opacity: 0.45 }}>
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      {weeks.map((week, wi) => (
+        <div
+          key={wi}
+          className="grid grid-cols-7"
+          style={{ borderBottom: wi < weeks.length - 1 ? "1px solid rgba(15,23,42,0.07)" : "none" }}
+        >
+          {week.map((day, di) => {
+            const dateStr    = format(day, "yyyy-MM-dd");
+            const count      = activityMap[dateStr] || 0;
+            const heat       = getHeatStyle(count);
+            const inMonth    = isSameMonth(day, viewMonth);
+            const isSelected = isSameDay(day, selectedDate);
+            const todayDay   = isToday(day);
+            const hasGoal    = goalsDateSet.has(dateStr);
+            const isHovered  = hoveredDate === dateStr;
+            const quizLabel  = count === 1 ? "1 quiz" : count > 1 ? `${count} quizzes` : "No quizzes";
+
+            return (
+              <button
+                key={di}
+                onClick={() => onSelectDate(day)}
+                onMouseEnter={() => setHoveredDate(dateStr)}
+                onMouseLeave={() => setHoveredDate(null)}
+                className="relative flex flex-col items-center justify-center cursor-pointer"
+                style={{
+                  background: heat.bg,
+                  borderLeft: di > 0 ? "1px solid rgba(15,23,42,0.07)" : "none",
+                  opacity: inMonth ? 1 : 0.25,
+                  minHeight: 54,
+                  paddingTop: 6,
+                  paddingBottom: hasGoal ? 14 : 6,
+                  zIndex: isSelected || isHovered ? 10 : 1,
+                  outline: isSelected
+                    ? "3px solid #2F7CFF"
+                    : todayDay
+                    ? "2px dashed #2F7CFF"
+                    : "none",
+                  outlineOffset: isSelected ? "-3px" : "-2px",
+                  transform: isSelected ? "scale(1.08)" : "scale(1)",
+                  boxShadow: isSelected
+                    ? "0 4px 14px rgba(47,124,255,0.45)"
+                    : "none",
+                  transition: "transform 0.15s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s ease, outline 0.1s ease",
+                }}
+              >
+                {/* Hover tooltip */}
+                {isHovered && (
+                  <div
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap pointer-events-none z-20"
+                    style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.18))" }}
+                  >
+                    <div
+                      className="px-2 py-1 rounded-[8px] border-[1.5px] border-[#0F172A] text-[10px] font-bold"
+                      style={{ background: "#0F172A", color: "#fff" }}
+                    >
+                      {format(day, "d MMM")} · {quizLabel}
+                    </div>
+                    {/* Arrow */}
+                    <div className="flex justify-center">
+                      <div className="w-2 h-2 rotate-45 border-r-[1.5px] border-b-[1.5px] border-[#0F172A]" style={{ background: "#0F172A", marginTop: -5 }} />
+                    </div>
+                  </div>
+                )}
+
+                <span
+                  className={`${DISPLAY} font-bold text-[13px] leading-none`}
+                  style={{ color: isSelected ? "#2F7CFF" : heat.text, fontWeight: isSelected ? 900 : 700 }}
+                >
+                  {format(day, "d")}
+                </span>
+
+                {/* Quiz description label */}
+                {count > 0 && (
+                  <span
+                    className="text-[8px] font-semibold leading-none mt-[3px]"
+                    style={{ color: isSelected ? "#2F7CFF" : heat.text, opacity: isSelected ? 1 : 0.8 }}
+                  >
+                    {count} quiz{count !== 1 ? "zes" : ""}
+                  </span>
+                )}
+
+                {/* Goal dot */}
+                {hasGoal && (
+                  <div
+                    className="absolute bottom-[5px] left-1/2 -translate-x-1/2 w-[5px] h-[5px] rounded-full"
+                    style={{ background: C.blue }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+
+      {/* Legend */}
+      <div className="flex items-center gap-1.5 px-3 py-2 border-t border-[#0F172A]/10" style={{ background: "#f6f8fa" }}>
+        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mr-0.5">Less</span>
+        {[0, 1, 2, 4, 6].map((n) => {
+          const { bg } = getHeatStyle(n);
+          return <div key={n} className="w-3 h-3 rounded-[3px] border border-black/10" style={{ background: bg }} />;
+        })}
+        <span className="text-[9px] font-bold text-slate-400 ml-0.5">More</span>
+        <div className="ml-auto flex items-center gap-1">
+          <div className="w-[5px] h-[5px] rounded-full bg-[#2F7CFF]" />
+          <span className="text-[9px] font-bold text-slate-400">goal</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ══════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
@@ -427,6 +606,8 @@ export const GoalSheet = ({
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [viewMonth, setViewMonth] = useState<Date>(new Date());
+  const [quizActivityMap, setQuizActivityMap] = useState<Record<string, number>>({});
 
   const loadGoals = useCallback(async () => {
     if (!user) return;
@@ -437,9 +618,27 @@ export const GoalSheet = ({
     setIsLoading(false);
   }, [user]);
 
-  useEffect(() => { if (open) loadGoals(); }, [open, loadGoals]);
+  const loadQuizActivity = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("quiz_performance_results" as any)
+      .select("completed_at")
+      .eq("user_id", user.id);
+    if (data) {
+      const map: Record<string, number> = {};
+      (data as { completed_at: string }[]).forEach((r) => {
+        if (!r.completed_at) return;
+        const d = format(new Date(r.completed_at), "yyyy-MM-dd");
+        map[d] = (map[d] || 0) + 1;
+      });
+      setQuizActivityMap(map);
+    }
+  }, [user]);
 
-  const daysWithGoals = goals.map((g) => parseISO(g.date)).filter(Boolean);
+  useEffect(() => { if (open) loadGoals(); }, [open, loadGoals]);
+  useEffect(() => { if (open) loadQuizActivity(); }, [open, loadQuizActivity]);
+
+  const goalsDateSet = new Set(goals.map((g) => g.date));
   const goalsForDate = goals.filter((g) => g.date === format(selectedDate, "yyyy-MM-dd"));
 
   const suggestions = [
@@ -522,15 +721,6 @@ export const GoalSheet = ({
           @keyframes gs-stagger { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
           .gs-stagger { animation: gs-stagger 0.4s cubic-bezier(0.22,1,0.36,1) both; }
 
-          /* ── centered calendar ── */
-          .gs-cal .rdp { width: fit-content; margin: 0 auto; }
-          .gs-cal .rdp-day:hover:not(.rdp-day_selected) { background: #DDF3FF; transform: translateY(-1px); }
-          .gs-cal .rdp-day_selected, .gs-cal .rdp-day_selected:hover { background: #2F7CFF !important; color: white !important; box-shadow: 2px 2px 0 0 #0F172A; }
-          .gs-cal .rdp-day_today:not(.rdp-day_selected) { background: #DDF3FF; font-weight: 900; color: #2F7CFF; }
-          .gs-cal .rdp-nav_button { border: 2.5px solid #0F172A; border-radius: 10px; box-shadow: 2px 2px 0 0 #0F172A; background: white; width: 32px; height: 32px; opacity: 1 !important; transition: background 0.15s, transform 0.1s; }
-          .gs-cal .rdp-nav_button:hover { background: #DDF3FF; transform: translateY(-1px); }
-          .gs-cal .rdp-caption { padding-bottom: 8px; }
-          .gs-cal .rdp-caption_label { font-family: 'Baloo 2', sans-serif; font-weight: 900; font-size: 15px; color: #0F172A; }
         `}</style>
 
         {/* Handle */}
@@ -570,62 +760,59 @@ export const GoalSheet = ({
             </p>
           </div>
 
-          {/* Calendar + Date panel side by side */}
-          <div className="grid grid-cols-2 gap-3 gs-pop" style={{ animationDelay: "100ms" }}>
+          {/* Heatmap Calendar */}
+          <div className="gs-pop" style={{ animationDelay: "100ms" }}>
+            <HeatmapCalendar
+              selectedDate={selectedDate}
+              viewMonth={viewMonth}
+              onSelectDate={(d) => {
+                setSelectedDate(d);
+                setIsAdding(false);
+                if (!isSameMonth(d, viewMonth)) setViewMonth(d);
+              }}
+              onChangeMonth={setViewMonth}
+              goalsDateSet={goalsDateSet}
+              activityMap={quizActivityMap}
+            />
+          </div>
 
-            {/* Left: Calendar */}
-            <div className={`${STICKER} overflow-hidden gs-cal flex items-center justify-center`} style={{ padding: "10px 12px 12px" }}>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(d) => { if (d) { setSelectedDate(d); setIsAdding(false); } }}
-                modifiers={{ hasGoals: daysWithGoals }}
-                modifiersClassNames={{
-                  hasGoals: "after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:rounded-full after:bg-[#2F7CFF] relative",
-                }}
-                fromDate={new Date(2024, 0, 1)}
-              />
-            </div>
-
-            {/* Right: selected date info + stats + add */}
-            <div className="flex flex-col gap-2">
-
-              {/* Date display */}
-              <div className={`${STICKER_SM} p-3`} style={{ background: C.cyan }}>
-                <div className={`${DISPLAY} font-extrabold text-3xl leading-none`} style={{ color: C.ink }}>
-                  {format(selectedDate, "d")}
-                </div>
-                <div className={`${DISPLAY} font-bold text-sm leading-tight mt-0.5`} style={{ color: C.ink }}>
-                  {format(selectedDate, "MMM ''yy")}
-                </div>
-                <div className="text-[11px] font-semibold mt-0.5 uppercase tracking-wider" style={{ color: C.ink, opacity: 0.55 }}>
-                  {format(selectedDate, "EEE")}
-                </div>
+          {/* Date + Stats strip */}
+          <div className="flex items-center gap-2 gs-pop" style={{ animationDelay: "140ms" }}>
+            {/* Selected date chip */}
+            <div className={`${STICKER_SM} px-3 py-2 shrink-0 text-center`} style={{ background: C.cyan }}>
+              <div className={`${DISPLAY} font-extrabold text-2xl leading-none`} style={{ color: C.ink }}>
+                {format(selectedDate, "d")}
               </div>
-
-              {/* Stats */}
-              {[
-                { label: "Total",   value: goals.length,   bg: C.blue,    tc: "#fff" },
-                { label: "Done",    value: completedCount,  bg: "#22c55e", tc: "#fff" },
-                { label: "Left",    value: remainingCount,  bg: C.sun,     tc: C.ink  },
-              ].map(({ label, value, bg, tc }) => (
-                <div key={label} className={`${STICKER_SM} px-3 py-2.5`} style={{ background: bg }}>
-                  <div className={`${DISPLAY} font-extrabold text-2xl leading-none`} style={{ color: tc }}>{value}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wide mt-0.5" style={{ color: tc, opacity: 0.7 }}>{label}</div>
-                </div>
-              ))}
-
-              {/* Add goal button */}
-              {!isAdding && (
-                <button
-                  className={`${BTN_SM} w-full text-white`}
-                  style={{ background: C.indigo }}
-                  onClick={() => setIsAdding(true)}
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add
-                </button>
-              )}
+              <div className={`${DISPLAY} font-bold text-[10px] leading-tight mt-0.5`} style={{ color: C.ink }}>
+                {format(selectedDate, "MMM ''yy")}
+              </div>
+              <div className="text-[9px] font-semibold uppercase tracking-wider mt-0.5" style={{ color: C.ink, opacity: 0.5 }}>
+                {format(selectedDate, "EEE")}
+              </div>
             </div>
+
+            {/* Stats */}
+            {[
+              { label: "Total", value: goals.length,  bg: C.blue,    tc: "#fff" },
+              { label: "Done",  value: completedCount, bg: "#22c55e", tc: "#fff" },
+              { label: "Left",  value: remainingCount, bg: C.sun,     tc: C.ink  },
+            ].map(({ label, value, bg, tc }) => (
+              <div key={label} className={`${STICKER_SM} px-3 py-2 flex-1 text-center`} style={{ background: bg }}>
+                <div className={`${DISPLAY} font-extrabold text-2xl leading-none`} style={{ color: tc }}>{value}</div>
+                <div className="text-[9px] font-bold uppercase tracking-wide mt-0.5" style={{ color: tc, opacity: 0.7 }}>{label}</div>
+              </div>
+            ))}
+
+            {/* Add goal button */}
+            {!isAdding && (
+              <button
+                className={`${BTN_SM} shrink-0 text-white`}
+                style={{ background: C.indigo }}
+                onClick={() => setIsAdding(true)}
+              >
+                <Plus className="w-3.5 h-3.5" /> Add
+              </button>
+            )}
           </div>
 
           {/* Goals list for selected date */}

@@ -44,7 +44,10 @@
       "Bash(python -c ':*)",
       "Bash(uvicorn main:socket_app --port 8000 --reload)",
       "Bash(python -m json.tool)",
-      "Bash(ls \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\"/.env*)"
+      "Bash(ls \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\"/.env*)",
+      "Bash(git fetch *)",
+      "Bash(gh pr *)",
+      "PowerShell(gh pr *)"
     ]
   }
 }
