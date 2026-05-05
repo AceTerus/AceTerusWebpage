@@ -47,7 +47,11 @@
       "Bash(ls \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\"/.env*)",
       "Bash(git fetch *)",
       "Bash(gh pr *)",
-      "PowerShell(gh pr *)"
+      "PowerShell(gh pr *)",
+      "Skill(ship)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(git stash *)"
     ]
   }
 }

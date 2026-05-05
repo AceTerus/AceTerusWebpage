@@ -3,8 +3,11 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from config import DATABASE_URL
 
-# SQLite needs check_same_thread=False for multi-threaded use
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+else:
+    # Supabase Transaction Pooler (and most hosted Postgres) require SSL
+    connect_args = {"sslmode": "require"}
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 
