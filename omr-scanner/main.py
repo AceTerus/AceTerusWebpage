@@ -12,7 +12,7 @@ BackgroundTasks approach for the Celery worker in tasks/omr_task.py.
 import socketio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from database import Base, engine
@@ -86,4 +86,19 @@ async def serve_index():
 # ---------------------------------------------------------------------------
 # Wrap with Socket.IO ASGI middleware (serves /socket.io/socket.io.js too)
 # ---------------------------------------------------------------------------
-socket_app = socketio.ASGIApp(sio, app)
+_sio_inner = socketio.ASGIApp(sio, app)
+
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "*",
+}
+
+async def socket_app(scope, receive, send):
+    if scope["type"] == "http" and scope["method"] == "OPTIONS":
+        await send({"type": "http.response.start", "status": 200, "headers": [
+            (k.lower().encode(), v.encode()) for k, v in CORS_HEADERS.items()
+        ]})
+        await send({"type": "http.response.body", "body": b""})
+        return
+    await _sio_inner(scope, receive, send)
