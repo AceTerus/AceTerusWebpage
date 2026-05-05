@@ -95,10 +95,23 @@ CORS_HEADERS = {
 }
 
 async def socket_app(scope, receive, send):
-    if scope["type"] == "http" and scope["method"] == "OPTIONS":
+    if scope["type"] != "http":
+        await _sio_inner(scope, receive, send)
+        return
+
+    if scope.get("method") == "OPTIONS":
         await send({"type": "http.response.start", "status": 200, "headers": [
             (k.lower().encode(), v.encode()) for k, v in CORS_HEADERS.items()
         ]})
         await send({"type": "http.response.body", "body": b""})
         return
-    await _sio_inner(scope, receive, send)
+
+    async def send_with_cors(message):
+        if message["type"] == "http.response.start":
+            headers = dict(message.get("headers", []))
+            for k, v in CORS_HEADERS.items():
+                headers[k.lower().encode()] = v.encode()
+            message = {**message, "headers": list(headers.items())}
+        await send(message)
+
+    await _sio_inner(scope, receive, send_with_cors)
