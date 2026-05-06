@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from config import UPLOAD_DIR
 from database import SessionLocal, get_db
-from models.models import AnswerKey, JobStatus, OmrResult, ScanJob, Score, Student
+from models.models import AnswerKey, Exam, JobStatus, OmrResult, ScanJob, Score, Student
 from schemas.schemas import OverrideIn
 from socket_manager import sio
 
@@ -127,6 +127,10 @@ async def upload_scan(
     ext = Path(file.filename or "").suffix.lower()
     if ext not in _ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+
+    exam = db.query(Exam).filter(Exam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail=f"Exam not found: {exam_id}")
 
     job_id    = str(uuid.uuid4())
     save_path = UPLOAD_DIR / f"{job_id}{ext}"

@@ -204,9 +204,13 @@ export default function OmrScanner() {
     fd.append("file", file, file.name || "scan.jpg");
     fd.append("exam_id", selectedExamId);
     try {
-      const res  = await fetch(`${OMR_API}/api/scan`, { method: "POST", body: fd });
+      const res = await fetch(`${OMR_API}/api/scan`, { method: "POST", body: fd });
+      if (!res.ok) {
+        let detail = `Server error ${res.status}`;
+        try { const e = await res.json(); detail = e.detail ?? detail; } catch { /* non-JSON body */ }
+        throw new Error(detail);
+      }
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail ?? "Upload failed");
       setJobs(prev => new Map(prev).set(data.job_id, { job_id: data.job_id, status: "pending" }));
       setScanMsg({ text: "Submitted! Processing…", type: "success" });
       clearFile();
