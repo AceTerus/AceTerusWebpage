@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   Calendar, MapPin, ExternalLink, Share2, CheckCircle2, Coins,
   ArrowLeft, Building2, BadgeCheck, Trophy, Code2, Mic, Briefcase,
-  BookOpen, Tag, Users, Zap, Clock, PartyPopper
+  BookOpen, Tag, Users, Zap, Clock, PartyPopper, Globe, Link2, FileDown
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -295,6 +295,10 @@ export default function EventDetail() {
               <p className="font-bold font-['Nunito'] text-[13px] text-[#0F172A] leading-tight">
                 {format(new Date(event.start_date), "d MMM yyyy")}
               </p>
+              <p className="font-['Nunito'] text-[12px] text-[#0F172A]/50 leading-tight">
+                {format(new Date(event.start_date), "h:mm a")}
+                {event.end_date && ` – ${format(new Date(event.end_date), "h:mm a")}`}
+              </p>
             </div>
           </div>
         )}
@@ -318,6 +322,32 @@ export default function EventDetail() {
             </div>
           </div>
         )}
+        {event.website_url && (
+          <a href={event.website_url} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-3 p-3.5 rounded-[16px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] bg-white hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_#0F172A] transition-all">
+            <div className="w-10 h-10 rounded-[12px] bg-[#DDF3FF] flex items-center justify-center shrink-0">
+              <Globe className="w-5 h-5 text-[#2F7CFF]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-[#0F172A]/45 uppercase tracking-wider font-['Nunito']">Website</p>
+              <p className="font-bold font-['Nunito'] text-[13px] text-[#2F7CFF] truncate">{event.website_url.replace(/^https?:\/\//, "")}</p>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-[#0F172A]/30 shrink-0" />
+          </a>
+        )}
+        {event.socmed_url && (
+          <a href={event.socmed_url} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-3 p-3.5 rounded-[16px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] bg-white hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_#0F172A] transition-all">
+            <div className="w-10 h-10 rounded-[12px] bg-[#FCE7F3] flex items-center justify-center shrink-0">
+              <Link2 className="w-5 h-5 text-[#DB2777]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-[#0F172A]/45 uppercase tracking-wider font-['Nunito']">Social Media</p>
+              <p className="font-bold font-['Nunito'] text-[13px] text-[#DB2777] truncate">{event.socmed_url.replace(/^https?:\/\//, "")}</p>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-[#0F172A]/30 shrink-0" />
+          </a>
+        )}
       </div>
 
       {/* Countdown */}
@@ -335,43 +365,72 @@ export default function EventDetail() {
         </div>
       )}
 
+      {/* PDF attachment */}
+      {event.pdf_url && (
+        <div className="border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[4px_4px_0_0_#0F172A] bg-white p-5 space-y-3">
+          <h3 className={`${DISPLAY} font-bold text-[18px] text-[#0F172A]`}>📄 Event Brochure / Info Pack</h3>
+          <a href={event.pdf_url} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-3 p-4 rounded-[16px] border-[2.5px] border-[#0F172A] bg-[#F3FAFF] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#0F172A] transition-all group">
+            <div className="w-12 h-12 rounded-[14px] bg-gradient-to-br from-[#2F7CFF] to-[#2E2BE5] border-[2px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] flex items-center justify-center shrink-0">
+              <FileDown className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold font-['Nunito'] text-[14px] text-[#0F172A]">Download PDF</p>
+              <p className="text-[12px] font-['Nunito'] text-[#0F172A]/45 truncate">{event.pdf_url.replace(/^https?:\/\/[^/]+\//, "")}</p>
+            </div>
+            <ExternalLink className="w-4 h-4 text-[#0F172A]/30 shrink-0 group-hover:text-[#2F7CFF] transition-colors" />
+          </a>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[4px_4px_0_0_#0F172A] bg-white p-5 space-y-4">
+
+        {/* External registration link — always shown when set */}
+        {event.registration_url && (
+          <a href={event.registration_url} target="_blank" rel="noopener noreferrer" className={BTN_PRIMARY + " w-full"}>
+            <ExternalLink className="w-4 h-4" /> Register / Apply on Official Site →
+          </a>
+        )}
+
+        {/* Mark as Going — always the coin/referral action */}
         <div className="flex flex-col sm:flex-row gap-3">
-          {event.registration_url ? (
-            <a href={event.registration_url} target="_blank" rel="noopener noreferrer" className={BTN_PRIMARY + " flex-1"}>
-              <ExternalLink className="w-4 h-4" />
-              {isRegistered ? "View Event →" : "Register / Apply →"}
-            </a>
-          ) : (
-            <button
-              onClick={() => registerMutation.mutate()}
-              disabled={isRegistered || registerMutation.isPending || !user}
-              className={BTN_PRIMARY + " flex-1"}
-            >
-              {isRegistered
-                ? <><PartyPopper className="w-4 h-4" /> You're In!</>
-                : registerMutation.isPending ? "Registering…"
+          <button
+            onClick={() => registerMutation.mutate()}
+            disabled={isRegistered || registerMutation.isPending || !user}
+            className={`${isRegistered ? BTN_GHOST : BTN_PRIMARY} flex-1`}
+          >
+            {isRegistered
+              ? <><PartyPopper className="w-4 h-4" /> You're Going!</>
+              : registerMutation.isPending ? "Saving…"
+              : event.registration_url
+                ? <><CheckCircle2 className="w-4 h-4" /> Mark as Going — Earn {event.ace_coins_reward > 0 ? `+${event.ace_coins_reward}` : ""} 🪙</>
                 : "Register Now"}
-            </button>
-          )}
+          </button>
 
           <button onClick={handleShare} className={BTN_GHOST + " flex-1"}>
             <Share2 className="w-4 h-4" /> Share &amp; Earn 50 🪙
           </button>
         </div>
 
+        {/* Contextual hint for external events */}
+        {event.registration_url && !isRegistered && user && (
+          <p className="text-[12px] font-['Nunito'] text-[#0F172A]/45 text-center leading-snug">
+            Register on the official site above, then <strong>Mark as Going</strong> to earn ACE Coins and track your referral.
+          </p>
+        )}
+
         {/* Share info box */}
         <div className="flex items-start gap-3 p-3 rounded-[14px] bg-gradient-to-r from-[#D6D4FF] to-[#DDF3FF] border-[2px] border-[#2E2BE5]/20">
           <Zap className="w-4 h-4 text-[#2E2BE5] mt-0.5 shrink-0" />
           <p className="text-[13px] font-['Nunito'] font-semibold text-[#2E2BE5]">
-            Share your unique link — earn <strong>50 ACE Coins</strong> every time someone registers through it!
+            Share your unique link — earn <strong>50 ACE Coins</strong> every time someone marks as going through it!
           </p>
         </div>
 
         {!user && (
           <p className="text-center text-[13px] font-['Nunito'] text-[#0F172A]/50">
-            <a href="https://aceterus.com/auth" className="text-[#2F7CFF] font-bold hover:underline">Sign in</a> to register and earn ACE Coins
+            <a href="https://aceterus.com/auth" className="text-[#2F7CFF] font-bold hover:underline">Sign in</a> to mark as going and earn ACE Coins
           </p>
         )}
       </div>

@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const DISPLAY = "font-['Baloo_2'] tracking-tight";
 
-interface Profile { username: string | null; avatar_url: string | null; bio: string | null; ace_coins: number }
+interface Profile { username: string | null; avatar_url: string | null; cover_url: string | null; bio: string | null; ace_coins: number }
 interface School { id: string; schools: { name: string; type: string; level: string; state: string } | null; start_year: number | null; end_year: number | null; is_current: boolean }
 interface StreakData { current_streak: number; longest_streak: number }
 
@@ -62,7 +62,7 @@ export default function ProfilePage() {
     queryKey: ["events-profile", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("username, avatar_url, bio, ace_coins").eq("user_id", user!.id).single();
+      const { data } = await supabase.from("profiles").select("username, avatar_url, cover_url, bio, ace_coins").eq("user_id", user!.id).single();
       return data as Profile | null;
     },
   });
@@ -132,9 +132,15 @@ export default function ProfilePage() {
 
       {/* Profile hero */}
       <div className="border-[2.5px] border-[#0F172A] rounded-[24px] shadow-[5px_5px_0_0_#0F172A] overflow-hidden">
-        {/* Gradient banner */}
-        <div className="h-28 bg-gradient-to-br from-[#2F7CFF] via-[#2E2BE5] to-[#7C3AED] relative">
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+        {/* Banner */}
+        <div className="h-28 relative overflow-hidden">
+          {profile?.cover_url ? (
+            <img src={profile.cover_url} alt="Cover" className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-[#2F7CFF] via-[#2E2BE5] to-[#7C3AED]">
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+            </div>
+          )}
         </div>
 
         <div className="px-6 pb-6">

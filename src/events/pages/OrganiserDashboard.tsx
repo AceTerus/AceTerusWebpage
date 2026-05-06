@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   Plus, Calendar, MapPin, Users, CheckCircle2,
   Clock, XCircle, Building2, BadgeCheck, Send, LogIn, Rocket, ExternalLink,
-  ImagePlus, Loader2, X
+  ImagePlus, Loader2, X, FileUp, Globe, Link2
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -40,7 +40,7 @@ const ORG_TYPES = [
   { value: "student_body", label: "👥 Student Body"  },
 ];
 
-const EMPTY_EVENT = { title: "", description: "", type: "hackathon", location: "", start_date: "", end_date: "", registration_url: "", image_url: "", ace_coins_reward: 0 };
+const EMPTY_EVENT = { title: "", description: "", type: "hackathon", location: "", start_date: "", end_date: "", registration_url: "", image_url: "", ace_coins_reward: 0, website_url: "", socmed_url: "", pdf_url: "" };
 const EMPTY_ORG = { name: "", type: "company" };
 
 /* ── Step indicator ─────────────────────────────────────────────────── */
@@ -67,6 +67,8 @@ export default function OrganiserDashboard() {
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [bannerUploading, setBannerUploading] = useState(false);
+  const [pdfName, setPdfName] = useState<string | null>(null);
+  const [pdfUploading, setPdfUploading] = useState(false);
 
   const handleBannerFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -92,6 +94,28 @@ export default function OrganiserDashboard() {
     } finally {
       setBannerUploading(false);
       setCropSrc(null);
+    }
+  };
+
+  const handlePdfFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.type !== "application/pdf") { toast.error("Please select a PDF file."); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("PDF must be under 10 MB."); return; }
+    setPdfUploading(true);
+    try {
+      const path = `${user.id}/event-pdfs/${Date.now()}_${file.name}`;
+      const { error } = await supabase.storage.from("profile-images").upload(path, file, { upsert: true, contentType: "application/pdf" });
+      if (error) throw error;
+      const { data } = supabase.storage.from("profile-images").getPublicUrl(path);
+      setEventForm((f) => ({ ...f, pdf_url: data.publicUrl }));
+      setPdfName(file.name);
+      toast.success("PDF uploaded!");
+    } catch (err: any) {
+      toast.error(err.message ?? "Upload failed");
+    } finally {
+      setPdfUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -143,6 +167,8 @@ export default function OrganiserDashboard() {
         description: eventForm.description || null, location: eventForm.location || null,
         start_date: eventForm.start_date || null, end_date: eventForm.end_date || null,
         registration_url: eventForm.registration_url || null, image_url: eventForm.image_url || null,
+        website_url: eventForm.website_url || null, socmed_url: eventForm.socmed_url || null,
+        pdf_url: eventForm.pdf_url || null,
         organizer_id: myOrg?.id ?? null, submitter_user_id: user!.id, status: "pending",
       });
       if (error) throw error;
@@ -152,6 +178,7 @@ export default function OrganiserDashboard() {
       setShowEventForm(false);
       setEventForm(EMPTY_EVENT);
       setBannerPreview(null);
+      setPdfName(null);
       qc.invalidateQueries({ queryKey: ["my-events", user?.id] });
     },
     onError: (err: Error) => toast.error(err.message),
@@ -335,6 +362,35 @@ export default function OrganiserDashboard() {
                   <input className={INPUT} placeholder="https://…" value={eventForm.registration_url} onChange={(e) => setEventForm({ ...eventForm, registration_url: e.target.value })} />
                 </div>
                 <div>
+                  <label className={LABEL}><Globe className="inline w-3.5 h-3.5 mr-1 opacity-60" />Website URL</label>
+                  <input className={INPUT} placeholder="https://yourwebsite.com" value={eventForm.website_url} onChange={(e) => setEventForm({ ...eventForm, website_url: e.target.value })} />
+                </div>
+                <div>
+                  <label className={LABEL}><Link2 className="inline w-3.5 h-3.5 mr-1 opacity-60" />Social Media Link</label>
+                  <input className={INPUT} placeholder="https://instagram.com/… or fb.com/…" value={eventForm.socmed_url} onChange={(e) => setEventForm({ ...eventForm, socmed_url: e.target.value })} />
+                </div>
+                <div>
+                  <label className={LABEL}><FileUp className="inline w-3.5 h-3.5 mr-1 opacity-60" />Event Brochure (PDF)</label>
+                  {pdfName ? (
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-[14px] border-[2.5px] border-[#059669] bg-[#D1FAE5]">
+                      <span className="text-xl">📄</span>
+                      <p className="flex-1 font-bold font-['Nunito'] text-[13px] text-[#059669] truncate">{pdfName}</p>
+                      <button type="button" onClick={() => { setPdfName(null); setEventForm((f) => ({ ...f, pdf_url: "" })); }}
+                        className="text-[#059669]/60 hover:text-red-500 transition-colors">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className={`flex items-center gap-3 px-4 py-3 rounded-[14px] border-[2.5px] border-dashed border-[#0F172A]/25 bg-[#F3FAFF] hover:border-[#2F7CFF] hover:bg-[#DDF3FF]/50 transition-all cursor-pointer ${pdfUploading ? "opacity-60 pointer-events-none" : ""}`}>
+                      {pdfUploading ? <Loader2 className="w-5 h-5 text-[#2F7CFF] animate-spin shrink-0" /> : <FileUp className="w-5 h-5 text-[#0F172A]/30 shrink-0" />}
+                      <span className="text-[13px] font-bold font-['Nunito'] text-[#0F172A]/40">
+                        {pdfUploading ? "Uploading…" : "Click to upload PDF (max 10 MB)"}
+                      </span>
+                      <input type="file" accept="application/pdf" className="hidden" onChange={handlePdfFile} disabled={pdfUploading} />
+                    </label>
+                  )}
+                </div>
+                <div>
                   <label className={LABEL}>Event Banner</label>
                   {bannerPreview ? (
                     <div className="relative rounded-[14px] overflow-hidden border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] group">
@@ -370,7 +426,7 @@ export default function OrganiserDashboard() {
                 <button onClick={() => submitEventMutation.mutate()} disabled={submitEventMutation.isPending} className={BTN_PRIMARY}>
                   {submitEventMutation.isPending ? "Submitting…" : <><Rocket className="w-4 h-4" /> Submit for Review</>}
                 </button>
-                <button onClick={() => { setShowEventForm(false); setBannerPreview(null); setEventForm(EMPTY_EVENT); }} className={BTN_GHOST}>Cancel</button>
+                <button onClick={() => { setShowEventForm(false); setBannerPreview(null); setPdfName(null); setEventForm(EMPTY_EVENT); }} className={BTN_GHOST}>Cancel</button>
               </div>
             </div>
           </div>
