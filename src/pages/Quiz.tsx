@@ -473,7 +473,7 @@ const Quiz = () => {
       const analysis = resData.analysis;
       setAnalysisResult(analysis);
       if (analysis?.weak_areas?.length > 0) pushMessage(`Ace AI spotted it: you can improve on "${analysis.weak_areas[0]}". Check your analysis! 🧠`, 'normal', 'happy');
-      const { data: latestRow } = await supabase.from("quiz_performance_results" as any).select("id").eq("user_id", session.user.id).eq("deck_id", activeDeck.id).order("completed_at", { ascending: false }).limit(1).single();
+      const { data: latestRow } = (await supabase.from("quiz_performance_results" as any).select("id").eq("user_id", session.user.id).eq("deck_id", activeDeck.id).order("completed_at", { ascending: false }).limit(1).single()) as { data: { id: string } | null; error: unknown };
       if (latestRow?.id) await supabase.from("quiz_performance_results" as any).update({ ai_analysis: analysis }).eq("id", latestRow.id);
     } catch (e: any) { setAnalysisError(e.message ?? "Could not generate analysis."); }
     finally { setAnalysisLoading(false); }
