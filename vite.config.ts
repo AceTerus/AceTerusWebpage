@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    chunkSizeWarningLimit: 1000,
     target: ['chrome90', 'firefox88', 'safari14', 'edge90'],
     rollupOptions: {
       input: {
