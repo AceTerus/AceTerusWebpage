@@ -45,7 +45,11 @@ def _run_migrations():
             except Exception:
                 pass  # Column already exists — ignore
 
-_run_migrations()
+try:
+    _run_migrations()
+except Exception as _mig_exc:
+    import logging
+    logging.getLogger(__name__).warning(f"Migration warning: {_mig_exc}")
 
 # ---------------------------------------------------------------------------
 # Socket.IO events
