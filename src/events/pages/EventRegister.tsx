@@ -81,8 +81,12 @@ export default function EventRegister() {
   });
 
   const uploadFile = async (fieldId: string, file: File): Promise<string> => {
-    const ext = file.name.split(".").pop();
-    const path = `${user!.id}/event-registrations/${id}/${fieldId}_${Date.now()}.${ext}`;
+    // Verify auth session is still valid before uploading
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Session expired — please sign in again");
+
+    const ext = (file.name.split(".").pop() ?? "bin").toLowerCase();
+    const path = `${session.user.id}/event-registrations/${id}/${fieldId}_${Date.now()}.${ext}`;
     const { error } = await supabase.storage
       .from("profile-images")
       .upload(path, file, { upsert: true, contentType: file.type || "application/octet-stream" });
@@ -112,9 +116,10 @@ export default function EventRegister() {
           try {
             resolvedUrls[fieldId] = await uploadFile(fieldId, upload.file);
             setFileUploads(p => ({ ...p, [fieldId]: { ...p[fieldId], uploading: false, url: resolvedUrls[fieldId] } }));
-          } catch {
+          } catch (uploadErr: any) {
             setFileUploads(p => ({ ...p, [fieldId]: { ...p[fieldId], uploading: false } }));
-            throw new Error(`Failed to upload file for "${fields.find(f => f.id === fieldId)?.label}"`);
+            const label = fields.find(f => f.id === fieldId)?.label ?? "file";
+            throw new Error(`Upload failed for "${label}": ${uploadErr?.message ?? String(uploadErr)}`);
           }
         } else if (upload.url) {
           resolvedUrls[fieldId] = upload.url;
