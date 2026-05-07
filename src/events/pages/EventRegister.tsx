@@ -82,8 +82,10 @@ export default function EventRegister() {
 
   const uploadFile = async (fieldId: string, file: File): Promise<string> => {
     const ext = file.name.split(".").pop();
-    const path = `event-registrations/${id}/${user!.id}/${fieldId}_${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("profile-images").upload(path, file, { upsert: true });
+    const path = `${user!.id}/event-registrations/${id}/${fieldId}_${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("profile-images")
+      .upload(path, file, { upsert: true, contentType: file.type || "application/octet-stream" });
     if (error) throw error;
     return supabase.storage.from("profile-images").getPublicUrl(path).data.publicUrl;
   };
