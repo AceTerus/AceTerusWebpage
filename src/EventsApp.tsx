@@ -9,6 +9,8 @@ import EventDetail from "./events/pages/EventDetail";
 import DealsPage from "./events/pages/DealsPage";
 import OrganiserDashboard from "./events/pages/OrganiserDashboard";
 import ProfilePage from "./events/pages/ProfilePage";
+import EventRegister from "./events/pages/EventRegister";
+import MyEvents from "./events/pages/MyEvents";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 2 } },
@@ -23,11 +25,13 @@ const EventsApp = () => (
           <div className="min-h-screen" style={{ background: "#F3FAFF" }}>
             <EventsNavbar />
             <Routes>
-              <Route path="/"           element={<DiscoveryFeed />} />
-              <Route path="/event/:id"  element={<EventDetail />} />
-              <Route path="/deals"      element={<DealsPage />} />
-              <Route path="/organiser"  element={<OrganiserDashboard />} />
-              <Route path="/profile"    element={<ProfilePage />} />
+              <Route path="/"              element={<DiscoveryFeed />} />
+              <Route path="/event/:id"     element={<EventDetail />} />
+              <Route path="/register/:id"  element={<EventRegister />} />
+              <Route path="/my-events"     element={<MyEvents />} />
+              <Route path="/deals"         element={<DealsPage />} />
+              <Route path="/organiser"     element={<OrganiserDashboard />} />
+              <Route path="/profile"       element={<ProfilePage />} />
             </Routes>
           </div>
         </BrowserRouter>

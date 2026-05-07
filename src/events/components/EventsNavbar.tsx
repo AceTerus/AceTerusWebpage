@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Coins, Calendar, Tag, ArrowLeft, LogIn, LogOut, LayoutDashboard, User, ChevronDown } from "lucide-react";
+import { Coins, Calendar, Tag, ArrowLeft, LogIn, LogOut, LayoutDashboard, User, ChevronDown, Ticket } from "lucide-react";
 import Logo from "@/assets/logo.webp";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,8 +40,9 @@ export const EventsNavbar = () => {
   }, [user]);
 
   const navItems = [
-    { href: "/",      label: "Discover", icon: Calendar },
-    { href: "/deals", label: "Deals",    icon: Tag      },
+    { href: "/",          label: "Discover",  icon: Calendar },
+    { href: "/deals",     label: "Deals",     icon: Tag      },
+    { href: "/my-events", label: "My Events", icon: Ticket, authOnly: true },
   ];
 
   const avatarSrc  = avatar || user?.user_metadata?.avatar_url;
@@ -70,9 +71,10 @@ export const EventsNavbar = () => {
           </div>
         </Link>
 
-        {/* Nav: Discover + Deals */}
+        {/* Nav: Discover + Deals + My Events */}
         <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, label, icon: Icon, authOnly }) => {
+            if (authOnly && !user) return null;
             const active = isActive(href);
             return (
               <Link key={href} to={href}
@@ -180,7 +182,8 @@ export const EventsNavbar = () => {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden flex items-center gap-1 px-4 pb-2">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon, authOnly }) => {
+          if (authOnly && !user) return null;
           const active = isActive(href);
           return (
             <Link key={href} to={href}

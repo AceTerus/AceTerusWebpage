@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Calendar, MapPin, ExternalLink, Share2, CheckCircle2, Coins,
   ArrowLeft, Building2, BadgeCheck, Trophy, Code2, Mic, Briefcase,
-  BookOpen, Tag, Users, Zap, Clock, PartyPopper, Globe, Link2, FileDown
+  BookOpen, Tag, Users, Zap, Clock, XCircle, Globe, Link2, FileDown
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -89,13 +89,18 @@ const Confetti = () => (
   </div>
 );
 
+/* ── Registration status config ─────────────────────────────────────────── */
+const REG_STATUS = {
+  approved: { label: "Registration Approved ✓", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", iconBg: "bg-emerald-100", Icon: CheckCircle2 },
+  pending:  { label: "Pending organiser review…", color: "text-amber-700",   bg: "bg-amber-50 border-amber-200",   iconBg: "bg-amber-100",   Icon: Clock        },
+  rejected: { label: "Registration Rejected",     color: "text-red-700",     bg: "bg-red-50 border-red-200",       iconBg: "bg-red-100",     Icon: XCircle      },
+} as const;
+
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const refId = searchParams.get("ref");
-  const { user, setAceCoins } = useAuth();
-  const qc = useQueryClient();
-  const [showConfetti, setShowConfetti] = useState(false);
+  const { user } = useAuth();
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", id],
@@ -111,17 +116,17 @@ export default function EventDetail() {
     },
   });
 
-  const { data: isRegistered } = useQuery({
+  const { data: myRegistration } = useQuery({
     queryKey: ["event-registered", id, user?.id],
     enabled: !!id && !!user,
     queryFn: async () => {
       const { data } = await supabase
         .from("event_registrations")
-        .select("id")
+        .select("id, status, rejection_reason")
         .eq("event_id", id!)
         .eq("user_id", user!.id)
         .maybeSingle();
-      return !!data;
+      return data as { id: string; status: string; rejection_reason: string | null } | null;
     },
   });
 
@@ -137,35 +142,6 @@ export default function EventDetail() {
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Please sign in to register");
-      const { error } = await supabase.from("event_registrations").insert({
-        event_id: id!, user_id: user.id, referrer_id: refId ?? null,
-      });
-      if (error) throw error;
-      if (refId && refId !== user.id) {
-        await supabase.rpc("award_event_promoter", {
-          p_event_id: id!, p_promoter_user_id: refId, p_coins: 50,
-        });
-      }
-      if (event?.ace_coins_reward) {
-        setAceCoins((c: number) => c + event.ace_coins_reward);
-      }
-    },
-    onSuccess: () => {
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 1500);
-      toast.success("🎉 You're registered! Check your email for details.");
-      qc.invalidateQueries({ queryKey: ["event-registered", id, user?.id] });
-      qc.invalidateQueries({ queryKey: ["event-reg-count", id] });
-    },
-    onError: (err: Error) => {
-      if (err.message.includes("duplicate")) toast.error("You're already registered!");
-      else toast.error(err.message);
-    },
-  });
-
   const handleShare = async () => {
     if (!user) { toast.error("Sign in to generate your referral link!"); return; }
     const url = `${window.location.origin}/event/${id}?ref=${user.id}`;
@@ -176,6 +152,8 @@ export default function EventDetail() {
       toast.info(`Your link: ${url}`);
     }
   };
+
+  const registerHref = `/register/${id}${refId ? `?ref=${refId}` : ""}`;
 
   if (isLoading) {
     return (
@@ -206,7 +184,6 @@ export default function EventDetail() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-      {showConfetti && <Confetti />}
 
       {/* Back */}
       <Link to="/" className="inline-flex items-center gap-2 text-[14px] font-bold font-['Nunito'] text-[#0F172A]/55 hover:text-[#0F172A] transition-colors group">
@@ -386,53 +363,55 @@ export default function EventDetail() {
       {/* Actions */}
       <div className="border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[4px_4px_0_0_#0F172A] bg-white p-5 space-y-4">
 
-        {/* External registration link — always shown when set */}
-        {event.registration_url && (
-          <a href={event.registration_url} target="_blank" rel="noopener noreferrer" className={BTN_PRIMARY + " w-full"}>
-            <ExternalLink className="w-4 h-4" /> Register / Apply on Official Site →
-          </a>
+        {/* Registration status or Register CTA */}
+        {myRegistration ? (() => {
+          const S = REG_STATUS[myRegistration.status as keyof typeof REG_STATUS] ?? REG_STATUS.pending;
+          const SIcon = S.Icon;
+          return (
+            <div className={`flex items-center gap-3 p-4 rounded-[16px] border-[2px] ${S.bg}`}>
+              <div className={`w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 ${S.iconBg}`}>
+                <SIcon className={`w-5 h-5 ${S.color}`} />
+              </div>
+              <div className="flex-1">
+                <p className={`font-bold font-['Nunito'] text-[14px] ${S.color}`}>{S.label}</p>
+                {myRegistration.rejection_reason && (
+                  <p className="text-[12px] font-['Nunito'] text-red-600/75 mt-0.5">{myRegistration.rejection_reason}</p>
+                )}
+              </div>
+              <Link to="/my-events" className="text-[13px] font-bold font-['Nunito'] text-[#2F7CFF] hover:underline shrink-0">
+                My Events →
+              </Link>
+            </div>
+          );
+        })() : !expired ? (
+          user ? (
+            <Link to={registerHref} className={BTN_PRIMARY + " w-full"}>
+              <CheckCircle2 className="w-4 h-4" />
+              Register for this Event{event.ace_coins_reward > 0 ? ` · Earn +${event.ace_coins_reward} 🪙` : ""}
+            </Link>
+          ) : (
+            <a href="https://aceterus.com/auth" className={BTN_PRIMARY + " w-full"}>
+              Sign in to Register
+            </a>
+          )
+        ) : (
+          <div className="flex items-center justify-center p-4 rounded-[16px] border-[2px] bg-gray-50 border-gray-200">
+            <p className="font-['Nunito'] text-[14px] text-[#0F172A]/55 font-semibold">This event has ended.</p>
+          </div>
         )}
 
-        {/* Mark as Going — always the coin/referral action */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => registerMutation.mutate()}
-            disabled={isRegistered || registerMutation.isPending || !user}
-            className={`${isRegistered ? BTN_GHOST : BTN_PRIMARY} flex-1`}
-          >
-            {isRegistered
-              ? <><PartyPopper className="w-4 h-4" /> You're Going!</>
-              : registerMutation.isPending ? "Saving…"
-              : event.registration_url
-                ? <><CheckCircle2 className="w-4 h-4" /> Mark as Going — Earn {event.ace_coins_reward > 0 ? `+${event.ace_coins_reward}` : ""} 🪙</>
-                : "Register Now"}
-          </button>
-
-          <button onClick={handleShare} className={BTN_GHOST + " flex-1"}>
-            <Share2 className="w-4 h-4" /> Share &amp; Earn 50 🪙
-          </button>
-        </div>
-
-        {/* Contextual hint for external events */}
-        {event.registration_url && !isRegistered && user && (
-          <p className="text-[12px] font-['Nunito'] text-[#0F172A]/45 text-center leading-snug">
-            Register on the official site above, then <strong>Mark as Going</strong> to earn ACE Coins and track your referral.
-          </p>
-        )}
+        {/* Share button */}
+        <button onClick={handleShare} className={BTN_GHOST + " w-full"}>
+          <Share2 className="w-4 h-4" /> Share &amp; Earn 50 🪙
+        </button>
 
         {/* Share info box */}
         <div className="flex items-start gap-3 p-3 rounded-[14px] bg-gradient-to-r from-[#D6D4FF] to-[#DDF3FF] border-[2px] border-[#2E2BE5]/20">
           <Zap className="w-4 h-4 text-[#2E2BE5] mt-0.5 shrink-0" />
           <p className="text-[13px] font-['Nunito'] font-semibold text-[#2E2BE5]">
-            Share your unique link — earn <strong>50 ACE Coins</strong> every time someone marks as going through it!
+            Share your unique link — earn <strong>50 ACE Coins</strong> every time someone registers through it!
           </p>
         </div>
-
-        {!user && (
-          <p className="text-center text-[13px] font-['Nunito'] text-[#0F172A]/50">
-            <a href="https://aceterus.com/auth" className="text-[#2F7CFF] font-bold hover:underline">Sign in</a> to mark as going and earn ACE Coins
-          </p>
-        )}
       </div>
     </div>
   );
