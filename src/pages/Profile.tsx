@@ -529,7 +529,7 @@ export const Profile = () => {
         {/* Step 1 — Education level cards */}
         <div className="space-y-2">
           <Label className="text-xs font-bold uppercase tracking-wide text-slate-500">Education Level</Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {EDUCATION_LEVELS.map(l => {
               const active = activeEduLevel === l.value;
               return (
@@ -743,7 +743,7 @@ export const Profile = () => {
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10">
               <div className="relative">
                 <Avatar
-                  className="h-36 w-36 border-[4px] border-white cursor-zoom-in"
+                  className="h-28 w-28 sm:h-36 sm:w-36 border-[4px] border-white cursor-zoom-in"
                   onClick={() => { if (profile?.avatar_url) setLightboxImage(profile.avatar_url); }}
                 >
                   <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
@@ -762,10 +762,10 @@ export const Profile = () => {
           </div>
 
           {/* Info — padding-top makes room for the half-avatar that hangs below cover */}
-          <div className="px-6 pb-6 pt-24">
+          <div className="px-4 sm:px-6 pb-6 pt-20 sm:pt-24">
             <div className="flex flex-col items-center">
               <div className="text-center w-full max-w-md">
-                <h1 className={`${DISPLAY} font-extrabold text-3xl leading-tight mb-1`}>{displayName}</h1>
+                <h1 className={`${DISPLAY} font-extrabold text-2xl sm:text-3xl leading-tight mb-1`}>{displayName}</h1>
                 <p className="text-sm font-semibold text-slate-400 mb-5">
                   {profile?.bio || 'No bio yet.'}
                 </p>
@@ -897,11 +897,11 @@ export const Profile = () => {
                                       {score.toFixed(1)}%
                                     </span>
                                   </div>
-                                  <div className="flex gap-4 text-xs font-semibold">
+                                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold">
                                     <span className="flex items-center gap-1 text-emerald-500"><CheckCircle className="h-3 w-3" /> {result.correct_count} correct</span>
                                     <span className="flex items-center gap-1 text-red-400"><XCircle className="h-3 w-3" /> {result.wrong_count} wrong</span>
                                     <span className="flex items-center gap-1 text-slate-400"><SkipForward className="h-3 w-3" /> {result.skipped_count} skipped</span>
-                                    <span className="text-slate-400 ml-auto">{result.total_count} total</span>
+                                    <span className="text-slate-400">{result.total_count} total</span>
                                   </div>
                                   {ai && (
                                     <div className="rounded-[12px] border-[2px] border-[#0F172A]/10 p-3 space-y-2 text-xs" style={{ background: C.skySoft }}>
@@ -1109,7 +1109,7 @@ export const Profile = () => {
         })()}
 
         {/* ── Stats ── */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
             { label: 'Posts', value: posts.length, bg: C.skySoft, color: C.blue, onClick: undefined },
             { label: 'Followers', value: profile?.followers_count || 0, bg: C.indigoSoft, color: C.indigo, onClick: isOwnProfile ? () => setIsFollowersOpen(true) : undefined },

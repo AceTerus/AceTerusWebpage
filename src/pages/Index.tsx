@@ -384,7 +384,7 @@ const Index = () => {
           </div>
 
           {/* right: mascot cluster */}
-          <div className="relative h-[520px] atl-mascot-wrap atl-hero-in" style={{ animationDelay: "300ms" }}>
+          <div className="hidden lg:block relative h-[520px] atl-mascot-wrap atl-hero-in" style={{ animationDelay: "300ms" }}>
             {/* wobbling circle */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div

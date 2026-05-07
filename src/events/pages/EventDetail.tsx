@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  Calendar, MapPin, ExternalLink, Share2, CheckCircle2, Coins,
+  Calendar, MapPin, ExternalLink, CheckCircle2, Coins,
   ArrowLeft, Building2, BadgeCheck, Trophy, Code2, Mic, Briefcase,
-  BookOpen, Tag, Users, Zap, Clock, XCircle, Globe, Link2, FileDown
+  BookOpen, Tag, Users, Clock, XCircle, Globe, Link2, FileDown
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
 import { format, isPast, differenceInDays, differenceInHours, differenceInMinutes, differenceInSeconds } from "date-fns";
 
 /* ── design tokens ─────────────────────────────────────────────────── */
@@ -98,8 +97,6 @@ const REG_STATUS = {
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
-  const refId = searchParams.get("ref");
   const { user } = useAuth();
 
   const { data: event, isLoading } = useQuery({
@@ -142,18 +139,7 @@ export default function EventDetail() {
     },
   });
 
-  const handleShare = async () => {
-    if (!user) { toast.error("Sign in to generate your referral link!"); return; }
-    const url = `${window.location.origin}/event/${id}?ref=${user.id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("🔗 Link copied! Earn 50 ACE Coins per referral.");
-    } catch {
-      toast.info(`Your link: ${url}`);
-    }
-  };
-
-  const registerHref = `/register/${id}${refId ? `?ref=${refId}` : ""}`;
+  const registerHref = `/register/${id}`;
 
   if (isLoading) {
     return (
@@ -400,18 +386,6 @@ export default function EventDetail() {
           </div>
         )}
 
-        {/* Share button */}
-        <button onClick={handleShare} className={BTN_GHOST + " w-full"}>
-          <Share2 className="w-4 h-4" /> Share &amp; Earn 50 🪙
-        </button>
-
-        {/* Share info box */}
-        <div className="flex items-start gap-3 p-3 rounded-[14px] bg-gradient-to-r from-[#D6D4FF] to-[#DDF3FF] border-[2px] border-[#2E2BE5]/20">
-          <Zap className="w-4 h-4 text-[#2E2BE5] mt-0.5 shrink-0" />
-          <p className="text-[13px] font-['Nunito'] font-semibold text-[#2E2BE5]">
-            Share your unique link — earn <strong>50 ACE Coins</strong> every time someone registers through it!
-          </p>
-        </div>
       </div>
     </div>
   );

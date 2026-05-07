@@ -6,8 +6,7 @@ import {
   Plus, Calendar, MapPin, Users, CheckCircle2,
   Clock, XCircle, Building2, BadgeCheck, Send, LogIn, Rocket, ExternalLink,
   ImagePlus, Loader2, X, FileUp, Globe, Link2, ArrowLeft, Trash2,
-  Settings2, ListChecks, FormInput, Edit3, ChevronDown, ChevronUp,
-  UserCheck, UserX, UserMinus, AlertTriangle
+  Settings2, ListChecks, Edit3, Gift, Copy, RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -49,24 +48,13 @@ const ORG_TYPES = [
   { value: "student_body", label: "👥 Student Body"  },
 ];
 
-const FIELD_TYPES = [
-  { value: "text",     label: "Short Text" },
-  { value: "email",    label: "Email" },
-  { value: "phone",    label: "Phone" },
-  { value: "number",   label: "Number" },
-  { value: "textarea", label: "Long Text" },
-  { value: "select",   label: "Dropdown" },
-  { value: "file",     label: "File Upload" },
-];
-
 const EMPTY_EVENT = {
   title: "", description: "", type: "hackathon", location: "",
   start_date: "", end_date: "", registration_url: "", image_url: "",
   ace_coins_reward: 0, website_url: "", socmed_url: "", pdf_url: "",
-  requires_approval: false,
+  google_form_url: "",
 };
-const EMPTY_ORG   = { name: "", type: "company" };
-const EMPTY_FIELD = { label: "", field_type: "text", is_required: true, options: "" };
+const EMPTY_ORG = { name: "", type: "company" };
 
 /* ── Step indicator ─────────────────────────────────────────────────── */
 const Step = ({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) => (
@@ -99,15 +87,8 @@ export default function OrganiserDashboard() {
 
   // Management panel state
   const [managingEventId, setManagingEventId] = useState<string | null>(null);
-  const [manageTab, setManageTab] = useState<"participants" | "form" | "edit">("participants");
+  const [manageTab, setManageTab] = useState<"participants" | "edit">("participants");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-
-  // Participant management
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
-
-  // Form builder
-  const [newField, setNewField] = useState(EMPTY_FIELD);
 
   // Edit event
   const [editForm, setEditForm] = useState(EMPTY_EVENT);
@@ -134,7 +115,7 @@ export default function OrganiserDashboard() {
     queryKey: ["my-events-dash", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase.from("events").select("id, title, type, location, start_date, status, created_at, requires_approval").eq("submitter_user_id", user!.id).order("created_at", { ascending: false });
+      const { data } = await supabase.from("events").select("id, title, type, location, start_date, status, created_at").eq("submitter_user_id", user!.id).order("created_at", { ascending: false });
       if (!data) return [];
       const counts = await Promise.all(data.map(async (e) => {
         const { count } = await supabase.from("event_registrations").select("id", { count: "exact", head: true }).eq("event_id", e.id);
@@ -153,22 +134,13 @@ export default function OrganiserDashboard() {
     },
   });
 
-  const { data: formFields = [] } = useQuery({
-    queryKey: ["event-form-fields", managingEventId],
-    enabled: !!managingEventId,
-    queryFn: async () => {
-      const { data } = await supabase.from("event_form_fields").select("*").eq("event_id", managingEventId!).order("sort_order");
-      return (data ?? []) as any[];
-    },
-  });
-
   const { data: participants = [], isLoading: participantsLoading } = useQuery({
     queryKey: ["event-participants", managingEventId],
     enabled: !!managingEventId && manageTab === "participants",
     queryFn: async () => {
       const { data: regs } = await supabase
         .from("event_registrations")
-        .select("id, user_id, status, rejection_reason, submitted_at, event_registration_responses(value, file_url, field_id)")
+        .select("id, user_id, status, submitted_at")
         .eq("event_id", managingEventId!)
         .order("submitted_at", { ascending: false });
       if (!regs?.length) return [];
@@ -195,7 +167,7 @@ export default function OrganiserDashboard() {
         website_url: managingEvent.website_url ?? "",
         socmed_url: managingEvent.socmed_url ?? "",
         pdf_url: managingEvent.pdf_url ?? "",
-        requires_approval: managingEvent.requires_approval ?? false,
+        google_form_url: managingEvent.google_form_url ?? "",
       });
       setEditBannerPreview(managingEvent.image_url ?? null);
       setEditPdfName(managingEvent.pdf_url ? managingEvent.pdf_url.split("/").pop() ?? null : null);
@@ -328,7 +300,7 @@ export default function OrganiserDashboard() {
         start_date: eventForm.start_date || null, end_date: eventForm.end_date || null,
         registration_url: eventForm.registration_url || null, image_url: eventForm.image_url || null,
         website_url: eventForm.website_url || null, socmed_url: eventForm.socmed_url || null,
-        pdf_url: eventForm.pdf_url || null, requires_approval: eventForm.requires_approval,
+        pdf_url: eventForm.pdf_url || null, google_form_url: eventForm.google_form_url || null,
         organizer_id: myOrg?.id ?? null, submitter_user_id: user!.id, status: "pending",
       });
       if (error) throw error;
@@ -360,7 +332,7 @@ export default function OrganiserDashboard() {
         socmed_url: editForm.socmed_url || null,
         pdf_url: editForm.pdf_url || null,
         ace_coins_reward: editForm.ace_coins_reward,
-        requires_approval: editForm.requires_approval,
+        google_form_url: editForm.google_form_url || null,
       }).eq("id", managingEventId!);
       if (error) throw error;
     },
@@ -393,99 +365,6 @@ export default function OrganiserDashboard() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const addFieldMutation = useMutation({
-    mutationFn: async () => {
-      if (!newField.label.trim()) throw new Error("Field label is required");
-      const maxOrder = formFields.length ? Math.max(...formFields.map((f: any) => f.sort_order)) : -1;
-      const { error } = await supabase.from("event_form_fields").insert({
-        event_id: managingEventId!,
-        label: newField.label.trim(),
-        field_type: newField.field_type,
-        is_required: newField.is_required,
-        sort_order: maxOrder + 1,
-        options: newField.field_type === "select"
-          ? newField.options.split(",").map(s => s.trim()).filter(Boolean)
-          : null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Field added!");
-      setNewField(EMPTY_FIELD);
-      qc.invalidateQueries({ queryKey: ["event-form-fields", managingEventId] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const deleteFieldMutation = useMutation({
-    mutationFn: async (fieldId: string) => {
-      const { error } = await supabase.from("event_form_fields").delete().eq("id", fieldId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["event-form-fields", managingEventId] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const approveRegistrationMutation = useMutation({
-    mutationFn: async (regId: string) => {
-      const { error } = await supabase.from("event_registrations").update({ status: "approved" }).eq("id", regId);
-      if (error) throw error;
-      try {
-        const reg = participants.find(p => p.id === regId);
-        if (reg) {
-          await supabase.from("notifications").insert({
-            user_id: reg.user_id, actor_id: user!.id,
-            type: "event_registration_approved",
-            metadata: { event_id: managingEventId, event_title: managingEvent?.title ?? "" },
-          });
-        }
-      } catch {}
-    },
-    onSuccess: () => {
-      toast.success("Registration approved!");
-      qc.invalidateQueries({ queryKey: ["event-participants", managingEventId] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const rejectRegistrationMutation = useMutation({
-    mutationFn: async ({ regId, reason }: { regId: string; reason: string }) => {
-      const { error } = await supabase.from("event_registrations").update({ status: "rejected", rejection_reason: reason || null }).eq("id", regId);
-      if (error) throw error;
-      try {
-        const reg = participants.find(p => p.id === regId);
-        if (reg) {
-          await supabase.from("notifications").insert({
-            user_id: reg.user_id, actor_id: user!.id,
-            type: "event_registration_rejected",
-            metadata: { event_id: managingEventId, event_title: managingEvent?.title ?? "" },
-          });
-        }
-      } catch {}
-    },
-    onSuccess: () => {
-      toast.success("Registration rejected.");
-      setRejectingId(null);
-      setRejectReason("");
-      qc.invalidateQueries({ queryKey: ["event-participants", managingEventId] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const removeRegistrationMutation = useMutation({
-    mutationFn: async (regId: string) => {
-      const { error } = await supabase.from("event_registrations").delete().eq("id", regId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Participant removed.");
-      qc.invalidateQueries({ queryKey: ["event-participants", managingEventId] });
-      qc.invalidateQueries({ queryKey: ["my-events-dash", user?.id] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
 
   // Derive step
   useEffect(() => {
@@ -513,8 +392,7 @@ export default function OrganiserDashboard() {
     const ev = myEvents.find(e => e.id === managingEventId) as any;
     const tabs = [
       { key: "participants" as const, label: "Participants", Icon: ListChecks },
-      { key: "form"         as const, label: "Form Builder",  Icon: FormInput  },
-      { key: "edit"         as const, label: "Edit Event",    Icon: Edit3      },
+      { key: "edit"         as const, label: "Edit Event",   Icon: Edit3      },
     ];
 
     return (
@@ -583,29 +461,9 @@ export default function OrganiserDashboard() {
           {manageTab === "participants" && (
             <ParticipantsTab
               participants={participants}
-              formFields={formFields}
               loading={participantsLoading}
-              rejectingId={rejectingId}
-              rejectReason={rejectReason}
-              setRejectingId={setRejectingId}
-              setRejectReason={setRejectReason}
-              onApprove={id => approveRegistrationMutation.mutate(id)}
-              onReject={(id, reason) => rejectRegistrationMutation.mutate({ regId: id, reason })}
-              onRemove={id => removeRegistrationMutation.mutate(id)}
-              approvingPending={approveRegistrationMutation.isPending}
-              rejectingPending={rejectRegistrationMutation.isPending}
-              removingPending={removeRegistrationMutation.isPending}
-            />
-          )}
-
-          {manageTab === "form" && (
-            <FormBuilderTab
-              fields={formFields}
-              newField={newField}
-              setNewField={setNewField}
-              onAddField={() => addFieldMutation.mutate()}
-              onDeleteField={id => deleteFieldMutation.mutate(id)}
-              addPending={addFieldMutation.isPending}
+              eventId={managingEventId!}
+              userId={user!.id}
             />
           )}
 
@@ -779,6 +637,11 @@ export default function OrganiserDashboard() {
                   <label className={LABEL}><Link2 className="inline w-3.5 h-3.5 mr-1 opacity-60" />Social Media Link</label>
                   <input className={INPUT} placeholder="https://instagram.com/…" value={eventForm.socmed_url} onChange={e => setEventForm({ ...eventForm, socmed_url: e.target.value })} />
                 </div>
+                <div className="sm:col-span-2">
+                  <label className={LABEL}><ExternalLink className="inline w-3.5 h-3.5 mr-1 opacity-60" />Google Form URL (optional)</label>
+                  <input className={INPUT} placeholder="https://docs.google.com/forms/d/…" value={eventForm.google_form_url} onChange={e => setEventForm({ ...eventForm, google_form_url: e.target.value })} />
+                  <p className="text-[11px] font-['Nunito'] text-[#0F172A]/40 mt-1">Participants will fill this form after registering on AceTerus.</p>
+                </div>
                 <div>
                   <label className={LABEL}><FileUp className="inline w-3.5 h-3.5 mr-1 opacity-60" />Event Brochure (PDF)</label>
                   {pdfName ? (
@@ -820,15 +683,6 @@ export default function OrganiserDashboard() {
                   )}
                 </div>
               </div>
-
-              {/* Approval toggle */}
-              <label className="flex items-center gap-3 p-4 rounded-[14px] border-[2.5px] border-[#0F172A]/15 bg-[#F3FAFF] cursor-pointer hover:border-[#2F7CFF]/40 transition-all">
-                <input type="checkbox" checked={eventForm.requires_approval} onChange={e => setEventForm({ ...eventForm, requires_approval: e.target.checked })} className="w-4 h-4 accent-[#2F7CFF]" />
-                <div>
-                  <p className="font-bold font-['Nunito'] text-[14px] text-[#0F172A]">Require organiser approval</p>
-                  <p className="text-[12px] font-['Nunito'] text-[#0F172A]/50">Registrations start as "pending" — you manually approve each one.</p>
-                </div>
-              </label>
 
               <div className="flex gap-3 pt-1">
                 <button onClick={() => submitEventMutation.mutate()} disabled={submitEventMutation.isPending} className={BTN_PRIMARY}>
@@ -902,11 +756,6 @@ export default function OrganiserDashboard() {
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
                           <h4 className={`${DISPLAY} font-bold text-[16px] text-[#0F172A]`}>{ev.title}</h4>
-                          {ev.requires_approval && (
-                            <span className="px-2 py-0.5 rounded-[8px] bg-[#D6D4FF] border-[1.5px] border-[#2E2BE5]/20 text-[10px] font-extrabold text-[#2E2BE5] font-['Nunito']">
-                              Approval Required
-                            </span>
-                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-3 text-[12px] font-['Nunito'] text-[#0F172A]/50 pl-4">
                           <span className="capitalize font-semibold">{ev.type}</span>
@@ -945,29 +794,68 @@ export default function OrganiserDashboard() {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function ParticipantsTab({
-  participants, formFields, loading, rejectingId, rejectReason,
-  setRejectingId, setRejectReason,
-  onApprove, onReject, onRemove,
-  approvingPending, rejectingPending, removingPending,
+  participants, loading, eventId, userId,
 }: {
   participants: any[];
-  formFields: any[];
   loading: boolean;
-  rejectingId: string | null;
-  rejectReason: string;
-  setRejectingId: (id: string | null) => void;
-  setRejectReason: (r: string) => void;
-  onApprove: (id: string) => void;
-  onReject: (id: string, reason: string) => void;
-  onRemove: (id: string) => void;
-  approvingPending: boolean;
-  rejectingPending: boolean;
-  removingPending: boolean;
+  eventId: string;
+  userId: string;
 }) {
-  const fieldMap = Object.fromEntries(formFields.map(f => [f.id, f.label]));
-  const pending  = participants.filter(p => p.status === "pending");
+  const [codeCoins, setCodeCoins] = useState(50);
+  const [codeExpiry, setCodeExpiry] = useState("");
+  const [codeMaxUses, setCodeMaxUses] = useState<number | "">(100);
+  const [generating, setGenerating] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
   const approved = participants.filter(p => p.status === "approved");
-  const rejected = participants.filter(p => p.status === "rejected");
+
+  const exportCSV = () => {
+    const csvCell = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const headers = ["Username", "Status", "Registered At"];
+    const rows = participants.map(reg => [
+      csvCell(reg.profile?.username ?? reg.user_id.slice(0, 8)),
+      csvCell(reg.status),
+      csvCell(new Date(reg.submitted_at).toLocaleString("en-MY")),
+    ]);
+    const csv = [headers.map(csvCell), ...rows].map(row => row.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `registrations_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const generateCode = async () => {
+    setGenerating(true);
+    try {
+      const code = Math.random().toString(36).slice(2, 8).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+      const { error } = await supabase.from("event_reward_codes").insert({
+        event_id: eventId,
+        code,
+        ace_coins_reward: codeCoins,
+        max_redemptions: codeMaxUses === "" ? null : codeMaxUses,
+        expires_at: codeExpiry ? new Date(codeExpiry).toISOString() : null,
+        created_by: userId,
+      });
+      if (error) throw error;
+      setGeneratedCode(code);
+      toast.success("Reward code generated!");
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to generate code");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const copyCode = () => {
+    if (!generatedCode) return;
+    navigator.clipboard.writeText(generatedCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   if (loading) return (
     <div className="space-y-3">
@@ -975,47 +863,92 @@ function ParticipantsTab({
     </div>
   );
 
-  if (!participants.length) return (
-    <div className="py-12 text-center">
-      <div className="text-4xl mb-3">👥</div>
-      <p className="font-['Nunito'] font-bold text-[#0F172A]/40">No registrations yet.</p>
-    </div>
-  );
-
   return (
-    <div className="space-y-4">
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Pending",  count: pending.length,  color: "text-amber-700",   bg: "bg-amber-50 border-amber-200" },
-          { label: "Approved", count: approved.length, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
-          { label: "Rejected", count: rejected.length, color: "text-red-700",     bg: "bg-red-50 border-red-200" },
-        ].map(({ label, count, color, bg }) => (
-          <div key={label} className={`p-3 rounded-[14px] border-[2px] text-center ${bg}`}>
-            <p className={`font-['Baloo_2'] font-extrabold text-[22px] ${color}`}>{count}</p>
-            <p className={`font-['Nunito'] text-[11px] font-bold ${color} opacity-70`}>{label}</p>
+    <div className="space-y-5">
+      {/* Reward Code Generator */}
+      <div className="border-[2.5px] border-[#0F172A] rounded-[18px] overflow-hidden shadow-[3px_3px_0_0_#0F172A]">
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-5 py-3.5 border-b-[2px] border-[#0F172A]/10 flex items-center gap-2">
+          <Gift className="w-4 h-4 text-amber-600" />
+          <p className="font-['Baloo_2'] font-bold text-[15px] text-[#0F172A]">Generate Reward Code</p>
+          <p className="text-[12px] font-['Nunito'] text-[#0F172A]/50 ml-auto">Share with participants to claim ACE Coins</p>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[12px] font-bold font-['Nunito'] text-[#0F172A]/60 mb-1.5">ACE Coins to Award</label>
+              <input type="number" min={1} max={10000} className="w-full px-3 py-2.5 border-[2px] border-[#0F172A]/20 rounded-[12px] font-['Nunito'] font-bold text-[14px] outline-none focus:border-amber-400 focus:shadow-[0_0_0_3px_rgba(251,191,36,0.15)] transition-all bg-white"
+                value={codeCoins} onChange={e => setCodeCoins(Number(e.target.value))} />
+            </div>
+            <div>
+              <label className="block text-[12px] font-bold font-['Nunito'] text-[#0F172A]/60 mb-1.5">Max Redemptions (blank = unlimited)</label>
+              <input type="number" min={1} className="w-full px-3 py-2.5 border-[2px] border-[#0F172A]/20 rounded-[12px] font-['Nunito'] text-[14px] outline-none focus:border-amber-400 focus:shadow-[0_0_0_3px_rgba(251,191,36,0.15)] transition-all bg-white"
+                value={codeMaxUses} onChange={e => setCodeMaxUses(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Unlimited" />
+            </div>
+            <div>
+              <label className="block text-[12px] font-bold font-['Nunito'] text-[#0F172A]/60 mb-1.5">Expiry Date (optional)</label>
+              <input type="datetime-local" className="w-full px-3 py-2.5 border-[2px] border-[#0F172A]/20 rounded-[12px] font-['Nunito'] text-[14px] outline-none focus:border-amber-400 focus:shadow-[0_0_0_3px_rgba(251,191,36,0.15)] transition-all bg-white"
+                value={codeExpiry} onChange={e => setCodeExpiry(e.target.value)} />
+            </div>
           </div>
-        ))}
+          <button onClick={generateCode} disabled={generating || codeCoins < 1}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border-[2.5px] border-[#0F172A] bg-amber-400 text-[#0F172A] font-bold font-['Nunito'] text-[14px] shadow-[3px_3px_0_0_#0F172A] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_#0F172A] transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0">
+            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            {generating ? "Generating…" : "Generate Code"}
+          </button>
+
+          {generatedCode && (
+            <div className="flex items-center gap-3 p-4 rounded-[14px] border-[2.5px] border-amber-400 bg-amber-50 shadow-[2px_2px_0_0_#D97706]">
+              <div className="flex-1">
+                <p className="text-[11px] font-bold font-['Nunito'] text-amber-600 uppercase tracking-wider mb-0.5">Your Code</p>
+                <p className="font-['Baloo_2'] font-extrabold text-[28px] text-[#0F172A] tracking-widest">{generatedCode}</p>
+                <p className="text-[12px] font-['Nunito'] text-amber-700 mt-0.5">{codeCoins} ACE Coins · {codeMaxUses === "" ? "Unlimited" : codeMaxUses} uses</p>
+              </div>
+              <button onClick={copyCode}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-[2.5px] border-[#0F172A] bg-white font-bold font-['Nunito'] text-[13px] shadow-[2px_2px_0_0_#0F172A] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#0F172A] transition-all shrink-0">
+                <Copy className="w-4 h-4" />{copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* List */}
-      <div className="space-y-2">
-        {participants.map((reg: any) => {
-          const S = REG_STATUS[reg.status as keyof typeof REG_STATUS] ?? REG_STATUS.pending;
-          const SIcon = S.Icon;
-          const initials = reg.profile?.username?.[0]?.toUpperCase() ?? "?";
+      {/* Participants list */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="px-3 py-1.5 rounded-[10px] bg-emerald-50 border-[2px] border-emerald-200 text-[12px] font-extrabold text-emerald-700 font-['Nunito']">
+            {approved.length} registered
+          </div>
+          <div className="px-3 py-1.5 rounded-[10px] bg-[#DDF3FF] border-[2px] border-[#2F7CFF]/20 text-[12px] font-extrabold text-[#2F7CFF] font-['Nunito']">
+            {participants.length} total
+          </div>
+        </div>
+        {participants.length > 0 && (
+          <button onClick={exportCSV}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-[12px] border-[2.5px] border-[#0F172A] bg-white text-[#0F172A] text-[13px] font-bold font-['Nunito'] shadow-[2px_2px_0_0_#0F172A] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#0F172A] transition-all">
+            ⬇ Export CSV
+          </button>
+        )}
+      </div>
 
-          return (
-            <div key={reg.id} className="border-[2px] border-[#0F172A]/10 rounded-[16px] overflow-hidden">
-              <div className="flex items-center gap-3 p-3.5">
-                {/* Avatar */}
+      {participants.length === 0 ? (
+        <div className="py-12 text-center">
+          <div className="text-4xl mb-3">👥</div>
+          <p className="font-['Nunito'] font-bold text-[#0F172A]/40">No registrations yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {participants.map((reg: any) => {
+            const S = REG_STATUS[reg.status as keyof typeof REG_STATUS] ?? REG_STATUS.approved;
+            const SIcon = S.Icon;
+            const initials = reg.profile?.username?.[0]?.toUpperCase() ?? "?";
+            return (
+              <div key={reg.id} className="flex items-center gap-3 p-3.5 border-[2px] border-[#0F172A]/10 rounded-[14px] bg-white hover:border-[#0F172A]/20 transition-colors">
                 <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[#2F7CFF] to-[#2E2BE5] border-[2px] border-[#0F172A]/10 flex items-center justify-center shrink-0 overflow-hidden">
                   {reg.profile?.avatar_url
                     ? <img src={reg.profile.avatar_url} alt="" className="w-full h-full object-cover" />
                     : <span className="text-white font-bold text-[13px]">{initials}</span>
                   }
                 </div>
-
                 <div className="flex-1 min-w-0">
                   <p className="font-bold font-['Nunito'] text-[14px] text-[#0F172A] truncate">
                     {reg.profile?.username ?? reg.user_id.slice(0, 8)}
@@ -1024,163 +957,14 @@ function ParticipantsTab({
                     {new Date(reg.submitted_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
                 </div>
-
                 <div className={`flex items-center gap-1 px-2.5 py-1 rounded-[10px] border-[2px] text-[11px] font-extrabold font-['Nunito'] ${S.bg} ${S.color}`}>
                   <SIcon className="w-3 h-3" />{S.label}
                 </div>
-
-                {/* Action buttons */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {reg.status !== "approved" && (
-                    <button onClick={() => onApprove(reg.id)} disabled={approvingPending}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] border-[2px] border-emerald-500 bg-emerald-50 text-emerald-700 text-[12px] font-bold font-['Nunito'] hover:-translate-y-0.5 hover:bg-emerald-100 transition-all disabled:opacity-60">
-                      <UserCheck className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Approve</span>
-                    </button>
-                  )}
-                  {reg.status !== "rejected" && (
-                    <button onClick={() => { setRejectingId(reg.id); setRejectReason(""); }}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] border-[2px] border-amber-400 bg-amber-50 text-amber-700 text-[12px] font-bold font-['Nunito'] hover:-translate-y-0.5 hover:bg-amber-100 transition-all">
-                      <UserX className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Reject</span>
-                    </button>
-                  )}
-                  <button onClick={() => onRemove(reg.id)} disabled={removingPending}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] border-[2px] border-red-300 bg-red-50 text-red-600 text-[12px] font-bold font-['Nunito'] hover:-translate-y-0.5 hover:bg-red-100 transition-all disabled:opacity-60">
-                    <UserMinus className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Remove</span>
-                  </button>
-                </div>
               </div>
-
-              {/* Form responses */}
-              {reg.event_registration_responses?.length > 0 && (
-                <div className="px-3.5 pb-3.5 pt-0 border-t border-[#0F172A]/07 bg-[#F8FAFF]">
-                  <div className="pt-2.5 grid grid-cols-2 gap-2">
-                    {reg.event_registration_responses.map((r: any) => (
-                      <div key={r.field_id} className="text-[12px] font-['Nunito']">
-                        <span className="text-[#0F172A]/40 font-bold block text-[10px] uppercase tracking-wide">
-                          {fieldMap[r.field_id] ?? r.field_id.slice(0, 8)}
-                        </span>
-                        <span className="text-[#0F172A]/80">
-                          {r.file_url
-                            ? <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="text-[#2F7CFF] hover:underline">📎 View file</a>
-                            : (r.value ?? "—")
-                          }
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Rejection reason input */}
-              {rejectingId === reg.id && (
-                <div className="px-3.5 pb-3.5 border-t border-amber-100 bg-amber-50/50 space-y-2 pt-3">
-                  <input
-                    className="w-full px-3 py-2 border-[2px] border-amber-300 rounded-[10px] text-[13px] font-['Nunito'] outline-none focus:border-amber-500 bg-white placeholder:text-amber-300"
-                    placeholder="Rejection reason (optional)"
-                    value={rejectReason}
-                    onChange={e => setRejectReason(e.target.value)}
-                  />
-                  <div className="flex gap-2">
-                    <button onClick={() => onReject(reg.id, rejectReason)} disabled={rejectingPending}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border-[2px] border-amber-500 bg-amber-500 text-white text-[12px] font-bold font-['Nunito'] hover:-translate-y-0.5 transition-all disabled:opacity-60">
-                      <UserX className="w-3.5 h-3.5" />{rejectingPending ? "Rejecting…" : "Confirm Reject"}
-                    </button>
-                    <button onClick={() => setRejectingId(null)}
-                      className="px-3 py-1.5 rounded-[10px] border-[2px] border-[#0F172A]/15 bg-white text-[#0F172A]/60 text-[12px] font-bold font-['Nunito'] hover:bg-gray-50 transition-colors">
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function FormBuilderTab({
-  fields, newField, setNewField, onAddField, onDeleteField, addPending,
-}: {
-  fields: any[];
-  newField: { label: string; field_type: string; is_required: boolean; options: string };
-  setNewField: (f: any) => void;
-  onAddField: () => void;
-  onDeleteField: (id: string) => void;
-  addPending: boolean;
-}) {
-  const LABEL_S = "block text-[13px] font-bold font-['Nunito'] text-[#0F172A]/65 mb-1";
-  const INPUT_S = "w-full px-3 py-2.5 border-[2px] border-[#0F172A]/20 rounded-[12px] font-['Nunito'] text-[14px] outline-none focus:border-[#2F7CFF] transition-all bg-white";
-
-  return (
-    <div className="space-y-4">
-      <p className="font-['Nunito'] text-[13px] text-[#0F172A]/55">
-        Define the questions students must answer when registering. Fields appear in the order shown.
-      </p>
-
-      {/* Existing fields */}
-      {fields.length === 0 ? (
-        <div className="py-8 text-center border-[2px] border-dashed border-[#0F172A]/15 rounded-[16px] bg-[#F8FAFF]">
-          <div className="text-3xl mb-2">📝</div>
-          <p className="font-['Nunito'] text-[13px] text-[#0F172A]/40 font-bold">No fields yet — add one below.</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {fields.map((field: any, idx: number) => (
-            <div key={field.id} className="flex items-center gap-3 p-3.5 border-[2px] border-[#0F172A]/10 rounded-[14px] bg-white hover:border-[#0F172A]/20 transition-colors group">
-              <div className="w-6 h-6 rounded-[8px] bg-[#DDF3FF] border-[1.5px] border-[#2F7CFF]/25 flex items-center justify-center shrink-0 text-[11px] font-extrabold text-[#2F7CFF] font-['Nunito']">
-                {idx + 1}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold font-['Nunito'] text-[14px] text-[#0F172A]">{field.label}</p>
-                <p className="text-[11px] font-['Nunito'] text-[#0F172A]/40">
-                  {FIELD_TYPES.find(t => t.value === field.field_type)?.label ?? field.field_type}
-                  {field.is_required ? " · Required" : " · Optional"}
-                  {field.options?.length ? ` · Options: ${field.options.join(", ")}` : ""}
-                </p>
-              </div>
-              <button onClick={() => onDeleteField(field.id)}
-                className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] border-[2px] border-red-200 bg-red-50 text-red-500 text-[12px] font-bold font-['Nunito'] hover:bg-red-100 transition-all">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
-
-      {/* Add field form */}
-      <div className="border-[2.5px] border-dashed border-[#2F7CFF]/40 rounded-[16px] p-4 bg-[#F3FAFF] space-y-3">
-        <p className="text-[12px] font-bold font-['Nunito'] text-[#2F7CFF] uppercase tracking-wider">+ Add Field</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className={LABEL_S}>Label *</label>
-            <input className={INPUT_S} placeholder="e.g. Matric Number" value={newField.label} onChange={e => setNewField({ ...newField, label: e.target.value })} />
-          </div>
-          <div>
-            <label className={LABEL_S}>Type</label>
-            <select className={INPUT_S} value={newField.field_type} onChange={e => setNewField({ ...newField, field_type: e.target.value })}>
-              {FIELD_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </div>
-          {newField.field_type === "select" && (
-            <div className="sm:col-span-2">
-              <label className={LABEL_S}>Options (comma-separated)</label>
-              <input className={INPUT_S} placeholder="Option A, Option B, Option C" value={newField.options} onChange={e => setNewField({ ...newField, options: e.target.value })} />
-            </div>
-          )}
-          <div className="sm:col-span-2 flex items-center gap-2">
-            <input type="checkbox" id="field-required" checked={newField.is_required} onChange={e => setNewField({ ...newField, is_required: e.target.checked })} className="w-4 h-4 accent-[#2F7CFF]" />
-            <label htmlFor="field-required" className="font-['Nunito'] text-[13px] font-bold text-[#0F172A]/70 cursor-pointer">Required field</label>
-          </div>
-        </div>
-        <button onClick={onAddField} disabled={addPending || !newField.label.trim()} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-[2.5px] border-[#2F7CFF] bg-[#2F7CFF] text-white font-bold font-['Nunito'] text-[13px] shadow-[2px_2px_0_0_#1D4ED8] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#1D4ED8] transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0">
-          <Plus className="w-4 h-4" />{addPending ? "Adding…" : "Add Field"}
-        </button>
-      </div>
     </div>
   );
 }
@@ -1191,8 +975,8 @@ function EditEventTab({
   editPdfName, setEditPdfName, editPdfUploading,
   onBannerChange, onPdfChange, onSave, saving,
 }: {
-  editForm: typeof EMPTY_EVENT;
-  setEditForm: (f: typeof EMPTY_EVENT) => void;
+  editForm: { title: string; description: string; type: string; location: string; start_date: string; end_date: string; registration_url: string; image_url: string; ace_coins_reward: number; website_url: string; socmed_url: string; pdf_url: string; google_form_url: string };
+  setEditForm: (f: any) => void;
   editBannerPreview: string | null;
   setEditBannerPreview: (v: string | null) => void;
   editBannerUploading: boolean;
@@ -1254,6 +1038,10 @@ function EditEventTab({
           <label className={L}><Link2 className="inline w-3.5 h-3.5 mr-1 opacity-60" />Social Media Link</label>
           <input className={I} placeholder="https://…" value={editForm.socmed_url} onChange={e => setEditForm({ ...editForm, socmed_url: e.target.value })} />
         </div>
+        <div className="sm:col-span-2">
+          <label className={L}><ExternalLink className="inline w-3.5 h-3.5 mr-1 opacity-60" />Google Form URL (optional)</label>
+          <input className={I} placeholder="https://docs.google.com/forms/d/…" value={editForm.google_form_url} onChange={e => setEditForm({ ...editForm, google_form_url: e.target.value })} />
+        </div>
 
         {/* Banner */}
         <div>
@@ -1298,15 +1086,6 @@ function EditEventTab({
           )}
         </div>
       </div>
-
-      {/* Approval toggle */}
-      <label className="flex items-center gap-3 p-4 rounded-[14px] border-[2.5px] border-[#0F172A]/15 bg-[#F3FAFF] cursor-pointer hover:border-[#2F7CFF]/40 transition-all">
-        <input type="checkbox" checked={editForm.requires_approval} onChange={e => setEditForm({ ...editForm, requires_approval: e.target.checked })} className="w-4 h-4 accent-[#2F7CFF]" />
-        <div>
-          <p className="font-bold font-['Nunito'] text-[14px] text-[#0F172A]">Require organiser approval</p>
-          <p className="text-[12px] font-['Nunito'] text-[#0F172A]/50">New registrations will be "pending" until you approve them.</p>
-        </div>
-      </label>
 
       <div className="flex gap-3">
         <button onClick={onSave} disabled={saving} className="flex items-center gap-2 px-5 py-3 rounded-xl border-[2.5px] border-[#0F172A] bg-[#2F7CFF] text-white font-bold shadow-[3px_3px_0_0_#0F172A] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_#0F172A] transition-all font-['Nunito'] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed">

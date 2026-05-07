@@ -542,28 +542,28 @@ const Quiz = () => {
         .q-nav-btn:hover { transform: translateY(-2px); }
       `}</style>
 
-      <div className="relative z-[2] max-w-6xl mx-auto px-5 pt-8">
+      <div className="relative z-[2] max-w-6xl mx-auto px-3 sm:px-5 pt-5 sm:pt-8">
 
         {/* ── COMPACT HEADER ── */}
-        <div className="flex items-center justify-between gap-4 mb-7 atl-fade-up">
-          <div className="flex items-center gap-4">
-            <img src={Logo} alt="AceTerus" className="w-12 h-12 rounded-[16px] border-[3px] border-[#0F172A] shadow-[4px_4px_0_0_#0F172A] shrink-0 atl-logo" />
-            <div>
-              <h1 className={`${DISPLAY} font-extrabold text-3xl md:text-4xl leading-none`}>Quiz Arena 🎯</h1>
-              <p className="text-sm font-medium text-slate-500 mt-0.5 hidden sm:block">Practice with authentic exam papers</p>
+        <div className="flex items-center justify-between gap-3 mb-7 atl-fade-up">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src={Logo} alt="AceTerus" className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] border-[2.5px] sm:border-[3px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] sm:shadow-[4px_4px_0_0_#0F172A] shrink-0 atl-logo" />
+            <div className="min-w-0">
+              <h1 className={`${DISPLAY} font-extrabold text-xl sm:text-3xl md:text-4xl leading-none`}>Quiz Arena 🎯</h1>
+              <p className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5 hidden sm:block">Practice with authentic exam papers</p>
             </div>
           </div>
           {/* Right: streak badge + mobile Goals button */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <div
-              className="flex items-center gap-2 px-4 py-2 rounded-full border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] font-extrabold text-sm bg-white"
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-[2.5px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] sm:shadow-[3px_3px_0_0_#0F172A] font-extrabold text-sm bg-white"
               style={{ color: C.ink }}
             >
               <Coins className="w-4 h-4 text-amber-500" />
               <span className={`${DISPLAY}`}><AnimatedNumber value={aceCoins} /> ACE</span>
             </div>
             <div
-              className="flex items-center gap-2 px-4 py-2 rounded-full border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] font-extrabold text-sm"
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full border-[2.5px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] sm:shadow-[3px_3px_0_0_#0F172A] font-extrabold text-sm"
               style={{ background: C.pop, color: "#fff" }}
             >
               <Flame className="w-4 h-4" />
@@ -574,27 +574,27 @@ const Quiz = () => {
               className={`${BTN_SM} text-white lg:hidden`}
               style={{ background: C.blue }}
             >
-              <CalendarDays className="w-4 h-4" /> Goals
+              <CalendarDays className="w-4 h-4" /> <span className="hidden sm:inline">Goals</span>
             </button>
           </div>
         </div>
 
         {/* ── MODE TABS ── */}
-        <div className="flex items-center gap-3 mb-8 atl-fade-up" style={{ animationDelay: '50ms' }}>
+        <div className="flex items-center gap-2 sm:gap-3 mb-8 atl-fade-up" style={{ animationDelay: '50ms' }}>
           <button
             onClick={() => setMode("standard")}
             className={cn(
-              "flex-1 md:flex-none px-6 py-3 rounded-full border-[3px] border-[#0F172A] shadow-[4px_4px_0_0_#0F172A] font-extrabold font-['Baloo_2'] text-base transition-all hover:-translate-y-1 hover:shadow-[6px_7px_0_0_#0F172A]",
+              "flex-1 md:flex-none px-4 sm:px-6 py-2.5 sm:py-3 rounded-full border-[2.5px] sm:border-[3px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] sm:shadow-[4px_4px_0_0_#0F172A] font-extrabold font-['Baloo_2'] text-sm sm:text-base transition-all hover:-translate-y-1 hover:shadow-[6px_7px_0_0_#0F172A]",
               mode === "standard" ? "text-white" : "bg-white text-[#0F172A]"
             )}
             style={mode === "standard" ? { background: C.blue } : {}}
           >
-            📚 Standard Quizzes
+            📚 <span className="hidden sm:inline">Standard </span>Quizzes
           </button>
           <button
             onClick={() => setMode("boss_raid")}
             className={cn(
-              "flex-1 md:flex-none px-6 py-3 rounded-full border-[3px] border-[#0F172A] shadow-[4px_4px_0_0_#0F172A] font-extrabold font-['Baloo_2'] text-base transition-all hover:-translate-y-1 hover:shadow-[6px_7px_0_0_#0F172A]",
+              "flex-1 md:flex-none px-4 sm:px-6 py-2.5 sm:py-3 rounded-full border-[2.5px] sm:border-[3px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] sm:shadow-[4px_4px_0_0_#0F172A] font-extrabold font-['Baloo_2'] text-sm sm:text-base transition-all hover:-translate-y-1 hover:shadow-[6px_7px_0_0_#0F172A]",
               mode === "boss_raid" ? "text-white" : "bg-white text-[#0F172A]"
             )}
             style={mode === "boss_raid" ? { background: "#9333ea" } : {}}
@@ -709,7 +709,7 @@ const Quiz = () => {
                 )}
 
                 {loadingDecks ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     {Array.from({ length: 6 }).map((_, i) => (
                       <div key={i} className="border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[3px_3px_0_0_#0F172A] bg-white overflow-hidden">
                         <Skeleton className="h-[100px] w-full rounded-none" />
@@ -735,7 +735,7 @@ const Quiz = () => {
                     <button onClick={() => setCategorySearch("")} className="mt-3 text-xs font-bold underline" style={{ color: C.blue }}>Clear search</button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     {visibleCategories.map((cat, i) => {
                       const catImage = getCategoryImage(cat.name);
                       const accentColors = [C.cyan, C.blue, C.indigo, C.sun, C.pop, "#22c55e", "#f59e0b", "#ec4899"];
