@@ -32,9 +32,9 @@ function PodiumCard({ entry, trophy, center, canClick, isMe }: {
   entry: LeaderboardEntry; trophy: TrophyKey; center: boolean; canClick: boolean; isMe: boolean;
 }) {
   const t = TROPHY_STYLES[trophy];
-  const avatarSize = center ? "h-28 w-28" : "h-20 w-20";
-  const cardWidth = center ? "w-[180px]" : "w-[140px]";
-  const marginTop = center ? "" : "mt-8";
+  const avatarSize = center ? "h-16 w-16 sm:h-24 sm:w-24" : "h-12 w-12 sm:h-16 sm:w-16";
+  const cardWidth = center ? "flex-1 max-w-[160px]" : "flex-1 max-w-[120px]";
+  const marginTop = center ? "" : "mt-5 sm:mt-8";
 
   const inner = (
     <div className={`flex flex-col items-center gap-2 ${cardWidth} ${marginTop} min-w-0`}>
@@ -66,7 +66,7 @@ function PodiumCard({ entry, trophy, center, canClick, isMe }: {
         </div>
 
         {/* Streak */}
-        <div className={`${DISPLAY} font-extrabold flex items-center gap-1 ${center ? 'text-xl' : 'text-base'}`} style={{ color: C.pop }}>
+        <div className={`${DISPLAY} font-extrabold flex items-center gap-1 ${center ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'}`} style={{ color: C.pop }}>
           <Flame className={`${center ? 'w-5 h-5' : 'w-4 h-4'}`} /> {entry.streak}
         </div>
         <p className="text-[10px] font-semibold text-slate-500">day streak</p>
@@ -135,7 +135,7 @@ export function StreakLeaderboard({ currentUserId, currentStreak }: Props) {
 
       <div className="p-5">
         {/* Podium */}
-        <div className="flex justify-center items-end gap-3 mb-5 overflow-hidden">
+        <div className="flex justify-center items-end gap-2 sm:gap-3 mb-5 w-full">
           {podium.map((entry) => (
             <PodiumCard
               key={entry.user_id}

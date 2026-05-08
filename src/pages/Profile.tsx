@@ -518,7 +518,7 @@ export const Profile = () => {
   const activeLevelCfg = activeEduLevel ? EDUCATION_LEVELS.find(l => l.value === activeEduLevel) : null;
 
   const schoolDialog = (
-    <DialogContent className="border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[5px_5px_0_0_#0F172A] max-w-md max-h-[85vh] flex flex-col">
+    <DialogContent className="border-[2.5px] border-[#0F172A] rounded-[20px] sm:shadow-[5px_5px_0_0_#0F172A] max-w-[calc(100vw-2rem)] sm:max-w-md max-h-[85vh] flex flex-col">
       <DialogHeader>
         <DialogTitle className={`${DISPLAY} font-extrabold text-lg`}>
           {editingEntryId ? 'Edit Education' : 'Add Education'}
@@ -700,7 +700,7 @@ export const Profile = () => {
   const displayName = profile?.username || user?.email?.split('@')[0] || 'Anonymous';
 
   return (
-    <div className="min-h-screen bg-transparent">
+    <div className="min-h-screen bg-transparent overflow-x-hidden">
       <div className="container mx-auto px-4 pt-8 pb-20 lg:pb-8 max-w-4xl">
 
         {/* Mobile notifications bell */}
@@ -711,7 +711,7 @@ export const Profile = () => {
         {/* ── Profile Header ── */}
         <div className={`${CARD} mb-6`}>
           {/* Cover — avatar is absolutely centred on its bottom edge */}
-          <div className="relative h-[200px] w-full">
+          <div className="relative h-32 sm:h-[200px] w-full">
             {profile?.cover_url ? (
               <img src={profile.cover_url} alt="Cover" className="absolute inset-0 w-full h-full object-cover cursor-zoom-in" onClick={() => setLightboxImage(profile.cover_url!)} />
             ) : (
@@ -762,11 +762,11 @@ export const Profile = () => {
           </div>
 
           {/* Info — padding-top makes room for the half-avatar that hangs below cover */}
-          <div className="px-4 sm:px-6 pb-6 pt-20 sm:pt-24">
+          <div className="px-4 sm:px-6 pb-6 pt-16 sm:pt-24">
             <div className="flex flex-col items-center">
               <div className="text-center w-full max-w-md">
                 <h1 className={`${DISPLAY} font-extrabold text-2xl sm:text-3xl leading-tight mb-1`}>{displayName}</h1>
-                <p className="text-sm font-semibold text-slate-400 mb-5">
+                <p className="text-sm font-semibold text-slate-400 mb-5 break-words">
                   {profile?.bio || 'No bio yet.'}
                 </p>
 
@@ -780,7 +780,7 @@ export const Profile = () => {
                         </button>
                       </DialogTrigger>
                       <DialogContent
-                        className="border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[5px_5px_0_0_#0F172A]"
+                        className="border-[2.5px] border-[#0F172A] rounded-[20px] sm:shadow-[5px_5px_0_0_#0F172A] max-w-[calc(100vw-2rem)] sm:max-w-lg"
                         onInteractOutside={(e) => e.preventDefault()}
                         onPointerDownOutside={(e) => e.preventDefault()}
                         onFocusOutside={(e) => e.preventDefault()}
@@ -869,7 +869,7 @@ export const Profile = () => {
                           <BarChart2 className="w-4 h-4" /> Quiz History
                         </button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[5px_5px_0_0_#0F172A]">
+                      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[80vh] overflow-y-auto border-[2.5px] border-[#0F172A] rounded-[20px] sm:shadow-[5px_5px_0_0_#0F172A]">
                         <DialogHeader>
                           <DialogTitle className={`${DISPLAY} font-extrabold text-lg flex items-center gap-2`}>
                             <BarChart2 className="h-5 w-5" style={{ color: C.indigo }} /> Quiz Analysis History
@@ -1144,15 +1144,15 @@ export const Profile = () => {
               </div>
               <p className={`${DISPLAY} font-extrabold text-lg`}>Streak Statistics</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border-[2px] border-[#0F172A] rounded-[16px] shadow-[2px_2px_0_0_#0F172A] p-5 text-center bg-white">
-                <Zap className="w-10 h-10 mx-auto mb-2" style={{ color: C.pop }} />
-                <p className={`${DISPLAY} font-extrabold text-4xl`} style={{ color: C.pop }}>{streak}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="border-[2px] border-[#0F172A] rounded-[16px] shadow-[2px_2px_0_0_#0F172A] p-3 sm:p-5 text-center bg-white">
+                <Zap className="w-7 h-7 sm:w-10 sm:h-10 mx-auto mb-1.5" style={{ color: C.pop }} />
+                <p className={`${DISPLAY} font-extrabold text-3xl sm:text-4xl`} style={{ color: C.pop }}>{streak}</p>
                 <p className="text-xs font-semibold text-slate-500 mt-1">Current Streak</p>
               </div>
-              <div className="border-[2px] border-[#0F172A] rounded-[16px] shadow-[2px_2px_0_0_#0F172A] p-5 text-center bg-white">
-                <Target className="w-10 h-10 mx-auto mb-2" style={{ color: C.blue }} />
-                <p className={`${DISPLAY} font-extrabold text-4xl`} style={{ color: C.blue }}>{streak}</p>
+              <div className="border-[2px] border-[#0F172A] rounded-[16px] shadow-[2px_2px_0_0_#0F172A] p-3 sm:p-5 text-center bg-white">
+                <Target className="w-7 h-7 sm:w-10 sm:h-10 mx-auto mb-1.5" style={{ color: C.blue }} />
+                <p className={`${DISPLAY} font-extrabold text-3xl sm:text-4xl`} style={{ color: C.blue }}>{streak}</p>
                 <p className="text-xs font-semibold text-slate-500 mt-1">Best Streak</p>
               </div>
             </div>
@@ -1284,13 +1284,13 @@ export const Profile = () => {
 
         {/* Followers / Following dialogs */}
         <Dialog open={isFollowersOpen} onOpenChange={setIsFollowersOpen}>
-          <DialogContent className="max-w-sm max-h-[70vh] overflow-y-auto border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[4px_4px_0_0_#0F172A]">
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm max-h-[70vh] overflow-y-auto border-[2.5px] border-[#0F172A] rounded-[20px] sm:shadow-[4px_4px_0_0_#0F172A]">
             <DialogHeader><DialogTitle className={`${DISPLAY} font-extrabold`}>Followers</DialogTitle></DialogHeader>
             <UsersList title="" userIds={followers} showAll />
           </DialogContent>
         </Dialog>
         <Dialog open={isFollowingOpen} onOpenChange={setIsFollowingOpen}>
-          <DialogContent className="max-w-sm max-h-[70vh] overflow-y-auto border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[4px_4px_0_0_#0F172A]">
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm max-h-[70vh] overflow-y-auto border-[2.5px] border-[#0F172A] rounded-[20px] sm:shadow-[4px_4px_0_0_#0F172A]">
             <DialogHeader><DialogTitle className={`${DISPLAY} font-extrabold`}>Following</DialogTitle></DialogHeader>
             <UsersList title="" userIds={following} showAll />
           </DialogContent>
