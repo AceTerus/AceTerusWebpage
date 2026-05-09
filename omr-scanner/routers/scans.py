@@ -87,6 +87,7 @@ async def _process_scan(job_id: str, image_path: str, exam_id: str) -> None:
         # 7. Mark done
         job.status             = JobStatus.done
         job.overall_confidence = result["overall_confidence"]
+        job.is_fallback        = result.get("is_fallback", False)
         db.commit()
 
         # 8. Notify frontend
