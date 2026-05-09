@@ -54,9 +54,9 @@ export default function QuizAnalysis({ analysis, loading, error }: QuizAnalysisP
           <div className="w-9 h-9 rounded-[10px] border-[2px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] flex items-center justify-center shrink-0" style={{ background: "#FFE4E6" }}>
             <AlertTriangle className="w-4 h-4" style={{ color: C.pop }} />
           </div>
-          <div>
-            <p className={`${DISPLAY} font-extrabold text-sm`} style={{ color: C.pop }}>AI analysis is under maintenance</p>
-            <p className="text-xs font-semibold text-slate-400 mt-0.5">Please try again later.</p>
+          <div className="min-w-0">
+            <p className={`${DISPLAY} font-extrabold text-sm`} style={{ color: C.pop }}>AI analysis failed</p>
+            <p className="text-xs font-semibold text-slate-500 mt-0.5 break-words">{error}</p>
           </div>
         </div>
       </div>
