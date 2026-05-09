@@ -51,7 +51,15 @@
       "Skill(ship)",
       "Bash(git checkout *)",
       "Bash(git merge *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(uvicorn main:socket_app --port 8080 --log-level debug)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\\\\omr-scanner\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)"
     ]
   }
 }

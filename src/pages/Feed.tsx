@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Brain, BookOpen, Scan, Users } from "lucide-react";
+import { Search, Brain, BookOpen, Scan, Users, CalendarDays } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ import { LikeButton } from "@/components/LikeButton";
 import { CommentSection } from "@/components/CommentSection";
 import { PostUpload } from "@/components/PostUpload";
 import { TodayGoalBanner } from "@/components/TodayGoalBanner";
+import { GoalSheet } from "@/components/GoalSheet";
 import { PostImageCarousel } from "@/components/PostImageCarousel";
 import { CommentPreview } from "@/components/CommentPreview";
 
@@ -70,6 +71,7 @@ export const Feed = () => {
   const [lightboxLoading, setLightboxLoading] = useState(false);
   const [lightboxError, setLightboxError] = useState(false);
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
+  const [showGoalSheet, setShowGoalSheet] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -317,7 +319,7 @@ export const Feed = () => {
 
           {/* Mobile: goal banner */}
           <div className="lg:hidden mb-4">
-            <TodayGoalBanner />
+            <TodayGoalBanner onSetGoal={() => setShowGoalSheet(true)} />
           </div>
 
           {/* Suggested strip — mobile, when feed is empty */}
@@ -511,8 +513,30 @@ export const Feed = () => {
         <aside className="hidden lg:block self-stretch">
           <div ref={sidebarRef} className="sticky flex flex-col gap-4">
 
-          {/* Today's goal — top of sidebar */}
-          <TodayGoalBanner />
+          {/* Goals card */}
+          <div className={SIDE_CARD}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-[12px] border-[2px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] flex items-center justify-center shrink-0" style={{ background: C.blue }}>
+                <CalendarDays className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className={`${DISPLAY} font-extrabold text-sm`}>My Goals</p>
+                <p className="text-xs font-semibold text-slate-400">Track your study plan</p>
+              </div>
+            </div>
+            <div className="rounded-[14px] border-[2px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] overflow-hidden mb-3">
+              <div className="p-3">
+                <TodayGoalBanner onSetGoal={() => setShowGoalSheet(true)} inline />
+              </div>
+            </div>
+            <button
+              onClick={() => setShowGoalSheet(true)}
+              className="w-full inline-flex items-center justify-center gap-2 font-extrabold font-['Baloo_2'] text-sm border-[2.5px] border-[#0F172A] rounded-full py-2.5 shadow-[3px_3px_0_0_#0F172A] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_#0F172A] transition-all text-white cursor-pointer"
+              style={{ background: C.blue }}
+            >
+              <CalendarDays className="w-4 h-4" /> Open Goals
+            </button>
+          </div>
 
           {/* Suggested people */}
           {suggestedUsers.length > 0 && (
@@ -569,6 +593,8 @@ export const Feed = () => {
           </div>
         </aside>
       </div>
+
+      <GoalSheet open={showGoalSheet} onClose={() => setShowGoalSheet(false)} />
 
       {/* Fullscreen lightbox — portalled to document.body to escape <main>'s compositing layer */}
       {currentLightboxPost && currentLightboxImage && createPortal(

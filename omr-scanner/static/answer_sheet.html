@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OMR Answer Sheet</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #d0d0d0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .print-btn { display: none; }
+      .page { box-shadow: none; margin: 0; }
+      @page { size: A4; margin: 0; }
+    }
+
+    .print-btn {
+      margin-bottom: 16px;
+      padding: 10px 28px;
+      background: #2F7CFF;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .print-btn:hover { background: #1a6be0; }
+
+    /* ── A4 canvas: 794 × 1123 px ── */
+    .page {
+      position: relative;
+      width: 794px;
+      height: 1123px;
+      background: white;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+
+    /* ── Corner fiducials for CropPage ── */
+    .corner {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      background: black;
+      z-index: 10;
+    }
+    .corner.tl { top: 0;    left: 0; }
+    .corner.tr { top: 0;    right: 0; }
+    .corner.bl { bottom: 0; left: 0; }
+    .corner.br { bottom: 0; right: 0; }
+
+    .border-box {
+      position: absolute;
+      top: 32px; left: 32px; right: 32px; bottom: 32px;
+      border: 2px solid #111;
+    }
+
+    /*
+      ──────────────────────────────────────────────────────────────────
+      BUBBLE  — left/top = exact CENTRE from omr_template.json
+                transform pulls element so its visual centre sits there
+      Template: origin [520,195], bubblesGap 52, labelsGap 96, size 38×38
+      ──────────────────────────────────────────────────────────────────
+    */
+    .bubble {
+      position: absolute;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 2px solid #111;
+      transform: translate(-19px, -19px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #222;
+      background: white;
+    }
+
+    /*
+      ── Column header — also centred on bubble x-axis.
+         left = bubble_x − 19  (same offset as bubbles)
+         width = 38px, text-align: center → letter sits directly above bubble
+    */
+    .col-hdr {
+      position: absolute;
+      width: 38px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 800;
+      color: #111;
+    }
+
+    /*
+      ── Question row
+         top  = bubble_y − 19   (row top aligned with bubble top)
+         height = 38px           (same height as bubble)
+         display: flex + align-items: center → content vertically centred
+    */
+    .q-row {
+      position: absolute;
+      left: 50px;
+      width: 452px;           /* 50px→502px, bubble left edge is 501px */
+      height: 38px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .q-num {
+      flex-shrink: 0;
+      width: 18px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #111;
+      text-align: right;
+    }
+
+    .q-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+    }
+    .q-text .stem {
+      font-size: 11px;
+      font-weight: 600;
+      color: #111;
+      line-height: 1.25;
+    }
+    .q-text .opts {
+      font-size: 10px;
+      color: #555;
+      line-height: 1.2;
+    }
+
+    /* Thin divider between rows */
+    .row-sep {
+      position: absolute;
+      left: 50px;
+      right: 50px;
+      height: 1px;
+      background: #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+
+  <button class="print-btn" onclick="window.print()">Print Answer Sheet</button>
+
+  <div class="page">
+
+    <!-- Corner fiducials -->
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div class="border-box"></div>
+
+    <!-- Student ID OCR strip — x=300, y=5, w=200, h=18 -->
+    <span style="position:absolute; left:196px; top:6px; font-size:10px; font-weight:700; color:#333;">STUDENT ID:</span>
+    <div style="position:absolute; left:300px; top:5px; width:200px; height:18px; border:1.5px solid #333;"></div>
+
+    <!-- Header -->
+    <div style="position:absolute; left:50px; top:46px; font-size:19px; font-weight:900; letter-spacing:2px; text-transform:uppercase; color:#111;">OMR Answer Sheet</div>
+    <div style="position:absolute; left:50px; top:73px; font-size:10px; color:#777;">AceTerus &nbsp;|&nbsp; Use a dark pen or pencil &nbsp;|&nbsp; Fill bubbles completely &nbsp;|&nbsp; Do not fold</div>
+
+    <div style="position:absolute; left:50px; right:50px; top:92px; height:1px; background:#bbb;"></div>
+
+    <!-- Exam / Name fields -->
+    <span style="position:absolute; left:50px;  top:104px; font-size:11px; font-weight:700; color:#111;">EXAM:</span>
+    <div  style="position:absolute; left:94px;  top:104px; width:270px; border-bottom:1.5px solid #444;"></div>
+
+    <span style="position:absolute; left:400px; top:104px; font-size:11px; font-weight:700; color:#111;">CLASS:</span>
+    <div  style="position:absolute; left:444px; top:104px; width:100px; border-bottom:1.5px solid #444;"></div>
+
+    <span style="position:absolute; left:578px; top:104px; font-size:11px; font-weight:700; color:#111;">DATE:</span>
+    <div  style="position:absolute; left:614px; top:104px; width:130px; border-bottom:1.5px solid #444;"></div>
+
+    <span style="position:absolute; left:50px;  top:128px; font-size:11px; font-weight:700; color:#111;">NAME:</span>
+    <div  style="position:absolute; left:94px;  top:128px; width:650px; border-bottom:1.5px solid #444;"></div>
+
+    <div style="position:absolute; left:50px; right:50px; top:154px; height:1px; background:#bbb;"></div>
+
+    <!-- Instructions -->
+    <span style="position:absolute; left:50px; top:164px; font-size:9.5px; color:#666; font-style:italic;">
+      Fill ONE bubble per question. Use black or blue pen. Mark clearly inside the circle.
+    </span>
+
+    <!--
+      ════════════════════════════════════════════════════════════
+      Column headers — left = bubble_x − 19, so the letter sits
+      directly above the bubble centre.
+        A: x=520 → left=501
+        B: x=572 → left=553
+        C: x=624 → left=605
+        D: x=676 → left=657
+      ════════════════════════════════════════════════════════════
+    -->
+    <div class="col-hdr" style="left:501px; top:178px;">A</div>
+    <div class="col-hdr" style="left:553px; top:178px;">B</div>
+    <div class="col-hdr" style="left:605px; top:178px;">C</div>
+    <div class="col-hdr" style="left:657px; top:178px;">D</div>
+    <!-- thin underline below headers, spanning all four bubble columns -->
+    <div style="position:absolute; left:501px; top:193px; width:194px; height:1.5px; background:#888;"></div>
+
+    <!--
+      ════════════════════════════════════════════════════════════
+      QUESTION ROWS
+      Each .q-row: top = bubble_y − 19, height = 38px
+      This makes the row exactly flush with the bubble height,
+      and flexbox centres the text vertically.
+
+      Bubble centres:
+        Q1 y=195  Q2 y=291  Q3 y=387
+        Q4 y=483  Q5 y=579  Q6 y=675
+      ════════════════════════════════════════════════════════════
+    -->
+
+    <!-- Q1  bubble centre y=195  → row top=176 -->
+    <div class="q-row" style="top:176px;">
+      <span class="q-num">1</span>
+      <div class="q-text">
+        <span class="stem">Which planet is closest to the Sun?</span>
+        <span class="opts">A) Venus &nbsp; B) Mercury &nbsp; C) Mars &nbsp; D) Earth</span>
+      </div>
+    </div>
+    <div class="bubble" style="left:520px; top:195px;">A</div>
+    <div class="bubble" style="left:572px; top:195px;">B</div>
+    <div class="bubble" style="left:624px; top:195px;">C</div>
+    <div class="bubble" style="left:676px; top:195px;">D</div>
+    <div class="row-sep" style="top:214px;"></div>
+
+    <!-- Q2  bubble centre y=291  → row top=272 -->
+    <div class="q-row" style="top:272px;">
+      <span class="q-num">2</span>
+      <div class="q-text">
+        <span class="stem">What is the chemical symbol for water?</span>
+        <span class="opts">A) HO &nbsp; B) H₂O &nbsp; C) H₂O₂ &nbsp; D) OH</span>
+      </div>
+    </div>
+    <div class="bubble" style="left:520px; top:291px;">A</div>
+    <div class="bubble" style="left:572px; top:291px;">B</div>
+    <div class="bubble" style="left:624px; top:291px;">C</div>
+    <div class="bubble" style="left:676px; top:291px;">D</div>
+    <div class="row-sep" style="top:310px;"></div>
+
+    <!-- Q3  bubble centre y=387  → row top=368 -->
+    <div class="q-row" style="top:368px;">
+      <span class="q-num">3</span>
+      <div class="q-text">
+        <span class="stem">Who wrote <em>Romeo and Juliet</em>?</span>
+        <span class="opts">A) Charles Dickens &nbsp; B) Jane Austen &nbsp; C) William Shakespeare &nbsp; D) Homer</span>
+      </div>
+    </div>
+    <div class="bubble" style="left:520px; top:387px;">A</div>
+    <div class="bubble" style="left:572px; top:387px;">B</div>
+    <div class="bubble" style="left:624px; top:387px;">C</div>
+    <div class="bubble" style="left:676px; top:387px;">D</div>
+    <div class="row-sep" style="top:406px;"></div>
+
+    <!-- Q4  bubble centre y=483  → row top=464 -->
+    <div class="q-row" style="top:464px;">
+      <span class="q-num">4</span>
+      <div class="q-text">
+        <span class="stem">What is the value of π (pi) to two decimal places?</span>
+        <span class="opts">A) 3.12 &nbsp; B) 3.41 &nbsp; C) 3.14 &nbsp; D) 3.16</span>
+      </div>
+    </div>
+    <div class="bubble" style="left:520px; top:483px;">A</div>
+    <div class="bubble" style="left:572px; top:483px;">B</div>
+    <div class="bubble" style="left:624px; top:483px;">C</div>
+    <div class="bubble" style="left:676px; top:483px;">D</div>
+    <div class="row-sep" style="top:502px;"></div>
+
+    <!-- Q5  bubble centre y=579  → row top=560 -->
+    <div class="q-row" style="top:560px;">
+      <span class="q-num">5</span>
+      <div class="q-text">
+        <span class="stem">Which organ pumps blood through the human body?</span>
+        <span class="opts">A) Liver &nbsp; B) Lungs &nbsp; C) Kidney &nbsp; D) Heart</span>
+      </div>
+    </div>
+    <div class="bubble" style="left:520px; top:579px;">A</div>
+    <div class="bubble" style="left:572px; top:579px;">B</div>
+    <div class="bubble" style="left:624px; top:579px;">C</div>
+    <div class="bubble" style="left:676px; top:579px;">D</div>
+    <div class="row-sep" style="top:598px;"></div>
+
+    <!-- Q6  bubble centre y=675  → row top=656 -->
+    <div class="q-row" style="top:656px;">
+      <span class="q-num">6</span>
+      <div class="q-text">
+        <span class="stem">In which year did Malaysia gain independence?</span>
+        <span class="opts">A) 1963 &nbsp; B) 1945 &nbsp; C) 1957 &nbsp; D) 1970</span>
+      </div>
+    </div>
+    <div class="bubble" style="left:520px; top:675px;">A</div>
+    <div class="bubble" style="left:572px; top:675px;">B</div>
+    <div class="bubble" style="left:624px; top:675px;">C</div>
+    <div class="bubble" style="left:676px; top:675px;">D</div>
+    <div class="row-sep" style="top:694px;"></div>
+
+    <!-- Footer -->
+    <div style="position:absolute; left:50px; right:50px; top:760px; height:1px; background:#bbb;"></div>
+    <span style="position:absolute; left:50px; top:770px; font-size:9px; color:#aaa;">
+      AceTerus OMR Answer Sheet &nbsp;|&nbsp; Do not fold or crumple &nbsp;|&nbsp; Keep markings within circles
+    </span>
+
+  </div>
+
+</body>
+</html>
