@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { usePomodoro, WORK_SECS, BREAK_SECS } from "@/context/PomodoroContext";
 import {
   X, Plus, Sparkles, BookOpen, Check, Trash2,
@@ -684,7 +685,7 @@ export const GoalSheet = ({
   const completedCount = goals.filter((g) => g.completed).length;
   const remainingCount = goals.filter((g) => !g.completed).length;
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm gs-backdrop" onClick={onClose} />
@@ -875,6 +876,7 @@ export const GoalSheet = ({
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 };

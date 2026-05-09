@@ -275,7 +275,7 @@ Return this JSON structure only (all values in Bahasa Malaysia):
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+          generationConfig: { temperature: 0.4, maxOutputTokens: 8192 },
         }),
       }
     );
