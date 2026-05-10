@@ -60,7 +60,8 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\\\\omr-scanner\" -Recurse)",
       "Bash(Select-Object FullName)",
       "Bash(Sort-Object FullName)",
-      "Skill(investigate)"
+      "Skill(investigate)",
+      "Bash(git lfs *)"
     ]
   }
 }
