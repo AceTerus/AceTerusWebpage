@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Mic, MicOff, Square, Clock, Users, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Mic, MicOff, Square, Users, Loader2, CheckCircle2 } from "lucide-react";
+import { useDeepgramTranscript } from "../hooks/useDeepgramTranscript";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -16,13 +17,6 @@ interface Session {
   objective_text: string;
   key_concepts: string[];
   status: "pending" | "active" | "completed";
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
 }
 
 function generateReport(
@@ -97,26 +91,17 @@ export default function LiveSession() {
 
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [transcript, setTranscript] = useState("");
-  const [interimText, setInterimText] = useState("");
-  const [isListening, setIsListening] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [teacherActiveSeconds, setTeacherActiveSeconds] = useState(0);
   const [endingSession, setEndingSession] = useState(false);
   const [endingMessage, setEndingMessage] = useState("Generating Report…");
-  const [speechSupported, setSpeechSupported] = useState(true);
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const { finalTranscript: transcript, interimText, isListening, start, stop } = useDeepgramTranscript();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptRef = useRef(transcript);
   transcriptRef.current = transcript;
-
-  useEffect(() => {
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionAPI) setSpeechSupported(false);
-  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -131,45 +116,6 @@ export default function LiveSession() {
       });
   }, [id]);
 
-  const startListening = useCallback(() => {
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionAPI) return;
-
-    const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-MY";
-
-    recognition.onresult = (event) => {
-      let interim = "";
-      let final = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          final += event.results[i][0].transcript + " ";
-        } else {
-          interim += event.results[i][0].transcript;
-        }
-      }
-      if (final) setTranscript((prev) => prev + final);
-      setInterimText(interim);
-    };
-
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => {
-      if (isListening) recognition.start();
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  }, [isListening]);
-
-  const stopListening = () => {
-    recognitionRef.current?.stop();
-    setIsListening(false);
-    setInterimText("");
-  };
-
   const startSession = async () => {
     if (!session || !user) return;
     await supabase
@@ -181,7 +127,7 @@ export default function LiveSession() {
     setSession((s) => s ? { ...s, status: "active" } : s);
 
     timerRef.current = setInterval(() => setSessionSeconds((n) => n + 1), 1000);
-    startListening();
+    start();
   };
 
   useEffect(() => {
@@ -196,7 +142,7 @@ export default function LiveSession() {
   const endSession = async () => {
     if (!session || !user) return;
     setEndingSession(true);
-    stopListening();
+    stop();
     if (timerRef.current) clearInterval(timerRef.current);
 
     const finalTranscript = transcriptRef.current;
@@ -303,7 +249,6 @@ export default function LiveSession() {
 
   useEffect(() => {
     return () => {
-      recognitionRef.current?.stop();
       if (timerRef.current) clearInterval(timerRef.current);
       if (activeTimerRef.current) clearInterval(activeTimerRef.current);
     };
@@ -402,13 +347,6 @@ export default function LiveSession() {
 
             {/* Mic control */}
             <div className={`${CARD} p-5 flex flex-col items-center gap-4`}>
-              {!speechSupported && (
-                <div className="flex items-center gap-2 text-[13px] font-semibold font-['Nunito'] text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 w-full">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  Speech recognition requires Chrome. Transcription unavailable.
-                </div>
-              )}
-
               {!sessionStarted ? (
                 <button
                   onClick={startSession}
@@ -419,7 +357,7 @@ export default function LiveSession() {
               ) : (
                 <div className="flex flex-col items-center gap-3 w-full">
                   <button
-                    onClick={isListening ? stopListening : startListening}
+                    onClick={isListening ? stop : start}
                     className={`flex items-center gap-2 px-6 py-3 rounded-xl border-[2.5px] border-[#0F172A] font-bold font-['Nunito'] text-[14px] shadow-[3px_3px_0_0_#0F172A] hover:-translate-y-0.5 transition-all text-white ${
                       isListening ? "bg-amber-500 hover:shadow-[4px_4px_0_0_#0F172A]" : "bg-[#2F7CFF]"
                     }`}

@@ -86,7 +86,7 @@ export default function OmrScanner() {
   // ── Admin: tab & setup ───────────────────────────────────────────────────
   const [adminTab,      setAdminTab]      = useState<"setup" | "scan" | "review">("setup");
   const [examTitle,     setExamTitle]     = useState("");
-  const [examQuestions, setExamQuestions] = useState("40");
+  const [examQuestions, setExamQuestions] = useState("20");
   const [examDate,      setExamDate]      = useState("");
   const [answerKeyText, setAnswerKeyText] = useState("");
   const [saving,        setSaving]        = useState(false);
@@ -235,14 +235,14 @@ export default function OmrScanner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title:           examTitle.trim(),
-          total_questions: parseInt(examQuestions) || 40,
+          total_questions: parseInt(examQuestions) || 20,
           exam_date:       examDate,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(JSON.stringify(data.detail ?? data));
       setSetupMsg({ text: `Exam "${data.title}" created.`, type: "success" });
-      setExamTitle(""); setExamDate(""); setExamQuestions("40");
+      setExamTitle(""); setExamDate(""); setExamQuestions("20");
       const list = await fetch(`${OMR_API}/api/exams`);
       setExams(await list.json());
     } catch (e: any) {

@@ -1,19 +1,27 @@
 {
   "pageDimensions": [794, 1123],
-
-  "bubbleDimensions": [38, 38],
+  "bubbleDimensions": [32, 32],
 
   "preProcessors": [
-    {"name": "CropPage", "options": {}}
+    { "name": "CropPage",      "options": { "morphKernel": [10, 10] } },
+    { "name": "CropOnMarkers", "options": { "relativePath": "omr_marker.jpg", "sheetToMarkerWidthRatio": 17 } }
   ],
 
   "fieldBlocks": {
-    "Questions": {
-      "fieldLabels": ["q1..6"],
+    "MCQ_Q1_to_Q10": {
+      "fieldLabels": ["q1..10"],
       "bubbleValues": ["A", "B", "C", "D"],
-      "origin": [520, 195],
-      "bubblesGap": 52,
-      "labelsGap": 96,
+      "origin":    [155, 225],
+      "bubblesGap": 40,
+      "labelsGap":  75,
+      "direction": "horizontal"
+    },
+    "MCQ_Q11_to_Q20": {
+      "fieldLabels": ["q11..20"],
+      "bubbleValues": ["A", "B", "C", "D"],
+      "origin":    [519, 225],
+      "bubblesGap": 40,
+      "labelsGap":  75,
       "direction": "horizontal"
     }
   }

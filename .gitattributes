@@ -1,0 +1,4 @@
+# Treat AR assets as binary to prevent git from mangling bytes on Windows
+*.glb   binary
+*.gltf  binary
+*.mind  binary
