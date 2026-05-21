@@ -44,6 +44,14 @@ function AdminNavbar() {
           >
             <ExternalLink className="w-3.5 h-3.5" /> Events
           </a>
+          <a
+            href="https://classpulse.aceterus.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-[2px] border-[#0F172A]/20 text-[13px] font-bold font-['Nunito'] text-[#0F172A]/60 hover:border-[#0F172A] hover:text-[#0F172A] transition-all"
+          >
+            <ExternalLink className="w-3.5 h-3.5" /> ClassPulse
+          </a>
           {user && (
             <button
               onClick={() => signOut()}

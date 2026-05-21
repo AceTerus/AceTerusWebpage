@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, User, Compass, FileText, MessageCircle, ScanLine } from "lucide-react";
+import { BookOpen, User, Compass, School, MessageCircle, ScanLine } from "lucide-react";
 import { useChatNotifications } from "@/context/ChatNotificationsContext";
 
 export const MobileNav = () => {
@@ -18,7 +18,7 @@ export const MobileNav = () => {
       badge: totalSenders > 0 ? Math.min(totalSenders, 99) : undefined,
     },
     { href: "/quiz", label: "Quiz", icon: BookOpen },
-    { href: "/materials", label: "Materials", icon: FileText },
+    { href: "/materials", label: "Classroom", icon: School },
     { href: "/ar-scanner", label: "AR", icon: ScanLine },
     { href: "/profile", label: "Profile", icon: User },
   ];

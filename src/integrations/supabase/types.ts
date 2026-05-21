@@ -14,6 +14,171 @@ export type Database = {
   }
   public: {
     Tables: {
+      class_sessions: {
+        Row: {
+          id: string
+          teacher_id: string
+          class_name: string
+          subject: string
+          objective_text: string
+          key_concepts: string[]
+          started_at: string | null
+          ended_at: string | null
+          transcript_text: string | null
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          teacher_id: string
+          class_name: string
+          subject: string
+          objective_text: string
+          key_concepts?: string[]
+          started_at?: string | null
+          ended_at?: string | null
+          transcript_text?: string | null
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          teacher_id?: string
+          class_name?: string
+          subject?: string
+          objective_text?: string
+          key_concepts?: string[]
+          started_at?: string | null
+          ended_at?: string | null
+          transcript_text?: string | null
+          status?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      classpulse_users: {
+        Row: {
+          user_id: string
+          role: string
+          school_name: string | null
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          role: string
+          school_name?: string | null
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          role?: string
+          school_name?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      conclusion_reports: {
+        Row: {
+          id: string
+          session_id: string
+          coverage_score: number | null
+          teacher_talk_ratio: number | null
+          student_participation_count: number | null
+          concepts_covered: string[]
+          concepts_missed: string[]
+          ai_coaching_note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          coverage_score?: number | null
+          teacher_talk_ratio?: number | null
+          student_participation_count?: number | null
+          concepts_covered?: string[]
+          concepts_missed?: string[]
+          ai_coaching_note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          coverage_score?: number | null
+          teacher_talk_ratio?: number | null
+          student_participation_count?: number | null
+          concepts_covered?: string[]
+          concepts_missed?: string[]
+          ai_coaching_note?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      student_session_summaries: {
+        Row: {
+          id: string
+          session_id: string
+          class_name: string
+          subject: string
+          date: string
+          covered_notes: string | null
+          key_terms: Json
+          gap_notes: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          class_name: string
+          subject: string
+          date: string
+          covered_notes?: string | null
+          key_terms?: Json
+          gap_notes?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          class_name?: string
+          subject?: string
+          date?: string
+          covered_notes?: string | null
+          key_terms?: Json
+          gap_notes?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      flagged_concepts: {
+        Row: {
+          id: string
+          session_id: string
+          class_name: string
+          concept_name: string
+          pushed_to_students_at: string | null
+          resolved: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          class_name: string
+          concept_name: string
+          pushed_to_students_at?: string | null
+          resolved?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          class_name?: string
+          concept_name?: string
+          pushed_to_students_at?: string | null
+          resolved?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
       authenthication: {
         Row: {
           email: string
