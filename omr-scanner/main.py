@@ -35,7 +35,7 @@ def _run_migrations():
     with engine.connect() as conn:
         migrations = [
             # Add is_fallback column if missing (added 2026-04-13)
-            "ALTER TABLE scan_jobs ADD COLUMN is_fallback BOOLEAN DEFAULT 0",
+            "ALTER TABLE scan_jobs ADD COLUMN IF NOT EXISTS is_fallback BOOLEAN DEFAULT FALSE",
         ]
         for sql in migrations:
             try:
