@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { SignInGate } from '@/components/SignInGate';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,7 +11,8 @@ import { fetchMutualFollowIds } from '@/hooks/useMutualFollow';
 import { useToast } from '@/hooks/use-toast';
 import {
   FileText, Download, Trash2, User, Eye, File,
-  FileSpreadsheet, Image as ImageIcon, Monitor, BookOpen,
+  FileSpreadsheet, Image as ImageIcon, Monitor, School,
+  ChevronDown, ChevronUp, BookOpenCheck, AlertCircle, Sparkles,
 } from 'lucide-react';
 import { UploadLikeButton } from '@/components/UploadLikeButton';
 import { UploadCommentSection } from '@/components/UploadCommentSection';
@@ -238,10 +239,238 @@ const PreviewDialog = ({
   );
 };
 
+// ── ClassPulse student section ────────────────────────────────────────────────
+
+interface StudentSummary {
+  id: string;
+  session_id: string;
+  class_name: string;
+  subject: string;
+  date: string;
+  covered_notes: string | null;
+  key_terms: { term: string; definition: string }[];
+  gap_notes: { concept: string; explanation: string; example: string }[];
+  created_at: string;
+}
+
+interface FlaggedConcept {
+  id: string;
+  session_id: string;
+  class_name: string;
+  concept_name: string;
+  resolved: boolean;
+  created_at: string;
+}
+
+const ClassPulseSummaryCard = ({ summary, flagged }: { summary: StudentSummary; flagged: FlaggedConcept[] }) => {
+  const navigate = useNavigate();
+  const [expanded, setExpanded] = useState(false);
+  const sessionFlagged = flagged.filter((f) => f.session_id === summary.session_id && !f.resolved);
+  const bullets = summary.covered_notes
+    ? summary.covered_notes.split("\n").filter(Boolean)
+    : [];
+
+  return (
+    <div className={`${CARD} overflow-hidden`} style={{ borderColor: C.blue, boxShadow: `3px 3px 0 0 ${C.blue}` }}>
+      {/* Header */}
+      <div className="px-5 py-4 flex items-start justify-between gap-3" style={{ background: '#DDF3FF' }}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <BookOpenCheck className="w-4 h-4" style={{ color: C.blue }} />
+            <span className="text-[11px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full border border-[#2F7CFF]/30 text-[#2F7CFF] bg-white">
+              {summary.subject}
+            </span>
+            <span className="text-[11px] font-bold font-['Nunito'] text-[#0F172A]/50 border border-[#0F172A]/15 rounded-full px-2 py-0.5 bg-white">
+              {summary.class_name}
+            </span>
+          </div>
+          <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A]`}>
+            Class Notes · {format(new Date(summary.date), 'd MMM yyyy')}
+          </p>
+        </div>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1 text-[12px] font-bold font-['Nunito'] text-[#2F7CFF] hover:text-[#2E2BE5] transition-colors shrink-0"
+        >
+          {expanded ? <><ChevronUp className="w-3.5 h-3.5" /> Less</> : <><ChevronDown className="w-3.5 h-3.5" /> More</>}
+        </button>
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Section A — What We Covered */}
+        <div>
+          <p className="font-['Nunito'] text-[11px] font-bold text-[#0F172A]/50 uppercase tracking-wider mb-2">
+            What We Covered Today
+          </p>
+          <ul className="space-y-1">
+            {bullets.slice(0, expanded ? undefined : 3).map((b, i) => (
+              <li key={i} className="flex items-start gap-2 font-['Nunito'] text-[13px] text-[#0F172A]/80">
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: C.blue }} />
+                {b}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {expanded && summary.key_terms.length > 0 && (
+          <div>
+            <p className="font-['Nunito'] text-[11px] font-bold text-[#0F172A]/50 uppercase tracking-wider mb-2">Key Terms</p>
+            <div className="space-y-1.5">
+              {summary.key_terms.map((kt) => (
+                <div key={kt.term} className="flex gap-2 font-['Nunito'] text-[13px]">
+                  <span className="font-bold text-[#0F172A] shrink-0">{kt.term}:</span>
+                  <span className="text-[#0F172A]/70">{kt.definition}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Section B — Gap Notes */}
+        {summary.gap_notes.length > 0 && (
+          <div className="pt-3 border-t-[2px] border-[#0F172A]/10">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertCircle className="w-4 h-4 text-amber-500" />
+              <p className="font-['Nunito'] text-[11px] font-bold text-amber-600 uppercase tracking-wider">
+                Your teacher may not have had time to cover these — here's what you need to know
+              </p>
+            </div>
+            <div className="space-y-3">
+              {summary.gap_notes.slice(0, expanded ? undefined : 1).map((gn) => (
+                <div key={gn.concept} className="rounded-[14px] border-[2px] border-amber-200 bg-amber-50 p-3 space-y-1">
+                  <p className={`${DISPLAY} font-extrabold text-[13px] text-amber-700`}>{gn.concept}</p>
+                  <p className="font-['Nunito'] text-[12px] text-amber-700/80">{gn.explanation}</p>
+                  {expanded && gn.example && (
+                    <p className="font-['Nunito'] text-[11px] text-amber-600/70 italic">Example: {gn.example}</p>
+                  )}
+                  <button
+                    onClick={() => navigate('/quiz')}
+                    className="mt-1 flex items-center gap-1 text-[11px] font-bold font-['Nunito'] text-[#2E2BE5] hover:underline"
+                  >
+                    <Sparkles className="w-3 h-3" /> Practice this →
+                  </button>
+                </div>
+              ))}
+              {!expanded && summary.gap_notes.length > 1 && (
+                <button onClick={() => setExpanded(true)} className="text-[12px] font-bold font-['Nunito'] text-amber-600 hover:underline">
+                  +{summary.gap_notes.length - 1} more gap notes
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Flagged concept banners */}
+        {sessionFlagged.length > 0 && (
+          <div className="pt-3 border-t-[2px] border-[#0F172A]/10 space-y-2">
+            {sessionFlagged.map((fc) => (
+              <div key={fc.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#D6D4FF] border border-[#2E2BE5]/30">
+                <Sparkles className="w-3.5 h-3.5 text-[#2E2BE5] shrink-0" />
+                <p className="font-['Nunito'] text-[12px] font-bold text-[#2E2BE5] flex-1">
+                  Your teacher flagged <strong>{fc.concept_name}</strong> from today's class.
+                </p>
+                <button
+                  onClick={() => navigate('/quiz')}
+                  className="text-[11px] font-bold font-['Nunito'] text-[#2E2BE5] underline hover:no-underline shrink-0"
+                >
+                  Try questions →
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ClassPulseSection = ({ userId }: { userId: string }) => {
+  const [summaries, setSummaries] = useState<StudentSummary[]>([]);
+  const [flagged, setFlagged] = useState<FlaggedConcept[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadClassPulseData();
+  }, [userId]);
+
+  const loadClassPulseData = async () => {
+    setLoading(true);
+
+    const { data: schoolsData } = await supabase
+      .from('student_schools')
+      .select('class_name')
+      .eq('user_id', userId);
+
+    const classNames = (schoolsData || [])
+      .map((s: any) => s.class_name)
+      .filter(Boolean) as string[];
+
+    if (classNames.length === 0) {
+      setLoading(false);
+      return;
+    }
+
+    const [{ data: summaryData }, { data: flaggedData }] = await Promise.all([
+      supabase
+        .from('student_session_summaries')
+        .select('*')
+        .in('class_name', classNames)
+        .order('date', { ascending: false })
+        .limit(20),
+      supabase
+        .from('flagged_concepts')
+        .select('*')
+        .in('class_name', classNames)
+        .eq('resolved', false)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    setSummaries((summaryData as StudentSummary[]) || []);
+    setFlagged((flaggedData as FlaggedConcept[]) || []);
+    setLoading(false);
+  };
+
+  if (loading) return (
+    <div className="space-y-3">
+      {[1, 2].map(i => (
+        <div key={i} className="rounded-[20px] border-[2.5px] border-[#2F7CFF]/30 overflow-hidden">
+          <Skeleton className="h-16 w-full rounded-none" />
+          <div className="p-5 space-y-2">
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-3 w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (summaries.length === 0) return (
+    <div className={`${CARD} py-10 flex flex-col items-center gap-3 text-center px-6`}
+      style={{ borderColor: C.blue, boxShadow: `3px 3px 0 0 ${C.blue}` }}>
+      <div className="w-12 h-12 rounded-[16px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] flex items-center justify-center" style={{ background: '#DDF3FF' }}>
+        <BookOpenCheck className="w-5 h-5" style={{ color: C.blue }} />
+      </div>
+      <p className={`${DISPLAY} font-extrabold text-[17px] text-[#0F172A]`}>No class notes yet</p>
+      <p className="font-['Nunito'] text-[13px] text-[#0F172A]/50 max-w-xs">
+        Your AI-generated class summaries and gap notes will appear here once your teacher uses ClassPulse.
+      </p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {summaries.map((s) => (
+        <ClassPulseSummaryCard key={s.id} summary={s} flagged={flagged} />
+      ))}
+    </div>
+  );
+};
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export const Materials = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -249,7 +478,7 @@ export const Materials = () => {
   const [previewUpload, setPreviewUpload] = useState<Upload | null>(null);
 
   useEffect(() => {
-    document.title = "Study Materials – AceTerus";
+    document.title = "Classroom – AceTerus";
     return () => { document.title = "AceTerus – AI Tutor & Quiz Platform for Malaysian Students"; };
   }, []);
   useEffect(() => {
@@ -400,16 +629,40 @@ export const Materials = () => {
               className="w-11 h-11 rounded-[14px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] flex items-center justify-center shrink-0"
               style={{ background: C.blue }}
             >
-              <BookOpen className="w-5 h-5 text-white" />
+              <School className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className={`${DISPLAY} font-extrabold text-3xl leading-tight`}>Materials</h1>
-              <p className="text-sm font-semibold text-slate-400">Share and discover study materials</p>
+              <h1 className={`${DISPLAY} font-extrabold text-3xl leading-tight`}>Classroom</h1>
+              <p className="text-sm font-semibold text-slate-400">Class notes, materials, and more</p>
             </div>
           </div>
         </div>
 
+        {/* ── ClassPulse Section ── */}
+        <div className="space-y-4 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-[10px] border-[2px] border-[#2F7CFF] flex items-center justify-center" style={{ background: '#DDF3FF' }}>
+                <BookOpenCheck className="w-3.5 h-3.5 text-[#2F7CFF]" />
+              </div>
+              <p className={`${DISPLAY} font-extrabold text-lg text-[#0F172A]`}>My Class Notes</p>
+            </div>
+            <span className="text-[11px] font-bold font-['Nunito'] px-2.5 py-0.5 rounded-full border border-[#2F7CFF]/30 text-[#2F7CFF] bg-[#DDF3FF]">
+              ClassPulse
+            </span>
+          </div>
+          <ClassPulseSection userId={user!.id} />
+        </div>
+
         <div className="space-y-5">
+          <div className="border-t-[2.5px] border-[#0F172A]/10 pt-6">
+            <div className="flex items-center gap-2 mb-5">
+              <div className="w-7 h-7 rounded-[10px] border-[2px] border-[#0F172A] flex items-center justify-center bg-white">
+                <FileText className="w-3.5 h-3.5 text-[#0F172A]" />
+              </div>
+              <p className={`${DISPLAY} font-extrabold text-lg text-[#0F172A]`}>Study Materials</p>
+            </div>
+          </div>
           <FileUpload onUploadCreated={fetchUploads} />
 
           {/* ── Filter toggle ── */}

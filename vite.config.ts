@@ -24,9 +24,10 @@ export default defineConfig(({ mode }) => ({
     target: ['chrome90', 'firefox88', 'safari14', 'edge90'],
     rollupOptions: {
       input: {
-        main:   path.resolve(__dirname, "index.html"),
-        events: path.resolve(__dirname, "events.html"),
-        admin:  path.resolve(__dirname, "admin.html"),
+        main:       path.resolve(__dirname, "index.html"),
+        events:     path.resolve(__dirname, "events.html"),
+        admin:      path.resolve(__dirname, "admin.html"),
+        classpulse: path.resolve(__dirname, "classpulse.html"),
       },
       output: {
         manualChunks: {

@@ -1,6 +1,20 @@
-# AceTerus Flutter App — Claude Context
+# CLAUDE.md — AceTerus Flutter Mobile App
 
 This is the Flutter mobile app for **AceTerus**, a production AI-powered education platform for Malaysian students. The web app is live at `https://aceterus.com`. This Flutter app shares the **exact same Supabase backend** — no backend changes are needed.
+
+---
+
+## Commands
+
+```bash
+flutter pub get          # Install dependencies
+flutter run              # Run on connected device/emulator
+flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...
+flutter build apk        # Android release build
+flutter build ios        # iOS release build
+flutter analyze          # Static analysis
+flutter test             # Run tests
+```
 
 ---
 
@@ -26,7 +40,8 @@ await Supabase.initialize(
 ### `profiles`
 | Column | Type | Notes |
 |---|---|---|
-| user_id | UUID PK | References auth.users |
+| id | UUID PK | Internal row ID |
+| user_id | UUID UNIQUE | = auth.uid() — use this for all JOINs |
 | username | TEXT | Unique display name |
 | avatar_url | TEXT | Public URL from `profile-images` bucket |
 | cover_url | TEXT | Cover photo |
@@ -35,146 +50,10 @@ await Supabase.initialize(
 | following_count | INTEGER | Denormalised |
 | is_admin | BOOLEAN | Admin users can manage quiz content |
 | ace_coins | INTEGER | Gamification currency, starts at 1000 |
+| streak | INTEGER | Current streak count |
+| last_quiz_date | DATE | Used for 3-day inactivity reset |
 
-### `decks`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| name | TEXT | |
-| description | TEXT | |
-| subject | TEXT | e.g. "Sejarah", "Matematik" |
-| created_by | UUID | Admin only |
-| is_published | BOOLEAN | False = draft, not visible to students |
-| quiz_type | TEXT | `'objective'` or `'subjective'` |
-| category_id | UUID | FK → categories |
-
-### `questions`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| deck_id | UUID FK | |
-| text | TEXT | |
-| explanation | TEXT | Shown after answering |
-| image_url | TEXT | Optional question image |
-| order | INTEGER | Sort order in deck |
-| marks | INTEGER | Used for subjective grading |
-
-### `answers`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| question_id | UUID FK | |
-| text | TEXT | |
-| is_correct | BOOLEAN | |
-| image_url | TEXT | Optional answer image |
-
-### `quiz_results`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| user_id | UUID FK | |
-| deck_id | UUID FK | |
-| deck_name | TEXT | Snapshot name |
-| category | TEXT | |
-| score | NUMERIC | Percentage 0-100 |
-| correct_count | INTEGER | |
-| wrong_count | INTEGER | |
-| skipped_count | INTEGER | |
-| total_count | INTEGER | |
-| questions_data | JSONB | Full per-question result snapshot |
-| completed_at | TIMESTAMPTZ | |
-
-### `quiz_performance_results`
-AI analysis result cached after each attempt.
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| quiz_result_id | UUID FK | |
-| user_id | UUID FK | |
-| deck_id | UUID FK | |
-| analysis | JSONB | See edge function response format |
-| completed_at | TIMESTAMPTZ | |
-
-### `posts`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| user_id | UUID FK | |
-| content | TEXT | |
-| image_url | TEXT | Legacy single image |
-| tags | TEXT[] | |
-| likes_count | INTEGER | Denormalised |
-| comments_count | INTEGER | Denormalised |
-
-### `post_images`
-Multiple images per post (carousel).
-| Column | Type |
-|---|---|
-| id | UUID PK |
-| post_id | UUID FK |
-| file_url | TEXT |
-| position | INTEGER |
-
-### `follows`
-| Column | Type |
-|---|---|
-| follower_id | UUID |
-| followed_id | UUID |
-
-### `post_likes`
-| Column | Type |
-|---|---|
-| id | UUID PK |
-| post_id | UUID FK |
-| user_id | UUID FK |
-
-### `comments`
-| Column | Type |
-|---|---|
-| id | UUID PK |
-| post_id | UUID FK |
-| user_id | UUID FK |
-| content | TEXT |
-| created_at | TIMESTAMPTZ |
-
-### `chat_messages`
-| Column | Type |
-|---|---|
-| id | UUID PK |
-| sender_id | UUID FK |
-| recipient_id | UUID FK |
-| content | TEXT |
-| read | BOOLEAN |
-| created_at | TIMESTAMPTZ |
-
-### `notifications`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| user_id | UUID FK | Recipient |
-| actor_id | UUID FK | Who triggered it |
-| type | TEXT | `follow`, `like`, `comment`, `quiz_published`, `streak_milestone`, `streak_broken`, `goal_reminder` |
-| post_id | UUID FK | Nullable |
-| read | BOOLEAN | |
-
-### `goals`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| user_id | UUID FK | |
-| text | TEXT | |
-| date | DATE | Calendar date |
-| deadline | TIMESTAMPTZ | Optional |
-| priority | TEXT | `low`, `medium`, `high` |
-| completed | BOOLEAN | |
-
-### `student_streaks`
-| Column | Type |
-|---|---|
-| id | UUID PK |
-| user_id | UUID FK |
-| current_streak | INTEGER |
-| last_action_date | DATE |
+> **Note:** There is no separate `streaks` table — streak data lives directly on `profiles`.
 
 ### `student_schools` (Education history — multi-entry, LinkedIn style)
 Each row = one education period. A user can have multiple rows.
@@ -193,54 +72,411 @@ Each row = one education period. A user can have multiple rows.
 | end_year | SMALLINT | Optional. NULL when is_current = true |
 | is_current | BOOLEAN | Only one row per user should be true |
 
-### `schools` (Reference table)
+### `schools` (Malaysian Reference Table — 10 000+ rows)
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| name | TEXT | |
+| type | TEXT | e.g. `SMK`, `MRSM`, `Universiti Awam` |
+| level | TEXT | `primary`, `secondary`, `tertiary` |
+| state | TEXT | All 13 states + WP |
+| district | TEXT | |
+| city | TEXT | |
+
+**Always use server-side search with `.ilike()` — never fetch all rows.**
+
+### `follows`
+| Column | Type |
+|---|---|
+| follower_id | UUID FK |
+| followed_id | UUID FK |
+
+### `quiz_categories`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| name | TEXT | |
+| description | TEXT | |
+| is_published | BOOLEAN | Only published categories shown to students |
+
+### `decks`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| name | TEXT | |
+| description | TEXT | |
+| subject | TEXT | Category/topic label |
+| created_by | UUID FK | auth.users |
+| quiz_type | TEXT | `'objective'` or `'subjective'` |
+| is_published | BOOLEAN | |
+
+### `questions`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| deck_id | UUID FK | |
+| text | TEXT | Question body |
+| explanation | TEXT | Shown after answering |
+| image_url | TEXT | Optional |
+| order | INTEGER | Sort order |
+| marks | INTEGER | For subjective grading (nullable) |
+
+### `answers`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| question_id | UUID FK | |
+| text | TEXT | |
+| is_correct | BOOLEAN | |
+| image_url | TEXT | Optional |
+
+### `quiz_results`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| user_id | UUID FK | |
+| deck_id | UUID FK | |
+| deck_name | TEXT | Snapshot at time of completion |
+| category | TEXT | |
+| score | NUMERIC | Percentage 0–100 |
+| correct_count | INTEGER | |
+| wrong_count | INTEGER | |
+| skipped_count | INTEGER | |
+| total_count | INTEGER | |
+| questions_data | JSONB | Full per-question result snapshot |
+| completed_at | TIMESTAMPTZ | |
+
+### `quiz_performance_results`
+Mirrors `quiz_results` structure; AI analysis appended after edge function call.
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| user_id | UUID FK | |
+| deck_id | UUID FK | |
+| deck_name | TEXT | Snapshot |
+| category | TEXT | |
+| score | NUMERIC(5,2) | |
+| correct_count | INTEGER | |
+| wrong_count | INTEGER | |
+| skipped_count | INTEGER | |
+| total_count | INTEGER | |
+| questions_data | JSONB | Per-question snapshot |
+| ai_analysis | JSONB | Set after `quiz-performance-analyzer` call |
+| completed_at | TIMESTAMPTZ | |
+
+### `posts`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| user_id | UUID FK | |
+| content | TEXT | |
+| image_url | TEXT | Single image (legacy, prefer `post_images`) |
+| tags | TEXT[] | |
+| likes_count | INTEGER | Denormalised |
+| comments_count | INTEGER | Denormalised |
+| created_at | TIMESTAMPTZ | |
+
+### `post_images`
+Multiple images per post (carousel).
 | Column | Type |
 |---|---|
 | id | UUID PK |
-| name | TEXT |
-| type | TEXT |
-| level | TEXT | `primary`, `secondary`, `tertiary` |
-| state | TEXT |
-| district | TEXT |
-| city | TEXT |
+| post_id | UUID FK |
+| file_url | TEXT |
+| position | INTEGER |
+
+### `likes` (post likes)
+| Column | Type |
+|---|---|
+| id | UUID PK |
+| post_id | UUID FK |
+| user_id | UUID FK |
+| created_at | TIMESTAMPTZ |
+
+### `comments` (post comments)
+| Column | Type |
+|---|---|
+| id | UUID PK |
+| post_id | UUID FK |
+| user_id | UUID FK |
+| content | TEXT |
+| created_at | TIMESTAMPTZ |
+
+### `uploads` (Study Materials)
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| user_id | UUID FK | |
+| title | TEXT | |
+| description | TEXT | |
+| file_url | TEXT | From `user-uploads` bucket |
+| file_type | TEXT | e.g. `pdf`, `image` |
+| file_size | INTEGER | |
+| download_count | INTEGER | |
+| rating | NUMERIC | |
+| likes_count | INTEGER | Denormalised |
+| comments_count | INTEGER | Denormalised |
+
+### `upload_likes`
+| Column | Type |
+|---|---|
+| id | UUID PK |
+| upload_id | UUID FK |
+| user_id | UUID FK |
+| created_at | TIMESTAMPTZ |
+
+### `upload_comments`
+| Column | Type |
+|---|---|
+| id | UUID PK |
+| upload_id | UUID FK |
+| user_id | UUID FK |
+| content | TEXT |
+| created_at | TIMESTAMPTZ |
+
+### `chat_messages`
+| Column | Type |
+|---|---|
+| id | UUID PK |
+| sender_id | UUID FK |
+| receiver_id | UUID FK |
+| content | TEXT |
+| created_at | TIMESTAMPTZ |
+
+### `chat_unread_counts`
+| Column | Type |
+|---|---|
+| user_id | UUID FK |
+| sender_id | UUID FK |
+| unread_count | INTEGER |
+
+### `notifications`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| user_id | UUID FK | Recipient |
+| actor_id | UUID FK | Who triggered it |
+| type | TEXT | See enum below |
+| post_id | UUID FK | Nullable |
+| upload_id | UUID FK | Nullable |
+| quiz_category_id | UUID FK | Nullable |
+| goal_id | UUID FK | Nullable |
+| metadata | JSONB | Extra context |
+| read | BOOLEAN | |
+| created_at | TIMESTAMPTZ | |
+
+Notification types:
+```dart
+enum NotificationType {
+  follow,
+  like,
+  comment,
+  material_like,
+  material_comment,
+  quiz_published,
+  streak_milestone,
+  streak_broken,
+  goal_reminder,
+}
+```
+
+### `goals`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| user_id | UUID FK | |
+| text | TEXT | Goal description |
+| date | DATE | Calendar date the goal belongs to |
+| deadline | TIMESTAMPTZ | Optional hard deadline |
+| reminder_at | TIMESTAMPTZ | When to fire reminder |
+| reminder_sent | BOOLEAN | Has reminder notification been sent |
+| priority | TEXT | `'low'` / `'medium'` / `'high'` |
+| completed | BOOLEAN | |
+| created_at | TIMESTAMPTZ | |
+
+### `events`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| title | TEXT | |
+| description | TEXT | |
+| type | TEXT | `competition` / `hackathon` / `workshop` / `talk` / `internship` / `deal` |
+| organizer_id | UUID FK | → `event_organizers` |
+| submitter_user_id | UUID FK | auth.users |
+| university_id | UUID | Optional |
+| is_sponsored | BOOLEAN | |
+| is_featured | BOOLEAN | |
+| location | TEXT | |
+| start_date | TIMESTAMPTZ | |
+| end_date | TIMESTAMPTZ | |
+| registration_url | TEXT | |
+| image_url | TEXT | |
+| ace_coins_reward | INTEGER | |
+| status | TEXT | `pending` / `published` / `rejected` |
+| website_url | TEXT | |
+| socmed_url | TEXT | |
+| pdf_url | TEXT | |
+| google_form_url | TEXT | |
+| created_at | TIMESTAMPTZ | |
+
+### `event_organizers`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| name | TEXT | |
+| type | TEXT | `university` / `brand` / `company` / `student_body` |
+| logo_url | TEXT | |
+| verified | BOOLEAN | Admin-verified |
+| owner_user_id | UUID FK | auth.users |
+| created_at | TIMESTAMPTZ | |
+
+### `event_registrations`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| event_id | UUID FK | |
+| user_id | UUID FK | |
+| referrer_id | UUID FK | Promoter who referred |
+| registered_at | TIMESTAMPTZ | |
+
+### `event_reward_codes`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| event_id | UUID FK | |
+| code | TEXT | Unique redemption code |
+| ace_coins_reward | INTEGER | |
+| max_redemptions | INTEGER | NULL = unlimited |
+| expires_at | TIMESTAMPTZ | |
+| created_by | UUID FK | |
+| created_at | TIMESTAMPTZ | |
+
+### `event_code_redemptions`
+| Column | Type |
+|---|---|
+| id | UUID PK |
+| code_id | UUID FK |
+| user_id | UUID FK |
+| coins_awarded | INTEGER |
+| redeemed_at | TIMESTAMPTZ |
+
+### `deals`
+Event-linked deals/reward offerings. Linked to `events`.
+
+### `boss_raids`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| creator_id | UUID FK | |
+| title | TEXT | |
+| description | TEXT | |
+| visibility | TEXT | `'global'` / `'university'` |
+| university | TEXT | Optional, for university-scoped raids |
+| initial_bounty | INTEGER | Coins creator puts up |
+| bounty_pot | INTEGER | Accumulated from failed attempts |
+| min_entry_fee | INTEGER | Minimum bet to attempt |
+| status | TEXT | `'active'` / `'cleared'` |
+| cleared_by | UUID FK | User who won |
+| created_at | TIMESTAMPTZ | |
+
+### `boss_raid_questions`
+| Column | Type |
+|---|---|
+| id | UUID PK |
+| raid_id | UUID FK |
+| question_text | TEXT |
+| answers | JSONB |
+| position | INTEGER |
+| created_at | TIMESTAMPTZ |
+
+### `boss_raid_attempts`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| raid_id | UUID FK | |
+| challenger_id | UUID FK | |
+| bet_amount | INTEGER | |
+| score | INTEGER | |
+| max_score | INTEGER | |
+| status | TEXT | `'playing'` / `'won'` / `'lost'` |
+| created_at | TIMESTAMPTZ | |
+| completed_at | TIMESTAMPTZ | |
+
+### `coin_transactions`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| user_id | UUID FK | |
+| amount | INTEGER | Positive = earned, negative = spent |
+| description | TEXT | Human-readable reason |
+| type | TEXT | e.g. `'redemption'` |
+| reference_id | UUID | Optional FK to related object |
+| created_at | TIMESTAMPTZ | |
 
 ### Storage Buckets
-| Bucket | Public | Purpose |
+| Bucket | Public | Usage |
 |---|---|---|
-| `profile-images` | ✅ | Avatars and cover photos |
+| `profile-images` | ✅ | Avatars, cover photos, event images |
 | `quiz-images` | ✅ | Question and answer images |
-| `user-uploads` | ❌ | Study materials |
+| `user-uploads` | ❌ | Study material files |
+
+Upload path conventions:
+- Avatar: `profile-images/{user_id}/avatar.jpg`
+- Cover: `profile-images/{user_id}/cover.jpg`
+- Quiz images: `quiz-images/{deck_id}/{question_id}.{ext}`
+- Materials: `user-uploads/{user_id}/{filename}`
+- Event files: `profile-images/{user_id}/events/{filename}`
 
 ---
 
 ## 3. Authentication Flow
 
-1. Email/password sign-in or Google OAuth via Supabase Auth
-2. On first sign-in: a `profiles` row is auto-created with `ace_coins = 1000`
-3. Check `profiles.username` — if null/empty → user is new → send to **Onboarding**
-4. Onboarding = 3 steps: set username → upload avatar → select school
-5. After onboarding → main app
+### Sign Up
+1. `supabase.auth.signUp(email, password)`
+2. Profile row auto-created with `ace_coins = 1000`
+3. Check `profiles.username` — if null → navigate to Onboarding
 
+### Sign In
+1. `supabase.auth.signInWithPassword(email, password)`
+2. Fetch `profiles` row via `.eq('user_id', uid)`
+3. If `username == null` → Onboarding; else → Feed
+
+### Session Persistence
 ```dart
-// Listen for auth changes
 Supabase.instance.client.auth.onAuthStateChange.listen((data) {
   final session = data.session;
   if (session == null) {
-    // go to /auth
+    // → /auth
   } else {
-    // check profile.username — if null → /onboarding, else → /feed
+    // check profile.username → null: /onboarding, else: /feed
   }
 });
 ```
+`supabase_flutter` persists sessions automatically via secure storage.
+
+### Admin Check
+Read `profiles.is_admin` via `.eq('user_id', uid)`. Gate admin screens server-side via RLS — never trust a client-side flag alone.
+
+### Onboarding (3 Steps)
+1. **Username** — check uniqueness in `profiles`, update row via `.eq('user_id', uid)`
+2. **Avatar** — crop to circle, upload to `profile-images/{uid}/avatar.jpg`
+3. **School** — search `schools` table by name (`.ilike()`), insert row into `student_schools`
 
 ---
 
 ## 4. Edge Functions
 
-All AI features are Supabase Edge Functions (Deno runtime). Call them with the user's JWT — no API keys needed on the client. **All functions require Authorization header.**
+All AI features run as Supabase Edge Functions (Deno). Call with the user's JWT — no API keys needed on the client. All functions require the `Authorization: Bearer <jwt>` header (added automatically by `supabase_flutter`).
+
+```dart
+final response = await Supabase.instance.client.functions.invoke(
+  'function-name',
+  body: { ... },
+);
+```
 
 ### `mascot-chat`
-AI tutoring chatbot. Persona: "Ace", a star-shaped mascot, friendly, Malaysian education focused.
+AI tutoring chatbot. Persona: "Ace", friendly, Malaysian education focused.
 
 **Request:**
 ```json
@@ -252,16 +488,12 @@ AI tutoring chatbot. Persona: "Ace", a star-shaped mascot, friendly, Malaysian e
   ]
 }
 ```
-**Response:**
-```json
-{ "reply": "Fotosintesis ialah proses..." }
-```
-- Model: `gemini-2.5-flash-lite`
-- Temperature: 0.7, maxTokens: 512
-- Responds in BM or English matching the user's language
+**Response:** `{ "reply": "Fotosintesis ialah..." }`
+- Model: `gemini-2.5-flash-lite`, temperature 0.7
+- Responds in BM or English matching the user's input language
 
 ### `quiz-performance-analyzer`
-Generates AI feedback after a quiz attempt.
+AI feedback after a quiz attempt.
 
 **Request:**
 ```json
@@ -271,9 +503,7 @@ Generates AI feedback after a quiz attempt.
     "correct_count": 18,
     "wrong_count": 5,
     "skipped_count": 2,
-    "questions_data": [
-      { "text": "...", "is_correct": true, "was_skipped": false }
-    ]
+    "questions_data": [{ "text": "...", "is_correct": true, "was_skipped": false }]
   },
   "history": [ /* prior quiz_results rows for same deck */ ]
 }
@@ -289,77 +519,52 @@ Generates AI feedback after a quiz attempt.
   "comparison_note": "Lebih baik 12% berbanding percubaan lepas"
 }
 ```
-- All output in Bahasa Malaysia
-- Temperature: 0.4
+All output in Bahasa Malaysia. Temperature 0.4.
 
 ### `subjective-quiz-grader`
-Grades free-text answers. Used for `quiz_type = 'subjective'` decks.
+Grades free-text answers for `quiz_type = 'subjective'` decks.
 
 **Request:**
 ```json
 {
-  "questions": [
-    {
-      "question": "Terangkan sebab kejatuhan empayar Melaka.",
-      "modelAnswer": "Serangan Portugis pada 1511...",
-      "studentAnswer": "Portugis menyerang...",
-      "maxMarks": 4
-    }
-  ]
+  "questions": [{
+    "question": "Terangkan sebab kejatuhan empayar Melaka.",
+    "modelAnswer": "Serangan Portugis pada 1511...",
+    "studentAnswer": "Portugis menyerang...",
+    "maxMarks": 4
+  }]
 }
 ```
-**Response:**
-```json
-[
-  { "marksEarned": 3, "isCorrect": true, "feedback": "Jawapan baik..." }
-]
-```
+**Response:** `[{ "marksEarned": 3, "isCorrect": true, "feedback": "Jawapan baik..." }]`
 - `isCorrect` = true if `marksEarned / maxMarks >= 0.70`
-- Temperature: 0.1 (near-deterministic)
+- Temperature 0.1 (near-deterministic)
 
 ### `pdf-quiz-generator`
 Generates quiz questions from a PDF file.
 
-**Request:** `multipart/form-data` with a `file` field (PDF) and optional `questionCount` (max 40).
+**Request:** `multipart/form-data` — `file` field (PDF) + optional `questionCount` (max 40).
 
-**Response:**
-```json
-{
-  "questions": [
-    {
-      "text": "What is...",
-      "answers": [
-        { "text": "Option A", "is_correct": true },
-        { "text": "Option B", "is_correct": false }
-      ]
-    }
-  ]
-}
-```
+**Response:** `{ "questions": [{ "text": "...", "answers": [{ "text": "...", "is_correct": true }] }] }`
 
 ### `text-quiz-parser`
 Parses unstructured text into quiz questions.
 
-**Request:**
-```json
-{ "text": "1. What is...\na) ...\nb) ...\nAnswer: a" }
-```
-**Response:** Same shape as pdf-quiz-generator.
+**Request:** `{ "text": "1. What is...\na) ...\nb) ...\nAnswer: a" }`
 
-**Calling edge functions from Flutter:**
-```dart
-final response = await Supabase.instance.client.functions.invoke(
-  'mascot-chat',
-  body: { 'message': userMessage, 'history': chatHistory },
-);
-final reply = response.data['reply'] as String;
-```
+**Response:** Same shape as `pdf-quiz-generator`.
+
+### `event-matcher`
+Matches users to relevant events based on profile/location.
+
+**Request:** `{ "user_id": "..." }`
+
+**Response:** Array of matched event IDs.
 
 ---
 
 ## 5. Design System
 
-> **Critical:** The Flutter app must match the web app's visual identity exactly. Do not deviate from these colors, typography, or design language.
+> **Critical:** The Flutter app must match the web app's visual identity exactly.
 
 ### Brand Colors
 ```dart
@@ -368,14 +573,14 @@ class AceColors {
   static const cyan   = Color(0xFF3BD6F5);
   static const blue   = Color(0xFF2F7CFF);
   static const indigo = Color(0xFF2E2BE5);
-  static const ink    = Color(0xFF0F172A); // primary text, borders, shadows
+  static const ink    = Color(0xFF0F172A); // borders, shadows, primary text
 
-  // Accent
-  static const pop    = Color(0xFFFF7A59); // orange-red accent, streaks, CTA
-  static const sun    = Color(0xFFFFD65C); // yellow/gold
+  // Accents
+  static const pop    = Color(0xFFFF7A59); // orange-red, streaks, CTA
+  static const sun    = Color(0xFFFFD65C); // yellow/gold, coins
 
-  // Soft backgrounds (tinted fills for cards, pills)
-  static const skySoft    = Color(0xFFDDF3FF); // light blue fill
+  // Soft fills (card tints, pills)
+  static const skySoft    = Color(0xFFDDF3FF);
   static const blueSoft   = Color(0xFFC8DEFF);
   static const indigoSoft = Color(0xFFD6D4FF);
   static const mintSoft   = Color(0xFFD1FAE5);
@@ -388,190 +593,197 @@ class AceColors {
 ```
 
 ### Typography
-- **Display / headings:** `Baloo 2` (weights: 500, 600, 700, 800) — used for all bold titles, button labels, section headers
-- **Body / UI text:** `Nunito` (weights: 400, 500, 600, 700, 800, 900)
+- **Display / headings / buttons:** `Baloo 2` (weights 500–800)
+- **Body / UI text:** `Nunito` (weights 400–900)
 
-Add to `pubspec.yaml`:
 ```yaml
+# pubspec.yaml
 dependencies:
   google_fonts: ^6.x
-
-# Usage:
-# GoogleFonts.baloo2(fontWeight: FontWeight.w800)
-# GoogleFonts.nunito(fontWeight: FontWeight.w600)
+```
+```dart
+GoogleFonts.baloo2(fontWeight: FontWeight.w800)
+GoogleFonts.nunito(fontWeight: FontWeight.w600)
 ```
 
 ### Design Language — "Neo-Brutalism"
-The web app uses a consistent neo-brutalist card style throughout. **Every card and interactive element must follow this style:**
 
-**Card style:**
-- Solid `2.5px` border, color `#0F172A` (ink)
-- Hard drop shadow: `3px 3px 0px #0F172A` (no blur, offset only)
-- Rounded corners: `20px` radius for cards, `14px` for smaller components, `full` (pill) for buttons/tags
-- White background for cards
+Every card and interactive element uses a thick solid border + hard (no-blur) drop shadow.
 
-**Flutter equivalents:**
+**Card:**
 ```dart
-// Card decoration
 BoxDecoration(
   color: Colors.white,
   borderRadius: BorderRadius.circular(20),
   border: Border.all(color: AceColors.ink, width: 2.5),
-  boxShadow: [
-    BoxShadow(
-      color: AceColors.ink,
-      offset: Offset(3, 3),
-      blurRadius: 0, // hard shadow, no blur
-    ),
+  boxShadow: const [
+    BoxShadow(color: AceColors.ink, offset: Offset(3, 3), blurRadius: 0),
   ],
 )
+```
 
-// Button style (pill)
+**Pill button (idle → pressed):**
+```dart
+// Idle: shadow Offset(3,3), translate Y(-1)
+// Pressed: shadow Offset(1,1), translate Y(+1)
 BoxDecoration(
   color: AceColors.blue,
   borderRadius: BorderRadius.circular(100),
   border: Border.all(color: AceColors.ink, width: 2.5),
   boxShadow: [
-    BoxShadow(color: AceColors.ink, offset: Offset(3, 3), blurRadius: 0),
+    BoxShadow(
+      color: AceColors.ink,
+      offset: _pressed ? const Offset(1, 1) : const Offset(3, 3),
+      blurRadius: 0,
+    ),
   ],
 )
-
-// On press: translate +1px, shadow shrinks to (1,1)
-// On hover/idle: translate -2px, shadow grows to (5,5)
 ```
 
-**Color-coded education levels (used in Profile):**
+**Badge / pill tag:**
 ```dart
-// primary   → green   (#F0FDF4 bg, #16a34a text)
-// secondary → blue    (#DDF3FF bg, #2F7CFF text)
-// preuni    → indigo  (#D6D4FF bg, #2E2BE5 text)
-// diploma   → amber   (#FEF3C7 bg, #d97706 text)
-// degree    → sky     (#E0F2FE bg, #0369a1 text)
-// postgrad  → purple  (#EDE9FE bg, #6D28D9 text)
+BoxDecoration(
+  color: bgColor,
+  borderRadius: BorderRadius.circular(100),
+  border: Border.all(color: AceColors.ink, width: 2),
+  boxShadow: const [
+    BoxShadow(color: AceColors.ink, offset: Offset(1, 1), blurRadius: 0),
+  ],
+)
 ```
 
-**School type badge colors:**
+### Education Level Color Coding
 ```dart
-const schoolTypeBadgeColors = {
-  'SMK':                  (bg: Color(0xFFDDF3FF), text: Color(0xFF2F7CFF)),
-  'SBP':                  (bg: Color(0xFFD6D4FF), text: Color(0xFF2E2BE5)),
-  'MRSM':                 (bg: Color(0xFFFEF3C7), text: Color(0xFF92400e)),
-  'Universiti Awam':      (bg: Color(0xFFDBEAFE), text: Color(0xFF1D4ED8)),
-  'Universiti Swasta':    (bg: Color(0xFFEDE9FE), text: Color(0xFF6D28D9)),
-  'Kolej Matrikulasi':    (bg: Color(0xFFD6D4FF), text: Color(0xFF2E2BE5)),
-  'Sekolah Swasta':       (bg: Color(0xFFFFE4E6), text: Color(0xFFFF7A59)),
-  // etc. — follow same pattern
-};
+// primary   → green   (bg: 0xFFF0FDF4, text: 0xFF16a34a)
+// secondary → blue    (bg: 0xFFDDF3FF, text: 0xFF2F7CFF)
+// preuni    → indigo  (bg: 0xFFD6D4FF, text: 0xFF2E2BE5)
+// diploma   → amber   (bg: 0xFFFEF3C7, text: 0xFFd97706)
+// degree    → sky     (bg: 0xFFE0F2FE, text: 0xFF0369a1)
+// postgrad  → purple  (bg: 0xFFEDE9FE, text: 0xFF6D28D9)
+```
+
+### School Type Badge Colors
+```dart
+// 'SMK'             → (bg: 0xFFDDF3FF, text: 0xFF2F7CFF)
+// 'SBP'             → (bg: 0xFFD6D4FF, text: 0xFF2E2BE5)
+// 'MRSM'            → (bg: 0xFFFEF3C7, text: 0xFF92400e)
+// 'Universiti Awam' → (bg: 0xFFDBEAFE, text: 0xFF1D4ED8)
+// 'Universiti Swasta'→(bg: 0xFFEDE9FE, text: 0xFF6D28D9)
+// 'Kolej Matrikulasi'→(bg: 0xFFD6D4FF, text: 0xFF2E2BE5)
+// 'Sekolah Swasta'   →(bg: 0xFFFFE4E6, text: 0xFFFF7A59)
 ```
 
 ### Mascot
 - "Ace" is a star-shaped animated character
-- Lottie animations used on web — use `lottie` Flutter package
-- The mascot has a mood/message queue system: appears with tips after quiz completion, streak milestones, goal reminders
+- Lottie animations: use `lottie` Flutter package
+- Moods: `idle`, `happy`, `urgent`, `celebrating`
+- Message queue — auto-dismisses after 6 seconds
+- Full chat mode → bottom sheet calling `mascot-chat` edge function
 
 ---
 
 ## 6. Feature Map
 
-### Screen → Route
+### Screens → Routes
 | Screen | Route | Auth Required |
 |---|---|---|
 | Landing | `/` | No (redirect to /feed if logged in) |
 | Sign In / Sign Up | `/auth` | No |
-| Onboarding (3 steps) | `/onboarding` | Yes (new users only) |
+| Onboarding | `/onboarding` | Yes (new users only) |
 | Feed | `/feed` | Yes |
+| Post Detail | `/post/:id` | Yes |
 | Quiz | `/quiz` | Yes |
-| Discover | `/discover` | Yes |
+| Quiz Take | `/quiz/:deckId` | Yes |
+| Boss Raid | `/quiz/raid` | Yes |
+| Materials | `/materials` | Yes |
+| Chat List | `/chat` | Yes |
+| Chat Thread | `/chat/:userId` | Yes |
 | Profile (own) | `/profile` | Yes |
 | Profile (other) | `/profile/:userId` | Yes |
-| Materials | `/materials` | Yes |
-| Chat | `/chat` | Yes |
-| Admin | `/admin` | Yes + `is_admin = true` |
+| Discover | `/discover` | Yes |
+| Notifications | `/notifications` | Yes |
+| Events | `/events` | Yes |
+| Event Detail | `/events/:id` | Yes |
+| My Events | `/events/mine` | Yes |
+| Admin | `/admin` | Yes + `is_admin` |
 
-### Key Features
+### Key Features Per Screen
 
 **Quiz System:**
-- 3 quiz types:
-  1. `objective` — multiple choice / checkbox, auto-graded client-side
-  2. `subjective` — free text, graded by `subjective-quiz-grader` edge function
-  3. Boss Raid — gamified quiz with health/damage mechanics
 - Flow: Categories → Decks → Active quiz → Submit → AI Analysis
-- Questions are shuffled client-side before display
-- Support for image questions and image answers
-- Bookmarking questions during quiz
-- After submit: call `quiz-performance-analyzer`, cache result in `quiz_performance_results`
+- `objective`: multiple choice (up to 6 options A–F), auto-graded client-side
+- `subjective`: free text, graded by `subjective-quiz-grader` edge function
+- Questions shuffled client-side before display
+- Support for image questions + image answers
+- After submit: insert `quiz_results`, call `quiz-performance-analyzer`, cache in `quiz_performance_results`
+- Boss Raid mode: gamified quiz with health/damage mechanics, rewards `ace_coins`
 
 **Gamification:**
-- `ace_coins` — currency, 1000 on signup
-- Daily streaks — tracked in `student_streaks`, reset after 3 days of inactivity
-- Streak leaderboard
-- Confetti / celebration animation on quiz completion
-- Mascot messages triggered by events (quiz done, streak milestone, goal set)
+- `ace_coins` — currency (1000 on signup), tracked in `profiles.ace_coins` + `coin_transactions`
+- Daily streaks — tracked in `streaks`, reset after 3 days of inactivity
+- Confetti animation on quiz completion (`confetti` package)
+- Mascot messages triggered by: quiz done, streak milestone, goal set, goal reminder
 
 **Social Feed:**
 - Shows posts from followed users only
-- Post text + multi-image carousel
-- Like (heart), comment, follow
-- Suggested users sidebar
+- Multi-image carousel (`post_images`)
+- Like, comment, follow/unfollow
+- Post creation with image attachment
 
 **Profile:**
-- Avatar (circle, cropped) + cover photo (wide banner)
-- Bio
+- Avatar (circle-cropped) + cover photo (banner)
 - Stats: posts, followers, following, streak
-- Education history (LinkedIn-style vertical timeline)
-  - Multiple entries, sorted: primary → secondary → pre-u → diploma → degree → postgrad
-  - Each entry: school name, grade, stream, class, type badge, location, year range
-  - `is_current = true` shows "Present" badge
-- Quiz history
-- Own posts grid
+- Education timeline (LinkedIn-style, sorted primary → secondary → pre-u → diploma → degree → postgrad)
+- Quiz history, own posts grid
+- Follow / unfollow button (non-self)
 
 **Chat:**
-- Direct messages between mutual followers only
-- Realtime via Supabase realtime subscriptions
-- Unread count badges
+- Visible only between mutual followers
+- Real-time via Supabase realtime subscription
+- Unread count badges per sender
 
 **Materials:**
-- Upload study notes (PDF, images)
-- Public/private toggle
+- Upload PDF / images to `user-uploads` bucket
 - Like and comment on materials
+- Download counter
+
+**Events:**
+- Browse approved events (`status = 'approved'`)
+- RSVP / register (`event_registrations`)
+- My events list
+- Organiser dashboard (create/manage events, pending admin approval)
 
 **Goals:**
-- Daily goal setting with priority (low/medium/high)
-- Optional deadline + reminder
+- Daily goal cards with priority (low/medium/high)
+- Optional deadline + reminder notification
 - Completion toggle
+
+**Pomodoro:**
+- Floating persistent widget (25 min work / 5 min break)
+- State persisted via `shared_preferences`
+- Visible on top of all screens via Flutter `Overlay`
 
 ---
 
 ## 7. Business Logic
 
-### New User Flow
-```
-signUp() → profile auto-created (ace_coins=1000) → check profile.username
-  → null → navigate to Onboarding
-  → set username → upload avatar → select school → mark complete
-  → navigate to Feed
-```
-
-### Onboarding Steps
-1. Set username (unique)
-2. Upload profile photo (crop to circle, upload to `profile-images/{user_id}/avatar.jpg`)
-3. Select school (optional — from `schools` reference table)
-
 ### Quiz Grading (Objective)
-- Client-side: compare selected answer IDs against `answers.is_correct`
-- Calculate `correct_count`, `wrong_count`, `skipped_count`, `score` (%)
-- Save to `quiz_results` table
-- Then call `quiz-performance-analyzer` edge function
+```dart
+// Client-side
+final correct = selectedAnswerIds.where((id) => correctAnswerIds.contains(id)).length;
+final score = (correct / total * 100).roundToDouble();
+// Insert into quiz_results, then call quiz-performance-analyzer
+```
 
-### Education Level → Grade Mapping
+### Education Level Derivation
 ```dart
 String deriveLevelFromGrade(String grade) {
   if (grade.startsWith('Standard')) return 'primary';
   if (RegExp(r'^Form [1-5]$').hasMatch(grade)) return 'secondary';
-  if (grade.startsWith('Form 6') || grade == 'Foundation' || grade == 'Matrikulasi') return 'preuni';
+  if (['Form 6 (Lower)', 'Form 6 (Upper)', 'Foundation', 'Matrikulasi'].contains(grade)) return 'preuni';
   if (grade.startsWith('Diploma')) return 'diploma';
   if (grade.startsWith('Degree')) return 'degree';
-  if (grade == "Master's" || grade == 'PhD') return 'postgrad';
+  if (["Master's", 'PhD'].contains(grade)) return 'postgrad';
   return '';
 }
 ```
@@ -588,43 +800,46 @@ const gradeOptions = {
 };
 ```
 
-### School Type → DB Level Filter
+### School DB Level Filter
 ```dart
 String? schoolDBLevel(String grade) {
   if (grade.startsWith('Standard')) return 'primary';
-  if (grade.startsWith('Form')) return 'secondary';
+  if (grade.startsWith('Form') || ['Foundation', 'Matrikulasi'].contains(grade)) return 'secondary';
   return 'tertiary';
 }
 ```
 
 ### is_current Constraint
-When saving an education entry with `is_current = true`, first update all other entries for that user to `is_current = false`:
+When saving an education entry with `is_current = true`, first clear all others:
 ```dart
 await supabase
   .from('student_schools')
   .update({'is_current': false})
-  .eq('user_id', userId)
-  .neq('id', entryId); // skip if adding new (no entryId yet)
+  .eq('user_id', userId);
+// Then insert/update the current entry with is_current = true
 ```
 
 ---
 
-## 8. Realtime Subscriptions
+## 8. Real-Time Subscriptions
 
-Chat messages and notifications use Supabase realtime:
 ```dart
+// Chat messages
 supabase
   .from('chat_messages')
   .stream(primaryKey: ['id'])
-  .eq('recipient_id', userId)
-  .listen((rows) { /* update unread count */ });
+  .eq('receiver_id', userId)
+  .listen((rows) { /* update UI */ });
 
+// Notifications
 supabase
   .from('notifications')
   .stream(primaryKey: ['id'])
   .eq('user_id', userId)
-  .listen((rows) { /* update notification badge */ });
+  .listen((rows) { /* update badge count */ });
 ```
+
+Real-time used in: Chat, Notifications, (optional) Feed, Boss Raid.
 
 ---
 
@@ -644,11 +859,10 @@ dependencies:
   lottie: ^3.x                     # Mascot animations
   confetti: ^0.7.x                 # Quiz completion celebration
   fl_chart: ^0.x                   # Performance charts
-  shared_preferences: ^2.x         # Local settings
+  shared_preferences: ^2.x         # Pomodoro timer, local settings
   intl: ^0.19.x                    # Date formatting
-  timeago: ^3.x                    # "2 minutes ago" style timestamps
-  flutter_svg: ^2.x                # SVG assets if needed
-  local_auth: ^2.x                 # Face ID / fingerprint (optional)
+  timeago: ^3.x                    # "2 minutes ago" timestamps
+  flutter_svg: ^2.x                # SVG assets
 
 dev_dependencies:
   build_runner: ^2.x
@@ -663,20 +877,20 @@ dev_dependencies:
 
 ```
 lib/
-├── main.dart                    # Supabase init, app entry
+├── main.dart                     # Supabase init, ProviderScope, app entry
 ├── core/
 │   ├── supabase/
-│   │   └── supabase_client.dart # Singleton accessor
+│   │   └── supabase_client.dart  # Singleton accessor
 │   ├── router/
-│   │   └── app_router.dart      # go_router config with auth guard
+│   │   └── app_router.dart       # go_router config with auth guard
 │   ├── theme/
-│   │   ├── ace_colors.dart      # All brand colors (Section 5)
-│   │   ├── ace_text_styles.dart # Baloo2 + Nunito styles
-│   │   └── ace_theme.dart       # ThemeData
+│   │   ├── ace_colors.dart       # All brand colors (Section 5)
+│   │   ├── ace_text_styles.dart  # Baloo2 + Nunito styles
+│   │   └── ace_theme.dart        # ThemeData
 │   └── widgets/
-│       ├── ace_card.dart        # Reusable neo-brutalist card
-│       ├── ace_button.dart      # Pill button with hard shadow
-│       └── ace_badge.dart       # Type/level badge pill
+│       ├── ace_card.dart         # Neo-brutalist card decoration
+│       ├── ace_button.dart       # Pill button with hard shadow
+│       └── ace_badge.dart        # Type/level badge pill
 ├── features/
 │   ├── auth/
 │   │   ├── auth_page.dart
@@ -690,22 +904,37 @@ lib/
 │   ├── quiz/
 │   │   ├── quiz_page.dart        # Category → Deck → Questions → Analysis
 │   │   ├── quiz_provider.dart
-│   │   └── quiz_analysis_card.dart
+│   │   ├── quiz_analysis_card.dart
+│   │   └── boss_raid_page.dart
 │   ├── profile/
 │   │   ├── profile_page.dart
 │   │   ├── education_section.dart # LinkedIn-style timeline
 │   │   └── profile_provider.dart
 │   ├── chat/
-│   │   ├── chat_page.dart
+│   │   ├── chat_list_page.dart
+│   │   ├── chat_thread_page.dart
 │   │   └── chat_provider.dart    # Realtime stream
 │   ├── discover/
 │   │   └── discover_page.dart
 │   ├── materials/
 │   │   └── materials_page.dart
-│   └── mascot/
-│       ├── mascot_widget.dart    # Floating Lottie mascot
-│       ├── mascot_chat_sheet.dart# Bottom sheet chat
-│       └── mascot_provider.dart  # Message queue
+│   ├── events/
+│   │   ├── events_page.dart
+│   │   ├── event_detail_page.dart
+│   │   ├── my_events_page.dart
+│   │   └── events_provider.dart
+│   ├── notifications/
+│   │   ├── notifications_page.dart
+│   │   └── notifications_provider.dart
+│   ├── admin/
+│   │   └── admin_page.dart
+│   ├── mascot/
+│   │   ├── mascot_widget.dart     # Floating Lottie overlay
+│   │   ├── mascot_chat_sheet.dart # Bottom sheet chat UI
+│   │   └── mascot_provider.dart  # Message queue + mood
+│   └── pomodoro/
+│       ├── pomodoro_widget.dart   # Floating mini timer
+│       └── pomodoro_provider.dart # shared_preferences persistence
 └── models/
     ├── profile.dart
     ├── deck.dart
@@ -713,14 +942,13 @@ lib/
     ├── quiz_result.dart
     ├── post.dart
     ├── chat_message.dart
+    ├── event.dart
     └── student_school.dart
 ```
 
 ---
 
-## 11. Core Shared Widget Patterns
-
-These components are used everywhere in the web app and must be built as shared Flutter widgets:
+## 11. Core Shared Widgets
 
 ### AceCard
 ```dart
@@ -738,11 +966,11 @@ Container(
 ```
 
 ### AcePillButton
-Rounded full, colored fill, hard shadow, lifts on press:
 ```dart
 GestureDetector(
   onTapDown: (_) => setState(() => _pressed = true),
   onTapUp:   (_) => setState(() => _pressed = false),
+  onTapCancel: () => setState(() => _pressed = false),
   child: AnimatedContainer(
     duration: const Duration(milliseconds: 100),
     transform: Matrix4.translationValues(0, _pressed ? 1 : -1, 0),
@@ -752,15 +980,16 @@ GestureDetector(
       border: Border.all(color: const Color(0xFF0F172A), width: 2.5),
       boxShadow: [BoxShadow(
         color: const Color(0xFF0F172A),
-        offset: _pressed ? const Offset(1,1) : const Offset(3,3),
+        offset: _pressed ? const Offset(1, 1) : const Offset(3, 3),
         blurRadius: 0,
       )],
     ),
+    child: child,
   ),
 )
 ```
 
-### AceBadge (type/school label)
+### AceBadge
 ```dart
 Container(
   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -769,7 +998,7 @@ Container(
     borderRadius: BorderRadius.circular(100),
     border: Border.all(color: const Color(0xFF0F172A), width: 2),
     boxShadow: const [BoxShadow(
-      color: Color(0xFF0F172A), offset: Offset(1,1), blurRadius: 0,
+      color: Color(0xFF0F172A), offset: Offset(1, 1), blurRadius: 0,
     )],
   ),
   child: Text(label, style: GoogleFonts.baloo2(
@@ -780,13 +1009,34 @@ Container(
 
 ---
 
-## 12. Important Notes for Claude
+## 12. Priority Build Order
 
-- **Never change the Supabase URL or anon key** — they point to the live production database
-- **Never generate a different color scheme** — use `AceColors` exactly as defined
-- **Never use Material default styling** — all cards, buttons, and inputs must use the neo-brutalist style (solid ink border + hard offset shadow)
-- **Font must be Baloo 2 for headings/buttons and Nunito for body text** — no system fonts in UI elements
-- The web codebase is at `https://github.com/AceTerus/AceTerusRebrand` if you need to reference web implementations
-- All AI features call Supabase Edge Functions — never call the Gemini API directly from the Flutter app
-- RLS is enforced at the database level — the app never needs to manually filter by `user_id` on reads (Supabase handles it), but must include `user_id` on writes
-- `is_admin` check: always read from `profiles.is_admin` — never hardcode or trust client-side admin flags for anything sensitive
+1. Auth (sign in, sign up, session persistence)
+2. Onboarding (username → avatar → school)
+3. Profile (view, edit, education timeline)
+4. Feed (browse, post, like, comment)
+5. Quiz (categories → decks → take → results → AI analysis)
+6. Chat (list, thread, real-time)
+7. Materials (browse, upload, download)
+8. Notifications (list, mark read, real-time badge)
+9. Events (browse, register, my events)
+10. Discover (search users, follow)
+11. Goals
+12. Pomodoro floating widget
+13. Mascot overlay + chat
+14. Boss Raid arena
+15. Admin panel
+
+---
+
+## 13. Important Rules for Claude
+
+- **Never change the Supabase URL or anon key** — they point to live production
+- **Never deviate from the color palette** — use `AceColors` exactly as defined
+- **Never use Material default styling** — all cards, buttons, and inputs must use the neo-brutalist style (2.5px solid ink border + hard offset shadow, no blur)
+- **Font must be Baloo 2 for headings/buttons and Nunito for body text**
+- All AI features call Supabase Edge Functions — never call Gemini API directly from the Flutter app
+- RLS is enforced at the database level — the app does not need to manually filter by `user_id` on reads, but must include `user_id` on all writes
+- `is_admin` must be read from `profiles.is_admin` — never hardcode or trust client-side flags for sensitive operations
+- Always use `.ilike()` for searching the `schools` table — never fetch all rows
+- When multiple education entries exist, show them sorted: primary → secondary → preuni → diploma → degree → postgrad
