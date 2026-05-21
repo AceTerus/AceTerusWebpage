@@ -46,6 +46,11 @@
     },
     {
       "src": "/(.*)",
+      "dest": "/classpulse.html",
+      "has": [{ "type": "host", "value": "classpulse.aceterus.com" }]
+    },
+    {
+      "src": "/(.*)",
       "dest": "/index.html"
     }
   ]
