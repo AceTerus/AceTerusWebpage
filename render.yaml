@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: omr-scanner
+    runtime: docker
+    dockerfilePath: ./omr-scanner/Dockerfile
+    dockerContext: ./omr-scanner
+    healthCheckPath: /api/exams
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+    plan: free
