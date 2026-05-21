@@ -26,5 +26,6 @@ dist-ssr
 # API KEYS
 .env
 .env.*
+env.tmp
 !.env.example
 !.env.production
