@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const DG_URL = "wss://api.deepgram.com/v1/listen";
 const DG_PARAMS = new URLSearchParams({
@@ -41,11 +42,12 @@ export function useDeepgramTranscript() {
   }, []);
 
   const start = useCallback(async () => {
-    const apiKey = import.meta.env.VITE_DEEPGRAM_API_KEY as string;
-    if (!apiKey) {
-      console.error("[Deepgram] VITE_DEEPGRAM_API_KEY is not set");
+    const { data, error } = await supabase.functions.invoke("deepgram-key");
+    if (error || !data?.key) {
+      console.error("[Deepgram] Could not fetch API key from Supabase");
       return;
     }
+    const apiKey = data.key as string;
 
     let stream: MediaStream;
     try {
