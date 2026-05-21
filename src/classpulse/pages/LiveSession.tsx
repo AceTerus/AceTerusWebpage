@@ -104,6 +104,7 @@ export default function LiveSession() {
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [teacherActiveSeconds, setTeacherActiveSeconds] = useState(0);
   const [endingSession, setEndingSession] = useState(false);
+  const [endingMessage, setEndingMessage] = useState("Generating Report…");
   const [speechSupported, setSpeechSupported] = useState(true);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -200,12 +201,69 @@ export default function LiveSession() {
 
     const finalTranscript = transcriptRef.current;
 
+    // Mark session completed and save transcript
     await supabase
       .from("class_sessions")
       .update({ status: "completed", ended_at: new Date().toISOString(), transcript_text: finalTranscript })
       .eq("id", session.id);
 
-    const report = generateReport(session, finalTranscript, sessionSeconds, teacherActiveSeconds);
+    // Try Gemini AI via Edge Function, fall back to local heuristic
+    let report: ReturnType<typeof generateReport>;
+    let summaryData: { covered_notes: string; key_terms: unknown[]; gap_notes: unknown[] };
+
+    try {
+      setEndingMessage("AI is analysing your session…");
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("classpulse-report", {
+        body: {
+          subject: session.subject,
+          class_name: session.class_name,
+          objective_text: session.objective_text,
+          key_concepts: session.key_concepts,
+          transcript_text: finalTranscript,
+          session_seconds: sessionSeconds,
+          teacher_active_seconds: teacherActiveSeconds,
+        },
+      });
+
+      if (res.error) throw res.error;
+
+      const { teacher_report, student_summary } = res.data as {
+        teacher_report: {
+          coverage_score: number;
+          teacher_talk_ratio: number;
+          student_participation_count: number;
+          concepts_covered: string[];
+          concepts_missed: string[];
+          ai_coaching_note: string;
+        };
+        student_summary: {
+          covered_notes: string[];
+          key_terms: { term: string; definition: string }[];
+          gap_notes: { concept: string; explanation: string; example: string }[];
+        };
+      };
+
+      report = teacher_report;
+      summaryData = {
+        covered_notes: Array.isArray(student_summary.covered_notes)
+          ? student_summary.covered_notes.join("\n")
+          : student_summary.covered_notes,
+        key_terms: student_summary.key_terms,
+        gap_notes: student_summary.gap_notes,
+      };
+      toast.success("AI report generated!");
+    } catch (aiErr) {
+      console.warn("AI report failed, using local analysis:", aiErr);
+      setEndingMessage("Generating Report…");
+      report = generateReport(session, finalTranscript, sessionSeconds, teacherActiveSeconds);
+      const localSummary = generateStudentSummary(session, report.concepts_covered, report.concepts_missed, finalTranscript);
+      summaryData = localSummary;
+      toast.info("Session saved. AI analysis unavailable — used local summary.");
+    }
+
+    // Save teacher report
+    setEndingMessage("Saving report…");
     const { error: reportError } = await supabase
       .from("conclusion_reports")
       .insert({ session_id: session.id, ...report });
@@ -216,15 +274,18 @@ export default function LiveSession() {
       return;
     }
 
-    const summary = generateStudentSummary(session, report.concepts_covered, report.concepts_missed, finalTranscript);
+    // Save student summary
     await supabase.from("student_session_summaries").insert({
       session_id: session.id,
       class_name: session.class_name,
       subject: session.subject,
       date: new Date().toISOString().split("T")[0],
-      ...summary,
+      covered_notes: summaryData.covered_notes,
+      key_terms: summaryData.key_terms,
+      gap_notes: summaryData.gap_notes,
     });
 
+    // Push flagged concepts for missed topics
     if (report.concepts_missed.length > 0) {
       await supabase.from("flagged_concepts").insert(
         report.concepts_missed.map((concept) => ({
@@ -237,7 +298,6 @@ export default function LiveSession() {
       );
     }
 
-    toast.success("Session ended! Report generated.");
     navigate(`/report/${session.id}`);
   };
 
@@ -378,7 +438,7 @@ export default function LiveSession() {
                     className="flex items-center gap-2 w-full justify-center px-5 py-3 rounded-xl border-[2.5px] border-red-400 bg-red-500 text-white font-bold font-['Nunito'] text-[14px] shadow-[3px_3px_0_0_#7f1d1d] hover:-translate-y-0.5 transition-all disabled:opacity-60"
                   >
                     {endingSession
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating Report…</>
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> {endingMessage}</>
                       : <><Square className="w-4 h-4" /> End Class</>}
                   </button>
                 </div>
