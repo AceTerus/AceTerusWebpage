@@ -61,7 +61,16 @@
       "Bash(Select-Object FullName)",
       "Bash(Sort-Object FullName)",
       "Skill(investigate)",
-      "Bash(git lfs *)"
+      "Bash(git lfs *)",
+      "Bash(git config *)",
+      "Bash(git rm *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\" -Force)",
+      "Bash(Select-Object Name, Mode)",
+      "PowerShell(Copy-Item *)",
+      "Bash(Get-ChildItem -Recurse -Filter \"*iveSession*\" \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\\\\src\")"
     ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true
   }
 }

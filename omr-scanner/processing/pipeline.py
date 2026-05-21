@@ -46,15 +46,13 @@ matplotlib.use("Agg")   # must be set before any matplotlib import downstream
 import numpy as np
 
 from processing.grader import grade
-from processing.ocr import extract_student_id
 
 logger = logging.getLogger(__name__)
 
 _OMR_TEMPLATE_PATH = Path(__file__).parent.parent / "omr_template.json"
 _OMRCHECKER_DIR    = Path(__file__).parent.parent / "OMRChecker"
 
-_STUDENT_ID_REGION = {"x": 300, "y": 5, "w": 200, "h": 18}
-_PDF_DPI           = 200   # higher DPI → sharper bubble edges for detection
+_PDF_DPI = 200   # higher DPI → sharper bubble edges for detection
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -244,10 +242,7 @@ def run_pipeline(image_path: str, answer_keys: list) -> Dict[str, Any]:
         # ── Step 7: Grade against answer key ─────────────────────────────────
         grade_result = grade(detected, answer_keys)
 
-        # ── Step 8: OCR student ID ─────────────────────────────────────────────
-        student_code: Optional[str] = extract_student_id(
-            processed, {"student_id_region": _STUDENT_ID_REGION}
-        )
+        student_code: Optional[str] = None
 
         answered     = [d for d in detected.values() if d["answer"]]
         overall_conf = (
