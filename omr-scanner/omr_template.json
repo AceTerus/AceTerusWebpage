@@ -1,13 +1,13 @@
 {
   "pageDimensions": [794, 1123],
-  "bubbleDimensions": [32, 32],
+  "bubbleDimensions": [28, 28],
 
   "preProcessors": [
     {
       "name": "CropOnMarkers",
       "options": {
         "relativePath": "omr_marker.jpg",
-        "sheetToMarkerWidthRatio": 11,
+        "sheetToMarkerWidthRatio": 12,
         "marker_rescale_range": [35, 150],
         "marker_rescale_steps": 20,
         "min_matching_threshold": 0.3
@@ -19,17 +19,17 @@
     "MCQ_Q1_to_Q10": {
       "fieldLabels": ["q1..10"],
       "bubbleValues": ["A", "B", "C", "D"],
-      "origin":    [125, 215],
-      "bubblesGap": 50,
-      "labelsGap":  81,
+      "origin":    [153, 189],
+      "bubblesGap": 46,
+      "labelsGap":  68,
       "direction": "horizontal"
     },
     "MCQ_Q11_to_Q20": {
       "fieldLabels": ["q11..20"],
       "bubbleValues": ["A", "B", "C", "D"],
-      "origin":    [518, 215],
-      "bubblesGap": 50,
-      "labelsGap":  81,
+      "origin":    [505, 189],
+      "bubblesGap": 46,
+      "labelsGap":  68,
       "direction": "horizontal"
     }
   }

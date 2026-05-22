@@ -1,5 +1,5 @@
 {
-  "_comment": "20-question sheet v4 — mm-based layout, 20mm markers. 794x1123 canonical.",
+  "_comment": "AceTerus answer sheet v5 — 18mm markers, 7mm bubbles. 794x1123 canonical.",
 
   "canonical_width":  794,
   "canonical_height": 1123,
@@ -12,20 +12,20 @@
       {
         "col_index":        0,
         "question_range":   [1, 10],
-        "bubble_start_x":   125,
-        "bubble_spacing_x": 50,
-        "row_start_y":      215,
-        "row_spacing_y":    81,
-        "bubble_radius":    16
+        "bubble_start_x":   153,
+        "bubble_spacing_x": 46,
+        "row_start_y":      189,
+        "row_spacing_y":    68,
+        "bubble_radius":    14
       },
       {
         "col_index":        1,
         "question_range":   [11, 20],
-        "bubble_start_x":   518,
-        "bubble_spacing_x": 50,
-        "row_start_y":      215,
-        "row_spacing_y":    81,
-        "bubble_radius":    16
+        "bubble_start_x":   505,
+        "bubble_spacing_x": 46,
+        "row_start_y":      189,
+        "row_spacing_y":    68,
+        "bubble_radius":    14
       }
     ]
   }

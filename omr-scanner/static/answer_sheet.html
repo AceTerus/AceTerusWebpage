@@ -2,57 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>OMR Answer Sheet</title>
+  <title>AceTerus Answer Sheet</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    /*
-      Physical print target: 210mm × 297mm (A4), zero browser margins.
-      All positions below are in mm — consistent across any printer DPI.
-    */
     @page { size: 210mm 297mm; margin: 0; }
-
     @media screen {
       body {
-        background: #d0d0d0;
+        background: #c8c8c8;
         display: flex;
         flex-direction: column;
         align-items: center;
         padding: 10mm;
-        font-family: Arial, Helvetica, sans-serif;
+        font-family: 'Georgia', serif;
       }
-      .page { box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+      .page { box-shadow: 0 6px 32px rgba(0,0,0,0.35); }
     }
-
     @media print {
       body { background: white; padding: 0; margin: 0; }
       .print-btn { display: none; }
       .page { box-shadow: none; }
     }
-
     .print-btn {
       margin-bottom: 6mm;
-      padding: 2.5mm 7mm;
-      background: #2F7CFF;
+      padding: 2.5mm 8mm;
+      background: #1a1a1a;
       color: white;
       border: none;
       border-radius: 2mm;
       font-size: 3.5mm;
       font-weight: bold;
       cursor: pointer;
+      letter-spacing: 0.3mm;
     }
-    .print-btn:hover { background: #1a6be0; }
-
-    /*
-      A4 canvas: exactly 210mm × 297mm
-      Corner markers are 20mm × 20mm — flush at every corner.
-      Marker centres sit at (10mm, 10mm) from each corner edge.
-      CropOnMarkers uses those 4 centres to warp to pageDimensions [794,1123].
-
-      Coordinate conversion (used for every element below):
-        template_x = (X_mm − 10) × 4.179
-        template_y = (Y_mm − 10) × 4.054
-    */
+    .print-btn:hover { background: #333; }
+    /* ── A4 canvas ── */
     .page {
       position: relative;
       width:  210mm;
@@ -60,55 +43,51 @@
       background: white;
       overflow: hidden;
     }
-
-    /* ── 20mm corner markers ── */
-    .corner-wrap { position: absolute; width: 20mm; height: 20mm; }
+    /* ── Corner markers: 18mm × 18mm, flush at every corner ── */
+    .corner-wrap {
+      position: absolute;
+      width: 18mm;
+      height: 18mm;
+      z-index: 10;
+    }
     .corner-wrap.tl { top: 0;    left: 0; }
     .corner-wrap.tr { top: 0;    right: 0; }
     .corner-wrap.bl { bottom: 0; left: 0; }
     .corner-wrap.br { bottom: 0; right: 0; }
-    .corner-wrap img { width: 20mm; height: 20mm; display: block; }
-
-    /* Content border inset from markers */
+    .corner-wrap img { width: 18mm; height: 18mm; display: block; }
+    /* ── Outer border (inset from markers) ── */
     .border-box {
       position: absolute;
-      top: 20mm; left: 20mm; right: 20mm; bottom: 20mm;
-      border: 0.4mm solid #ccc;
+      top: 18mm; left: 18mm; right: 18mm; bottom: 18mm;
+      border: 0.35mm solid #bbb;
     }
-
-    /*
-      Bubble: 8mm × 8mm (≈ 32 template px)
-      left / top = bubble CENTRE in mm
-      transform(-4mm, -4mm) centres the element on that coordinate
-    */
+    /* ── Bubble: 7mm × 7mm circle ── */
     .bubble {
       position: absolute;
-      width: 8mm;
-      height: 8mm;
+      width: 7mm;
+      height: 7mm;
       border-radius: 50%;
-      border: 0.5mm solid #111;
-      transform: translate(-4mm, -4mm);
+      border: 0.5mm solid #222;
+      transform: translate(-3.5mm, -3.5mm);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 3mm;
+      font-size: 2.6mm;
       font-weight: 700;
       color: #333;
       background: white;
     }
-
-    /* Column header letter */
+    /* ── Column header ── */
     .col-hdr {
       position: absolute;
-      width: 8mm;
+      width: 7mm;
       text-align: center;
-      font-size: 3mm;
+      font-size: 2.8mm;
       font-weight: 800;
       color: #111;
-      transform: translateX(-4mm);
+      transform: translateX(-3.5mm);
     }
-
-    /* Question number label */
+    /* ── Question number ── */
     .q-num {
       position: absolute;
       font-size: 3mm;
@@ -116,225 +95,246 @@
       color: #111;
       transform: translateY(-1.5mm);
     }
-
-    /* Row separator */
+    /* ── Row separator ── */
     .row-sep {
       position: absolute;
-      height: 0.3mm;
-      background: #e8e8e8;
+      height: 0.25mm;
+      background: #e0e0e0;
     }
   </style>
 </head>
 <body>
-
-  <button class="print-btn" onclick="window.print()">Print Answer Sheet</button>
-
+  <button class="print-btn" onclick="window.print()">🖨 Print Answer Sheet</button>
   <div class="page">
 
-    <!-- ── 20mm corner markers (omr_marker.jpg, no overlay) ── -->
+    <!-- ── Corner markers ── -->
     <div class="corner-wrap tl"><img src="omr_marker.jpg" alt=""></div>
     <div class="corner-wrap tr"><img src="omr_marker.jpg" alt=""></div>
     <div class="corner-wrap bl"><img src="omr_marker.jpg" alt=""></div>
     <div class="corner-wrap br"><img src="omr_marker.jpg" alt=""></div>
+
+    <!-- ── Border box ── -->
     <div class="border-box"></div>
 
-    <!-- ── Header ── -->
-    <div style="position:absolute; left:16mm; top:13mm; font-size:5mm; font-weight:900; letter-spacing:0.5mm; text-transform:uppercase; color:#111;">OMR Answer Sheet</div>
-    <div style="position:absolute; left:16mm; top:20mm; font-size:2.5mm; color:#888;">AceTerus &nbsp;|&nbsp; Use a dark pen or pencil &nbsp;|&nbsp; Fill bubbles completely &nbsp;|&nbsp; Do not fold</div>
+    <!--
+      ══════════════════════════════════════════════
+        TITLE  (centred, between markers, y~24mm)
+      ══════════════════════════════════════════════
+    -->
+    <div style="
+      position: absolute;
+      left: 18mm; right: 18mm;
+      top: 22mm;
+      text-align: center;
+      font-family: Georgia, serif;
+      font-size: 6.5mm;
+      font-weight: 900;
+      letter-spacing: 0.8mm;
+      text-transform: uppercase;
+      color: #111;
+    ">AceTerus Answer Sheet</div>
 
-    <div style="position:absolute; left:16mm; right:16mm; top:25mm; height:0.3mm; background:#ccc;"></div>
+    <!-- thin rule under title -->
+    <div style="position:absolute; left:22mm; right:22mm; top:32mm; height:0.4mm; background:#333;"></div>
 
-    <!-- Exam metadata -->
-    <span style="position:absolute; left:16mm; top:28mm; font-size:2.8mm; font-weight:700; color:#111;">EXAM:</span>
-    <div  style="position:absolute; left:26mm; top:28mm; width:60mm; border-bottom:0.4mm solid #444;"></div>
+    <!-- instruction line -->
+    <div style="
+      position: absolute;
+      left: 18mm; right: 18mm;
+      top: 34mm;
+      text-align: center;
+      font-family: Georgia, serif;
+      font-size: 2.4mm;
+      font-style: italic;
+      color: #777;
+    ">Fill ONE bubble per question &nbsp;·&nbsp; Use black or blue pen &nbsp;·&nbsp; Mark clearly inside each circle</div>
 
-    <span style="position:absolute; left:93mm; top:28mm; font-size:2.8mm; font-weight:700; color:#111;">CLASS:</span>
-    <div  style="position:absolute; left:105mm; top:28mm; width:22mm; border-bottom:0.4mm solid #444;"></div>
-
-    <span style="position:absolute; left:131mm; top:28mm; font-size:2.8mm; font-weight:700; color:#111;">DATE:</span>
-    <div  style="position:absolute; left:141mm; top:28mm; width:53mm; border-bottom:0.4mm solid #444;"></div>
-
-    <span style="position:absolute; left:16mm; top:34mm; font-size:2.8mm; font-weight:700; color:#111;">NAME:</span>
-    <div  style="position:absolute; left:26mm; top:34mm; width:168mm; border-bottom:0.4mm solid #444;"></div>
-
-    <div style="position:absolute; left:16mm; right:16mm; top:39mm; height:0.3mm; background:#ccc;"></div>
-
-    <span style="position:absolute; left:16mm; top:41mm; font-size:2.4mm; color:#666; font-style:italic;">Fill ONE bubble per question. Use black or blue pen. Mark clearly inside the circle.</span>
+    <!-- thin rule under instruction -->
+    <div style="position:absolute; left:22mm; right:22mm; top:38.5mm; height:0.25mm; background:#ccc;"></div>
 
     <!--
-      ══════════════════════════════════════════════════════════════════
-      COORDINATE REFERENCE (mm on printed sheet → template px)
-        Marker centres: TL(10,10)  TR(200,10)  BL(10,287)  BR(200,287)
-        Content area:   190mm wide × 277mm tall
-        template_x = (X_mm − 10) × 4.179
-        template_y = (Y_mm − 10) × 4.054
-
-      Left col bubble A:  x=40mm → template 125    origin [125, 215]
-      bubblesGap 12mm → template 50   |   labelsGap 20mm → template 81
-      Right col bubble A: x=134mm → template 518   origin [518, 215]
-
-      Row y-centres: 63, 83, 103, 123, 143, 163, 183, 203, 223, 243 mm
-      ══════════════════════════════════════════════════════════════════
+      ══════════════════════════════════════════════
+        COLUMN HEADERS  y = 44mm
+        Left section:   A=46mm  B=57mm  C=68mm  D=79mm
+        Right section:  A=131mm B=142mm C=153mm D=164mm
+      ══════════════════════════════════════════════
     -->
 
-    <!-- Column headers y=55mm -->
-    <div class="col-hdr" style="left:40mm; top:55mm;">A</div>
-    <div class="col-hdr" style="left:52mm; top:55mm;">B</div>
-    <div class="col-hdr" style="left:64mm; top:55mm;">C</div>
-    <div class="col-hdr" style="left:76mm; top:55mm;">D</div>
-    <div style="position:absolute; left:36mm; top:58mm; width:44mm; height:0.4mm; background:#888;"></div>
+    <!-- Left col headers -->
+    <div class="col-hdr" style="left:46mm; top:44mm;">A</div>
+    <div class="col-hdr" style="left:57mm; top:44mm;">B</div>
+    <div class="col-hdr" style="left:68mm; top:44mm;">C</div>
+    <div class="col-hdr" style="left:79mm; top:44mm;">D</div>
+    <!-- underline below headers -->
+    <div style="position:absolute; left:40mm; top:48mm; width:43mm; height:0.4mm; background:#888;"></div>
 
-    <div class="col-hdr" style="left:134mm; top:55mm;">A</div>
-    <div class="col-hdr" style="left:146mm; top:55mm;">B</div>
-    <div class="col-hdr" style="left:158mm; top:55mm;">C</div>
-    <div class="col-hdr" style="left:170mm; top:55mm;">D</div>
-    <div style="position:absolute; left:130mm; top:58mm; width:44mm; height:0.4mm; background:#888;"></div>
+    <!-- Right col headers -->
+    <div class="col-hdr" style="left:131mm; top:44mm;">A</div>
+    <div class="col-hdr" style="left:142mm; top:44mm;">B</div>
+    <div class="col-hdr" style="left:153mm; top:44mm;">C</div>
+    <div class="col-hdr" style="left:164mm; top:44mm;">D</div>
+    <div style="position:absolute; left:125mm; top:48mm; width:43mm; height:0.4mm; background:#888;"></div>
 
     <!-- Centre vertical divider -->
-    <div style="position:absolute; left:105mm; top:54mm; width:0.3mm; height:195mm; background:#ddd;"></div>
+    <div style="position:absolute; left:105mm; top:42mm; width:0.3mm; height:202mm; background:#ddd;"></div>
 
     <!--
-      QUESTION ROWS  (bubble centre y = 63, 83, 103 … 243 mm)
-      Left Q# at left=23mm   |   Right Q# at left=110mm
-      Separator 6mm below bubble centre
+      ══════════════════════════════════════════════════════════
+      QUESTION ROWS
+        Bubble centre y: 56, 73, 90, 107, 124, 141, 158, 175, 192, 209 mm
+        Q# left-column : left=27mm
+        Q# right-column: left=112mm
+        Left bubbles   : A=46  B=57  C=68  D=79 mm
+        Right bubbles  : A=131 B=142 C=153 D=164 mm
+        Row separator  : 7mm below bubble centre
+
+      Template coordinates (pageDimensions [794,1123], 18mm markers):
+        origin left  [153, 189]  bubblesGap 46  labelsGap 68
+        origin right [505, 189]
+      ══════════════════════════════════════════════════════════
     -->
 
-    <!-- Row 1   y=63mm -->
-    <span class="q-num" style="left:23mm; top:63mm;">1</span>
-    <div class="bubble" style="left:40mm;  top:63mm;">A</div>
-    <div class="bubble" style="left:52mm;  top:63mm;">B</div>
-    <div class="bubble" style="left:64mm;  top:63mm;">C</div>
-    <div class="bubble" style="left:76mm;  top:63mm;">D</div>
-    <span class="q-num" style="left:110mm; top:63mm;">11</span>
-    <div class="bubble" style="left:134mm; top:63mm;">A</div>
-    <div class="bubble" style="left:146mm; top:63mm;">B</div>
-    <div class="bubble" style="left:158mm; top:63mm;">C</div>
-    <div class="bubble" style="left:170mm; top:63mm;">D</div>
-    <div class="row-sep" style="left:16mm; right:16mm; top:69mm;"></div>
+    <!-- Row 1  y=56 -->
+    <span class="q-num" style="left:27mm; top:56mm;">1</span>
+    <div class="bubble" style="left:46mm; top:56mm;">A</div>
+    <div class="bubble" style="left:57mm; top:56mm;">B</div>
+    <div class="bubble" style="left:68mm; top:56mm;">C</div>
+    <div class="bubble" style="left:79mm; top:56mm;">D</div>
+    <span class="q-num" style="left:112mm; top:56mm;">11</span>
+    <div class="bubble" style="left:131mm; top:56mm;">A</div>
+    <div class="bubble" style="left:142mm; top:56mm;">B</div>
+    <div class="bubble" style="left:153mm; top:56mm;">C</div>
+    <div class="bubble" style="left:164mm; top:56mm;">D</div>
+    <div class="row-sep" style="left:22mm; right:22mm; top:63mm;"></div>
 
-    <!-- Row 2   y=83mm -->
-    <span class="q-num" style="left:23mm; top:83mm;">2</span>
-    <div class="bubble" style="left:40mm;  top:83mm;">A</div>
-    <div class="bubble" style="left:52mm;  top:83mm;">B</div>
-    <div class="bubble" style="left:64mm;  top:83mm;">C</div>
-    <div class="bubble" style="left:76mm;  top:83mm;">D</div>
-    <span class="q-num" style="left:110mm; top:83mm;">12</span>
-    <div class="bubble" style="left:134mm; top:83mm;">A</div>
-    <div class="bubble" style="left:146mm; top:83mm;">B</div>
-    <div class="bubble" style="left:158mm; top:83mm;">C</div>
-    <div class="bubble" style="left:170mm; top:83mm;">D</div>
-    <div class="row-sep" style="left:16mm; right:16mm; top:89mm;"></div>
+    <!-- Row 2  y=73 -->
+    <span class="q-num" style="left:27mm; top:73mm;">2</span>
+    <div class="bubble" style="left:46mm; top:73mm;">A</div>
+    <div class="bubble" style="left:57mm; top:73mm;">B</div>
+    <div class="bubble" style="left:68mm; top:73mm;">C</div>
+    <div class="bubble" style="left:79mm; top:73mm;">D</div>
+    <span class="q-num" style="left:112mm; top:73mm;">12</span>
+    <div class="bubble" style="left:131mm; top:73mm;">A</div>
+    <div class="bubble" style="left:142mm; top:73mm;">B</div>
+    <div class="bubble" style="left:153mm; top:73mm;">C</div>
+    <div class="bubble" style="left:164mm; top:73mm;">D</div>
+    <div class="row-sep" style="left:22mm; right:22mm; top:80mm;"></div>
 
-    <!-- Row 3   y=103mm -->
-    <span class="q-num" style="left:23mm; top:103mm;">3</span>
-    <div class="bubble" style="left:40mm;  top:103mm;">A</div>
-    <div class="bubble" style="left:52mm;  top:103mm;">B</div>
-    <div class="bubble" style="left:64mm;  top:103mm;">C</div>
-    <div class="bubble" style="left:76mm;  top:103mm;">D</div>
-    <span class="q-num" style="left:110mm; top:103mm;">13</span>
-    <div class="bubble" style="left:134mm; top:103mm;">A</div>
-    <div class="bubble" style="left:146mm; top:103mm;">B</div>
-    <div class="bubble" style="left:158mm; top:103mm;">C</div>
-    <div class="bubble" style="left:170mm; top:103mm;">D</div>
-    <div class="row-sep" style="left:16mm; right:16mm; top:109mm;"></div>
+    <!-- Row 3  y=90 -->
+    <span class="q-num" style="left:27mm; top:90mm;">3</span>
+    <div class="bubble" style="left:46mm; top:90mm;">A</div>
+    <div class="bubble" style="left:57mm; top:90mm;">B</div>
+    <div class="bubble" style="left:68mm; top:90mm;">C</div>
+    <div class="bubble" style="left:79mm; top:90mm;">D</div>
+    <span class="q-num" style="left:112mm; top:90mm;">13</span>
+    <div class="bubble" style="left:131mm; top:90mm;">A</div>
+    <div class="bubble" style="left:142mm; top:90mm;">B</div>
+    <div class="bubble" style="left:153mm; top:90mm;">C</div>
+    <div class="bubble" style="left:164mm; top:90mm;">D</div>
+    <div class="row-sep" style="left:22mm; right:22mm; top:97mm;"></div>
 
-    <!-- Row 4   y=123mm -->
-    <span class="q-num" style="left:23mm; top:123mm;">4</span>
-    <div class="bubble" style="left:40mm;  top:123mm;">A</div>
-    <div class="bubble" style="left:52mm;  top:123mm;">B</div>
-    <div class="bubble" style="left:64mm;  top:123mm;">C</div>
-    <div class="bubble" style="left:76mm;  top:123mm;">D</div>
-    <span class="q-num" style="left:110mm; top:123mm;">14</span>
-    <div class="bubble" style="left:134mm; top:123mm;">A</div>
-    <div class="bubble" style="left:146mm; top:123mm;">B</div>
-    <div class="bubble" style="left:158mm; top:123mm;">C</div>
-    <div class="bubble" style="left:170mm; top:123mm;">D</div>
-    <div class="row-sep" style="left:16mm; right:16mm; top:129mm;"></div>
+    <!-- Row 4  y=107 -->
+    <span class="q-num" style="left:27mm; top:107mm;">4</span>
+    <div class="bubble" style="left:46mm; top:107mm;">A</div>
+    <div class="bubble" style="left:57mm; top:107mm;">B</div>
+    <div class="bubble" style="left:68mm; top:107mm;">C</div>
+    <div class="bubble" style="left:79mm; top:107mm;">D</div>
+    <span class="q-num" style="left:112mm; top:107mm;">14</span>
+    <div class="bubble" style="left:131mm; top:107mm;">A</div>
+    <div class="bubble" style="left:142mm; top:107mm;">B</div>
+    <div class="bubble" style="left:153mm; top:107mm;">C</div>
+    <div class="bubble" style="left:164mm; top:107mm;">D</div>
+    <div class="row-sep" style="left:22mm; right:22mm; top:114mm;"></div>
 
-    <!-- Row 5   y=143mm -->
-    <span class="q-num" style="left:23mm; top:143mm;">5</span>
-    <div class="bubble" style="left:40mm;  top:143mm;">A</div>
-    <div class="bubble" style="left:52mm;  top:143mm;">B</div>
-    <div class="bubble" style="left:64mm;  top:143mm;">C</div>
-    <div class="bubble" style="left:76mm;  top:143mm;">D</div>
-    <span class="q-num" style="left:110mm; top:143mm;">15</span>
-    <div class="bubble" style="left:134mm; top:143mm;">A</div>
-    <div class="bubble" style="left:146mm; top:143mm;">B</div>
-    <div class="bubble" style="left:158mm; top:143mm;">C</div>
-    <div class="bubble" style="left:170mm; top:143mm;">D</div>
-    <div class="row-sep" style="left:16mm; right:16mm; top:149mm;"></div>
+    <!-- Row 5  y=124 -->
+    <span class="q-num" style="left:27mm; top:124mm;">5</span>
+    <div class="bubble" style="left:46mm; top:124mm;">A</div>
+    <div class="bubble" style="left:57mm; top:124mm;">B</div>
+    <div class="bubble" style="left:68mm; top:124mm;">C</div>
+    <div class="bubble" style="left:79mm; top:124mm;">D</div>
+    <span class="q-num" style="left:112mm; top:124mm;">15</span>
+    <div class="bubble" style="left:131mm; top:124mm;">A</div>
+    <div class="bubble" style="left:142mm; top:124mm;">B</div>
+    <div class="bubble" style="left:153mm; top:124mm;">C</div>
+    <div class="bubble" style="left:164mm; top:124mm;">D</div>
+    <div class="row-sep" style="left:22mm; right:22mm; top:131mm;"></div>
 
-    <!-- Row 6   y=163mm -->
-    <span class="q-num" style="left:23mm; top:163mm;">6</span>
-    <div class="bubble" style="left:40mm;  top:163mm;">A</div>
-    <div class="bubble" style="left:52mm;  top:163mm;">B</div>
-    <div class="bubble" style="left:64mm;  top:163mm;">C</div>
-    <div class="bubble" style="left:76mm;  top:163mm;">D</div>
-    <span class="q-num" style="left:110mm; top:163mm;">16</span>
-    <div class="bubble" style="left:134mm; top:163mm;">A</div>
-    <div class="bubble" style="left:146mm; top:163mm;">B</div>
-    <div class="bubble" style="left:158mm; top:163mm;">C</div>
-    <div class="bubble" style="left:170mm; top:163mm;">D</div>
-    <div class="row-sep" style="left:16mm; right:16mm; top:169mm;"></div>
+    <!-- Row 6  y=141 -->
+    <span class="q-num" style="left:27mm; top:141mm;">6</span>
+    <div class="bubble" style="left:46mm; top:141mm;">A</div>
+    <div class="bubble" style="left:57mm; top:141mm;">B</div>
+    <div class="bubble" style="left:68mm; top:141mm;">C</div>
+    <div class="bubble" style="left:79mm; top:141mm;">D</div>
+    <span class="q-num" style="left:112mm; top:141mm;">16</span>
+    <div class="bubble" style="left:131mm; top:141mm;">A</div>
+    <div class="bubble" style="left:142mm; top:141mm;">B</div>
+    <div class="bubble" style="left:153mm; top:141mm;">C</div>
+    <div class="bubble" style="left:164mm; top:141mm;">D</div>
+    <div class="row-sep" style="left:22mm; right:22mm; top:148mm;"></div>
 
-    <!-- Row 7   y=183mm -->
-    <span class="q-num" style="left:23mm; top:183mm;">7</span>
-    <div class="bubble" style="left:40mm;  top:183mm;">A</div>
-    <div class="bubble" style="left:52mm;  top:183mm;">B</div>
-    <div class="bubble" style="left:64mm;  top:183mm;">C</div>
-    <div class="bubble" style="left:76mm;  top:183mm;">D</div>
-    <span class="q-num" style="left:110mm; top:183mm;">17</span>
-    <div class="bubble" style="left:134mm; top:183mm;">A</div>
-    <div class="bubble" style="left:146mm; top:183mm;">B</div>
-    <div class="bubble" style="left:158mm; top:183mm;">C</div>
-    <div class="bubble" style="left:170mm; top:183mm;">D</div>
-    <div class="row-sep" style="left:16mm; right:16mm; top:189mm;"></div>
+    <!-- Row 7  y=158 -->
+    <span class="q-num" style="left:27mm; top:158mm;">7</span>
+    <div class="bubble" style="left:46mm; top:158mm;">A</div>
+    <div class="bubble" style="left:57mm; top:158mm;">B</div>
+    <div class="bubble" style="left:68mm; top:158mm;">C</div>
+    <div class="bubble" style="left:79mm; top:158mm;">D</div>
+    <span class="q-num" style="left:112mm; top:158mm;">17</span>
+    <div class="bubble" style="left:131mm; top:158mm;">A</div>
+    <div class="bubble" style="left:142mm; top:158mm;">B</div>
+    <div class="bubble" style="left:153mm; top:158mm;">C</div>
+    <div class="bubble" style="left:164mm; top:158mm;">D</div>
+    <div class="row-sep" style="left:22mm; right:22mm; top:165mm;"></div>
 
-    <!-- Row 8   y=203mm -->
-    <span class="q-num" style="left:23mm; top:203mm;">8</span>
-    <div class="bubble" style="left:40mm;  top:203mm;">A</div>
-    <div class="bubble" style="left:52mm;  top:203mm;">B</div>
-    <div class="bubble" style="left:64mm;  top:203mm;">C</div>
-    <div class="bubble" style="left:76mm;  top:203mm;">D</div>
-    <span class="q-num" style="left:110mm; top:203mm;">18</span>
-    <div class="bubble" style="left:134mm; top:203mm;">A</div>
-    <div class="bubble" style="left:146mm; top:203mm;">B</div>
-    <div class="bubble" style="left:158mm; top:203mm;">C</div>
-    <div class="bubble" style="left:170mm; top:203mm;">D</div>
-    <div class="row-sep" style="left:16mm; right:16mm; top:209mm;"></div>
+    <!-- Row 8  y=175 -->
+    <span class="q-num" style="left:27mm; top:175mm;">8</span>
+    <div class="bubble" style="left:46mm; top:175mm;">A</div>
+    <div class="bubble" style="left:57mm; top:175mm;">B</div>
+    <div class="bubble" style="left:68mm; top:175mm;">C</div>
+    <div class="bubble" style="left:79mm; top:175mm;">D</div>
+    <span class="q-num" style="left:112mm; top:175mm;">18</span>
+    <div class="bubble" style="left:131mm; top:175mm;">A</div>
+    <div class="bubble" style="left:142mm; top:175mm;">B</div>
+    <div class="bubble" style="left:153mm; top:175mm;">C</div>
+    <div class="bubble" style="left:164mm; top:175mm;">D</div>
+    <div class="row-sep" style="left:22mm; right:22mm; top:182mm;"></div>
 
-    <!-- Row 9   y=223mm -->
-    <span class="q-num" style="left:23mm; top:223mm;">9</span>
-    <div class="bubble" style="left:40mm;  top:223mm;">A</div>
-    <div class="bubble" style="left:52mm;  top:223mm;">B</div>
-    <div class="bubble" style="left:64mm;  top:223mm;">C</div>
-    <div class="bubble" style="left:76mm;  top:223mm;">D</div>
-    <span class="q-num" style="left:110mm; top:223mm;">19</span>
-    <div class="bubble" style="left:134mm; top:223mm;">A</div>
-    <div class="bubble" style="left:146mm; top:223mm;">B</div>
-    <div class="bubble" style="left:158mm; top:223mm;">C</div>
-    <div class="bubble" style="left:170mm; top:223mm;">D</div>
-    <div class="row-sep" style="left:16mm; right:16mm; top:229mm;"></div>
+    <!-- Row 9  y=192 -->
+    <span class="q-num" style="left:27mm; top:192mm;">9</span>
+    <div class="bubble" style="left:46mm; top:192mm;">A</div>
+    <div class="bubble" style="left:57mm; top:192mm;">B</div>
+    <div class="bubble" style="left:68mm; top:192mm;">C</div>
+    <div class="bubble" style="left:79mm; top:192mm;">D</div>
+    <span class="q-num" style="left:112mm; top:192mm;">19</span>
+    <div class="bubble" style="left:131mm; top:192mm;">A</div>
+    <div class="bubble" style="left:142mm; top:192mm;">B</div>
+    <div class="bubble" style="left:153mm; top:192mm;">C</div>
+    <div class="bubble" style="left:164mm; top:192mm;">D</div>
+    <div class="row-sep" style="left:22mm; right:22mm; top:199mm;"></div>
 
-    <!-- Row 10  y=243mm -->
-    <span class="q-num" style="left:23mm; top:243mm;">10</span>
-    <div class="bubble" style="left:40mm;  top:243mm;">A</div>
-    <div class="bubble" style="left:52mm;  top:243mm;">B</div>
-    <div class="bubble" style="left:64mm;  top:243mm;">C</div>
-    <div class="bubble" style="left:76mm;  top:243mm;">D</div>
-    <span class="q-num" style="left:110mm; top:243mm;">20</span>
-    <div class="bubble" style="left:134mm; top:243mm;">A</div>
-    <div class="bubble" style="left:146mm; top:243mm;">B</div>
-    <div class="bubble" style="left:158mm; top:243mm;">C</div>
-    <div class="bubble" style="left:170mm; top:243mm;">D</div>
+    <!-- Row 10  y=209 -->
+    <span class="q-num" style="left:27mm; top:209mm;">10</span>
+    <div class="bubble" style="left:46mm; top:209mm;">A</div>
+    <div class="bubble" style="left:57mm; top:209mm;">B</div>
+    <div class="bubble" style="left:68mm; top:209mm;">C</div>
+    <div class="bubble" style="left:79mm; top:209mm;">D</div>
+    <span class="q-num" style="left:112mm; top:209mm;">20</span>
+    <div class="bubble" style="left:131mm; top:209mm;">A</div>
+    <div class="bubble" style="left:142mm; top:209mm;">B</div>
+    <div class="bubble" style="left:153mm; top:209mm;">C</div>
+    <div class="bubble" style="left:164mm; top:209mm;">D</div>
 
     <!-- ── Footer ── -->
-    <div style="position:absolute; left:16mm; right:16mm; top:257mm; height:0.3mm; background:#ccc;"></div>
-    <span style="position:absolute; left:16mm; top:259mm; font-size:2.2mm; color:#aaa;">
-      AceTerus OMR Answer Sheet &nbsp;|&nbsp; Do not fold or crumple &nbsp;|&nbsp; Keep markings within circles
-    </span>
+    <div style="position:absolute; left:22mm; right:22mm; top:222mm; height:0.3mm; background:#ccc;"></div>
+    <div style="
+      position:absolute; left:18mm; right:18mm;
+      top:224mm;
+      text-align:center;
+      font-family: Georgia, serif;
+      font-size:2.2mm;
+      color:#aaa;
+      font-style:italic;
+    ">AceTerus OMR Answer Sheet &nbsp;·&nbsp; Do not fold or crumple &nbsp;·&nbsp; Keep markings within circles</div>
 
-  </div>
-
+  </div><!-- .page -->
 </body>
 </html>
