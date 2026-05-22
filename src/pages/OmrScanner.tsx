@@ -84,6 +84,9 @@ export default function OmrScanner() {
   const [preview,          setPreview]          = useState<string | null>(null);
   const [cornersDetected,  setCornersDetected]  = useState(false);
   const [captureProgress,  setCaptureProgress]  = useState(0);
+  const [pendingBlob,      setPendingBlob]      = useState<Blob | null>(null);
+  const [pendingPreview,   setPendingPreview]   = useState<string | null>(null);
+  const nativeCameraRef = useRef<HTMLInputElement>(null);
 
   // ── Scan / jobs ──────────────────────────────────────────────────────────
   const [jobs,       setJobs]       = useState<Map<string, ScanJob>>(new Map());
@@ -151,19 +154,20 @@ export default function OmrScanner() {
     if (!video || !canvas) return;
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     cornerStableRef.current = null;
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d")!.drawImage(video, 0, 0);
+    // Cap at 2000px max dimension to reduce upload size
+    const MAX = 2000;
+    const scale = Math.min(1, MAX / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width  = Math.round(video.videoWidth  * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(blob => {
       if (!blob) return;
-      setFile(new File([blob], "capture.jpg", { type: "image/jpeg" }));
-      setPreview(URL.createObjectURL(blob));
-      streamRef.current?.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-      setCameraOpen(false);
+      // Show confirmation overlay — stream stays alive for retake
+      setPendingBlob(blob);
+      setPendingPreview(URL.createObjectURL(blob));
       setCornersDetected(false);
       setCaptureProgress(0);
-    }, "image/jpeg", 0.95);
+    }, "image/jpeg", 0.92);
   }, []);
 
   // 2) detection loop — depends on triggerCapture (already defined above)
@@ -182,20 +186,39 @@ export default function OmrScanner() {
       const vw = vid.videoWidth, vh = vid.videoHeight;
       const dw = cvs.width,      dh = cvs.height;
 
-      const SW = 320, SH = Math.round(vh / vw * 320);
+      // ── object-contain letterbox: compute visible video rect in display space ──
+      const vidAR = vw / vh, dispAR = dw / dh;
+      let vidLeft = 0, vidTop = 0, vidRight = dw, vidBottom = dh;
+      if (vidAR > dispAR) {
+        const scale = dw / vw, rendH = Math.round(vh * scale);
+        vidTop = Math.round((dh - rendH) / 2); vidBottom = vidTop + rendH;
+      } else {
+        const scale = dh / vh, rendW = Math.round(vw * scale);
+        vidLeft = Math.round((dw - rendW) / 2); vidRight = vidLeft + rendW;
+      }
+      const contentW = vidRight - vidLeft, contentH = vidBottom - vidTop;
+
+      // Offscreen canvas samples only the content area (excludes letterbox bars)
+      const SW = 320, SH = Math.round(contentH / contentW * SW);
       if (!offscreenRef.current) offscreenRef.current = document.createElement("canvas");
       const off = offscreenRef.current;
       if (off.width !== SW || off.height !== SH) { off.width = SW; off.height = SH; }
       const offCtx = off.getContext("2d")!;
-      offCtx.drawImage(vid, 0, 0, SW, SH);
+      offCtx.drawImage(vid, vidLeft, vidTop, contentW, contentH, 0, 0, SW, SH);
       const { data } = offCtx.getImageData(0, 0, SW, SH);
 
-      const cx = Math.floor(SW * 0.20), cy = Math.floor(SH * 0.20);
+      // Guide frame in offscreen coords — mirrors the visual guide drawn on the overlay
+      const gxL = Math.round(SW * 0.07),  gxR = Math.round(SW * 0.93);
+      const gyT = Math.round(SH * 0.04);
+      const gyB = Math.min(SH - 1, Math.round(gyT + SW * 0.86 * (297 / 210)));
+      const bx  = Math.floor(SW * 0.08),  by = Math.floor(SH * 0.08);
+
+      // Detection regions at the 4 guide-frame corners (where markers should appear)
       const regions = [
-        { x1: 0,     y1: 0,     x2: cx,  y2: cy  },
-        { x1: SW-cx, y1: 0,     x2: SW,  y2: cy  },
-        { x1: 0,     y1: SH-cy, x2: cx,  y2: SH  },
-        { x1: SW-cx, y1: SH-cy, x2: SW,  y2: SH  },
+        { x1: Math.max(0, gxL-bx), y1: Math.max(0, gyT-by), x2: Math.min(SW, gxL+bx), y2: Math.min(SH, gyT+by) },
+        { x1: Math.max(0, gxR-bx), y1: Math.max(0, gyT-by), x2: Math.min(SW, gxR+bx), y2: Math.min(SH, gyT+by) },
+        { x1: Math.max(0, gxL-bx), y1: Math.max(0, gyB-by), x2: Math.min(SW, gxL+bx), y2: Math.min(SH, gyB+by) },
+        { x1: Math.max(0, gxR-bx), y1: Math.max(0, gyB-by), x2: Math.min(SW, gxR+bx), y2: Math.min(SH, gyB+by) },
       ];
 
       const found = regions.map(r => {
@@ -205,7 +228,11 @@ export default function OmrScanner() {
           if (data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114 < DARK_THR) { sx += x; sy += y; n++; }
         }
         const total = (r.x2 - r.x1) * (r.y2 - r.y1);
-        return n / total >= DARK_RATIO ? { x: sx/n/SW, y: sy/n/SH } : null;
+        // Return display-normalised coords so drawing code can use p.x*dw, p.y*dh directly
+        return n / total >= DARK_RATIO ? {
+          x: (vidLeft + sx/n/SW * contentW) / dw,
+          y: (vidTop  + sy/n/SH * contentH) / dh,
+        } : null;
       });
 
       const allFound = found.every(Boolean);
@@ -225,29 +252,63 @@ export default function OmrScanner() {
       const ctx = cvs.getContext("2d")!;
       ctx.clearRect(0, 0, dw, dh);
 
-      if (allFound) {
-        const p = found as { x: number; y: number }[];
-        ctx.strokeStyle = `rgba(0,255,136,${0.25 + progress/100*0.6})`;
-        ctx.lineWidth = 2;
+      // ── Guide frame (A4 ratio centred in content area) ────────────────────
+      const GX = vidLeft  + contentW * 0.07;
+      const GY = vidTop   + contentH * 0.04;
+      const GW = contentW * 0.86;
+      const GH = GW * (297 / 210);
+      const borderCol = allFound ? "#22c55e" : "rgba(255,255,255,0.85)";
+
+      // Dark vignette outside the guide frame (path-with-hole)
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.52)";
+      ctx.beginPath();
+      ctx.rect(0, 0, dw, dh);
+      ctx.rect(GX, GY, GW, GH);
+      ctx.fill("evenodd");
+      ctx.restore();
+
+      // Guide border + progress glow when all corners detected
+      ctx.strokeStyle = borderCol;
+      ctx.lineWidth   = allFound ? 3 + progress / 100 * 2 : 2.5;
+      ctx.strokeRect(GX, GY, GW, GH);
+
+      // Corner brackets on guide frame
+      const B = 22;
+      ctx.lineWidth = 4; ctx.lineCap = "round";
+      ctx.strokeStyle = borderCol;
+      for (const [cx2, cy2, sx2, sy2] of [
+        [GX,      GY,      1,  1],
+        [GX + GW, GY,     -1,  1],
+        [GX,      GY + GH, 1, -1],
+        [GX + GW, GY + GH,-1, -1],
+      ] as [number, number, number, number][]) {
         ctx.beginPath();
-        ctx.moveTo(p[0].x*dw, p[0].y*dh);
-        ctx.lineTo(p[1].x*dw, p[1].y*dh);
-        ctx.lineTo(p[3].x*dw, p[3].y*dh);
-        ctx.lineTo(p[2].x*dw, p[2].y*dh);
-        ctx.closePath();
+        ctx.moveTo(cx2 + sx2 * B, cy2);
+        ctx.lineTo(cx2, cy2);
+        ctx.lineTo(cx2, cy2 + sy2 * B);
         ctx.stroke();
       }
 
+      // Instruction label
+      ctx.fillStyle  = "rgba(255,255,255,0.88)";
+      ctx.font       = `bold ${Math.round(dw * 0.036)}px system-ui, sans-serif`;
+      ctx.textAlign  = "center";
+      ctx.fillText("Fit the answer sheet within the frame", dw / 2, Math.max(GY - 10, 16));
+
+      // Detected marker dots (yellow when partial, green when all found)
       const defaultPts = [
-        { x: 40/dw, y: 40/dh }, { x: (dw-40)/dw, y: 40/dh },
-        { x: 40/dw, y: (dh-40)/dh }, { x: (dw-40)/dw, y: (dh-40)/dh },
+        { x: GX / dw,        y: GY / dh },
+        { x: (GX + GW) / dw, y: GY / dh },
+        { x: GX / dw,        y: (GY + GH) / dh },
+        { x: (GX + GW) / dw, y: (GY + GH) / dh },
       ];
       found.forEach((pt, i) => {
         const isR = i === 1 || i === 3, isB = i === 2 || i === 3;
         const p   = pt ?? defaultPts[i];
-        const px  = p.x * dw, py = p.y * dh, L = 28;
-        ctx.strokeStyle = pt ? (allFound ? "#00ff88" : "#facc15") : "#ef4444";
-        ctx.lineWidth = 4; ctx.lineCap = "round";
+        const px  = p.x * dw, py = p.y * dh, L = 20;
+        ctx.strokeStyle = pt ? (allFound ? "#00ff88" : "#facc15") : "rgba(255,255,255,0.35)";
+        ctx.lineWidth = 3; ctx.lineCap = "round";
         ctx.beginPath();
         ctx.moveTo(px + (isR ? L : -L), py);
         ctx.lineTo(px, py);
@@ -265,7 +326,12 @@ export default function OmrScanner() {
     setCameraError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
+        video: {
+          facingMode:  { ideal: "environment" },
+          width:       { ideal: 1920 },
+          height:      { ideal: 1080 },
+          aspectRatio: { ideal: 16 / 9 },
+        },
       });
       streamRef.current = stream;
       setCameraOpen(true);
@@ -505,19 +571,39 @@ export default function OmrScanner() {
 
       {/* Camera / upload buttons */}
       {!cameraOpen && !file && (
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={openCamera} disabled={!apiOnline}>
-            <Camera className="w-4 h-4 mr-2" /> Use Camera
-          </Button>
-          <label className="flex-1 cursor-pointer">
-            <div className="flex items-center justify-center gap-2 border rounded-md px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
-              <Upload className="w-4 h-4" /> Upload File
-            </div>
-            <input
-              type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden"
-              onChange={e => e.target.files?.[0] && pickFile(e.target.files[0])}
-            />
-          </label>
+        <div className="space-y-2">
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={openCamera} disabled={!apiOnline}>
+              <Camera className="w-4 h-4 mr-2" /> Use Camera
+            </Button>
+            <label className="flex-1 cursor-pointer">
+              <div className="flex items-center justify-center gap-2 border rounded-md px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
+                <Upload className="w-4 h-4" /> Upload File
+              </div>
+              <input
+                type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden"
+                onChange={e => e.target.files?.[0] && pickFile(e.target.files[0])}
+              />
+            </label>
+          </div>
+          <button
+            className="w-full text-xs text-muted-foreground underline underline-offset-2 hover:opacity-80 transition-opacity"
+            onClick={() => nativeCameraRef.current?.click()}
+          >
+            Use phone camera app instead
+          </button>
+          <input
+            ref={nativeCameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) pickFile(f);
+              e.target.value = "";
+            }}
+          />
         </div>
       )}
 
@@ -560,26 +646,57 @@ export default function OmrScanner() {
           {/* Video + corner overlay canvas */}
           <div className="relative flex-1 overflow-hidden">
             <video ref={videoRef} autoPlay playsInline
-              className="absolute inset-0 w-full h-full object-cover" />
+              className="absolute inset-0 w-full h-full object-contain bg-black" />
             <canvas ref={overlayRef}
               className="absolute inset-0 w-full h-full pointer-events-none" />
           </div>
 
+          {/* Confirmation overlay — shown after auto/manual capture */}
+          {pendingPreview && (
+            <div className="absolute inset-0 z-20 flex flex-col bg-black">
+              <img src={pendingPreview} alt="Captured" className="flex-1 w-full object-contain" />
+              <div className="flex gap-3 p-4 pb-8 bg-black/80">
+                <Button variant="outline" className="flex-1 border-white/30 text-white hover:bg-white/10"
+                  onClick={() => {
+                    setPendingBlob(null);
+                    setPendingPreview(null);
+                    startCornerDetection();
+                  }}>
+                  Retake
+                </Button>
+                <Button className="flex-1 bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    setFile(new File([pendingBlob!], "capture.jpg", { type: "image/jpeg" }));
+                    setPreview(pendingPreview!);
+                    setPendingBlob(null);
+                    setPendingPreview(null);
+                    streamRef.current?.getTracks().forEach(t => t.stop());
+                    streamRef.current = null;
+                    setCameraOpen(false);
+                  }}>
+                  Use this photo
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Bottom bar — shutter button with progress ring */}
-          <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center pb-10 pt-4
-                          bg-gradient-to-t from-black/70 to-transparent">
-            <button onClick={triggerCapture} aria-label="Capture photo"
-              className="relative w-20 h-20 rounded-full bg-white shadow-xl active:scale-95 transition-transform">
-              {captureProgress > 0 && (
-                <svg className="absolute inset-0 -rotate-90 w-full h-full" viewBox="0 0 80 80">
-                  <circle cx="40" cy="40" r="34" fill="none" stroke="#00ff88" strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeDasharray={`${captureProgress / 100 * 213.6} 213.6`} />
-                </svg>
-              )}
-              <Camera className="w-8 h-8 text-gray-700 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-            </button>
-          </div>
+          {!pendingPreview && (
+            <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center pb-10 pt-4
+                            bg-gradient-to-t from-black/70 to-transparent">
+              <button onClick={triggerCapture} aria-label="Capture photo"
+                className="relative w-20 h-20 rounded-full bg-white shadow-xl active:scale-95 transition-transform">
+                {captureProgress > 0 && (
+                  <svg className="absolute inset-0 -rotate-90 w-full h-full" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="#00ff88" strokeWidth="5"
+                      strokeLinecap="round"
+                      strokeDasharray={`${captureProgress / 100 * 213.6} 213.6`} />
+                  </svg>
+                )}
+                <Camera className="w-8 h-8 text-gray-700 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
