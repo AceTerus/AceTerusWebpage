@@ -1,5 +1,5 @@
 {
-  "_comment": "20-question sheet v3, symmetric two-column layout. 794x1123 px canonical.",
+  "_comment": "20-question sheet v4 — mm-based layout, 20mm markers. 794x1123 canonical.",
 
   "canonical_width":  794,
   "canonical_height": 1123,
@@ -12,19 +12,19 @@
       {
         "col_index":        0,
         "question_range":   [1, 10],
-        "bubble_start_x":   155,
-        "bubble_spacing_x": 40,
-        "row_start_y":      225,
-        "row_spacing_y":    75,
+        "bubble_start_x":   125,
+        "bubble_spacing_x": 50,
+        "row_start_y":      215,
+        "row_spacing_y":    81,
         "bubble_radius":    16
       },
       {
         "col_index":        1,
         "question_range":   [11, 20],
-        "bubble_start_x":   519,
-        "bubble_spacing_x": 40,
-        "row_start_y":      225,
-        "row_spacing_y":    75,
+        "bubble_start_x":   518,
+        "bubble_spacing_x": 50,
+        "row_start_y":      215,
+        "row_spacing_y":    81,
         "bubble_radius":    16
       }
     ]
