@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from config import MAX_FILE_SIZE_MB, UPLOAD_DIR
 from database import SessionLocal, get_db
 from models.models import AnswerKey, Exam, JobStatus, OmrResult, ScanJob, Score, Student
+from processing.pipeline import run_pipeline_debug
 from schemas.schemas import OverrideIn
 from socket_manager import sio
 
@@ -48,6 +49,11 @@ async def _process_scan(job_id: str, image_path: str, exam_id: str) -> None:
         from processing.pipeline import run_pipeline
         loop   = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, run_pipeline, image_path, answer_keys)
+
+        # Store error reason so it survives without needing server log access
+        if result.get("_error"):
+            job.error_message = result["_error"]
+            db.commit()
 
         # 4. Resolve student
         if result["student_code"]:
@@ -264,4 +270,34 @@ def override_result(
         "is_correct": result.is_correct,
         "new_score":  score.raw_score if score else None,
         "percentage": score.percentage if score else None,
+    }
+
+
+@router.get("/{job_id}/debug")
+def debug_scan(job_id: str, db: Session = Depends(get_db)):
+    """
+    Re-run the OMR pipeline in step-by-step diagnostic mode on the stored image.
+    Returns which stage succeeded/failed + a base64 JPEG of the preprocessed image.
+    CPU-heavy — for developer use only.
+    """
+    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Scan job not found")
+
+    image_path = job.image_url
+    if not Path(image_path).exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Stored image not on disk: {image_path} — Render free tier wipes uploads on redeploy",
+        )
+
+    answer_keys = db.query(AnswerKey).filter(AnswerKey.exam_id == job.exam_id).all()
+    diag = run_pipeline_debug(image_path, answer_keys)
+
+    return {
+        "job_id":        job_id,
+        "stored_image":  image_path,
+        "is_fallback":   bool(job.is_fallback),
+        "error_message": job.error_message,
+        "diagnostic":    diag,
     }

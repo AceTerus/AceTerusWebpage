@@ -294,4 +294,81 @@ def run_pipeline(image_path: str, answer_keys: list) -> Dict[str, Any]:
 
     except Exception as exc:
         logger.warning("[OMR] pipeline error — all answers marked not detected: %s", exc)
-        return _undetected_result(answer_keys)
+        result = _undetected_result(answer_keys)
+        result["_error"] = f"{type(exc).__name__}: {exc}"
+        return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Diagnostic runner  (called only by /scan/{job_id}/debug — never in prod flow)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def run_pipeline_debug(image_path: str, answer_keys: list) -> Dict[str, Any]:
+    """
+    Step-by-step pipeline run that returns rich diagnostic info.
+    CPU-heavy; only call from the admin debug endpoint.
+    """
+    import base64
+
+    diag: Dict[str, Any] = {
+        "image_shape":      None,
+        "clahe_ok":         False,
+        "crop_ok":          False,
+        "crop_fallback":    False,
+        "processed_shape":  None,
+        "processed_b64":    None,
+        "raw_omr_response": None,
+        "multi_marked":     None,
+        "exception":        None,
+        "stage":            "init",
+    }
+    try:
+        template = _get_template()
+        _setup_omrchecker()
+        from src.utils.parsing import get_concatenated_response
+
+        diag["stage"] = "load_image"
+        gray = _load_image_as_gray(image_path)
+        diag["image_shape"] = list(gray.shape)
+
+        diag["stage"] = "clahe"
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        gray  = clahe.apply(gray)
+        diag["clahe_ok"] = True
+
+        diag["stage"] = "apply_preprocessors"
+        processed = template.image_instance_ops.apply_preprocessors(
+            image_path, gray, template
+        )
+        if processed is not None:
+            diag["crop_ok"] = True
+        else:
+            diag["stage"] = "contour_fallback"
+            page_w, page_h = template.page_dimensions
+            processed = _contour_perspective_fallback(gray, (page_w, page_h))
+            diag["crop_fallback"] = True
+
+        diag["processed_shape"] = list(processed.shape)
+        ok, buf = cv2.imencode(".jpg", processed, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        if ok:
+            diag["processed_b64"] = base64.b64encode(buf.tobytes()).decode()
+
+        diag["stage"] = "read_omr_response"
+        response_dict, _, multi_marked, _ = (
+            template.image_instance_ops.read_omr_response(
+                template,
+                image    = processed,
+                name     = Path(image_path).name,
+                save_dir = None,
+            )
+        )
+        omr_response = get_concatenated_response(response_dict, template)
+        diag["raw_omr_response"] = omr_response
+        diag["multi_marked"]     = multi_marked
+        diag["stage"] = "done"
+
+    except Exception as exc:
+        diag["exception"] = f"{type(exc).__name__}: {exc}"
+        logger.warning("[OMR-DEBUG] exception at stage '%s': %s", diag["stage"], exc)
+
+    return diag

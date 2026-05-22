@@ -44,7 +44,8 @@ interface ScanJob {
   score?: { raw_score: number; max_score: number; percentage: number };
   omr_results?: OmrResultItem[];
   overall_confidence?: number;
-  error_message?: string;
+  is_fallback?: boolean;
+  error_message?: string | null;
 }
 
 interface ReviewRow {
@@ -109,6 +110,11 @@ export default function OmrScanner() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [expandedData,  setExpandedData]  = useState<ScanJob | null>(null);
+
+  // ── Debug panel ───────────────────────────────────────────────────────────
+  const [debugJobId,  setDebugJobId]  = useState<string | null>(null);
+  const [debugData,   setDebugData]   = useState<Record<string, unknown> | null>(null);
+  const [debugLoading,setDebugLoading]= useState(false);
 
   // ── Initialise ───────────────────────────────────────────────────────────
   const checkApi = async () => {
@@ -518,6 +524,19 @@ export default function OmrScanner() {
     loadReview();
   };
 
+  const runDebug = async (jobId: string) => {
+    if (debugJobId === jobId) { setDebugJobId(null); setDebugData(null); return; }
+    setDebugJobId(jobId); setDebugData(null); setDebugLoading(true);
+    try {
+      const res = await fetch(`${OMR_API}/api/scan/${jobId}/debug`);
+      setDebugData(await res.json());
+    } catch (e: any) {
+      setDebugData({ error: e.message });
+    } finally {
+      setDebugLoading(false);
+    }
+  };
+
   // ── Shared: status badge ──────────────────────────────────────────────────
   const statusBadge = (s: string) => {
     const v: Record<string, "secondary" | "outline" | "default" | "destructive"> = {
@@ -737,33 +756,99 @@ export default function OmrScanner() {
         <div className="space-y-2 pt-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recent Scans</p>
           {Array.from(jobs.values()).reverse().map(job => (
-            <Card key={job.job_id} className={job.omr_results?.some(r => r.is_flagged) ? "border-amber-400/40" : ""}>
-              <CardContent className="p-3 flex items-center gap-3 flex-wrap">
-                {statusBadge(job.status)}
-                <span className="text-xs text-muted-foreground font-mono">{job.job_id.slice(0, 8)}…</span>
-                {(job.status === "pending" || job.status === "processing") && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground ml-auto" />
-                )}
-                {job.status === "done" && job.score && (
-                  <span className="ml-auto font-bold text-primary text-sm">
-                    {job.score.raw_score}/{job.score.max_score} ({job.score.percentage.toFixed(1)}%)
-                  </span>
-                )}
-                {job.status === "failed" && (
-                  <div className="ml-auto flex items-center gap-2">
-                    <span className="text-xs text-destructive truncate max-w-[100px]">
-                      {job.error_message ?? "Scan failed"}
+            <Card key={job.job_id} className={
+              job.is_fallback ? "border-red-400/60" :
+              job.omr_results?.some(r => r.is_flagged) ? "border-amber-400/40" : ""
+            }>
+              <CardContent className="p-3 space-y-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {statusBadge(job.status)}
+                  {job.is_fallback && (
+                    <Badge variant="destructive" className="text-[10px]">pipeline error</Badge>
+                  )}
+                  <span className="text-xs text-muted-foreground font-mono">{job.job_id.slice(0, 8)}…</span>
+                  {(job.status === "pending" || job.status === "processing") && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground ml-auto" />
+                  )}
+                  {job.status === "done" && job.score && (
+                    <span className="ml-auto font-bold text-primary text-sm">
+                      {job.score.raw_score}/{job.score.max_score} ({job.score.percentage.toFixed(1)}%)
                     </span>
-                    <Button size="sm" variant="outline" className="h-6 text-xs px-2"
-                      onClick={() => { clearFile(); openCamera(); }}>
-                      <RefreshCw className="w-3 h-3 mr-1" /> Retry
+                  )}
+                  {job.status === "failed" && (
+                    <div className="ml-auto flex items-center gap-2">
+                      <Button size="sm" variant="outline" className="h-6 text-xs px-2"
+                        onClick={() => { clearFile(); openCamera(); }}>
+                        <RefreshCw className="w-3 h-3 mr-1" /> Retry
+                      </Button>
+                    </div>
+                  )}
+                  {job.status === "done" && (job.omr_results?.filter(r => r.is_flagged) ?? []).length > 0 && (
+                    <span className="text-xs text-amber-600">
+                      ⚠️ {job.omr_results!.filter(r => r.is_flagged).length} flagged
+                    </span>
+                  )}
+                  {isAdmin && (job.status === "done" || job.status === "failed") && (
+                    <Button size="sm" variant="ghost" className="h-6 text-xs px-2 ml-auto"
+                      onClick={() => runDebug(job.job_id)}>
+                      <Eye className="w-3 h-3 mr-1" />
+                      {debugJobId === job.job_id ? "Hide" : "Debug"}
                     </Button>
-                  </div>
+                  )}
+                </div>
+
+                {/* Error message */}
+                {job.error_message && (
+                  <p className="text-xs text-destructive font-mono break-all">{job.error_message}</p>
                 )}
-                {job.status === "done" && (job.omr_results?.filter(r => r.is_flagged) ?? []).length > 0 && (
-                  <span className="text-xs text-amber-600">
-                    ⚠️ {job.omr_results!.filter(r => r.is_flagged).length} flagged
-                  </span>
+
+                {/* Debug panel */}
+                {debugJobId === job.job_id && (
+                  <div className="mt-2 p-3 bg-muted/60 rounded-lg space-y-2 text-xs font-mono">
+                    {debugLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {debugData && (() => {
+                      const diag = (debugData.diagnostic ?? {}) as Record<string, unknown>;
+                      return (
+                        <>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                            <span className="text-muted-foreground">stage reached</span>
+                            <span className={diag.exception ? "text-destructive" : "text-green-600"}>
+                              {String(diag.stage ?? "?")}
+                            </span>
+                            <span className="text-muted-foreground">CropOnMarkers</span>
+                            <span className={diag.crop_ok ? "text-green-600" : "text-amber-500"}>
+                              {diag.crop_ok ? "✓ success" : diag.crop_fallback ? "✗ failed → contour fallback" : "✗ failed"}
+                            </span>
+                            <span className="text-muted-foreground">image shape in</span>
+                            <span>{JSON.stringify(diag.image_shape ?? null)}</span>
+                            <span className="text-muted-foreground">processed shape</span>
+                            <span>{JSON.stringify(diag.processed_shape ?? null)}</span>
+                          </div>
+                          {diag.exception && (
+                            <p className="text-destructive break-all">Error: {String(diag.exception)}</p>
+                          )}
+                          {diag.raw_omr_response && (
+                            <details>
+                              <summary className="cursor-pointer text-muted-foreground">raw OMR response</summary>
+                              <pre className="mt-1 text-[10px] whitespace-pre-wrap break-all">
+                                {JSON.stringify(diag.raw_omr_response, null, 2)}
+                              </pre>
+                            </details>
+                          )}
+                          {diag.processed_b64 && (
+                            <details>
+                              <summary className="cursor-pointer text-muted-foreground">processed image (warped 794×1123)</summary>
+                              <img
+                                src={`data:image/jpeg;base64,${diag.processed_b64}`}
+                                alt="Processed OMR image"
+                                className="mt-2 w-full rounded border"
+                              />
+                            </details>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
                 )}
               </CardContent>
             </Card>
