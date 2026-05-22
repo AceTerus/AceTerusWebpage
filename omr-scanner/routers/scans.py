@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from config import UPLOAD_DIR
+from config import MAX_FILE_SIZE_MB, UPLOAD_DIR
 from database import SessionLocal, get_db
 from models.models import AnswerKey, Exam, JobStatus, OmrResult, ScanJob, Score, Student
 from schemas.schemas import OverrideIn
@@ -128,6 +128,11 @@ async def upload_scan(
     ext = Path(file.filename or "").suffix.lower()
     if ext not in _ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+
+    body = await file.read()
+    if len(body) > MAX_FILE_SIZE_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"File exceeds {MAX_FILE_SIZE_MB} MB limit")
+    await file.seek(0)
 
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if not exam:

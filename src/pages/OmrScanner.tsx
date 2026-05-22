@@ -305,6 +305,12 @@ export default function OmrScanner() {
   const clearFile = () => { setFile(null); setPreview(null); };
 
   // ── Job polling ───────────────────────────────────────────────────────────
+  const pollIntervalsRef = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
+
+  useEffect(() => {
+    return () => { pollIntervalsRef.current.forEach(clearInterval); };
+  }, []);
+
   const pollJob = (jobId: string) => {
     let n = 0;
     const id = setInterval(async () => {
@@ -313,18 +319,22 @@ export default function OmrScanner() {
         const res  = await fetch(`${OMR_API}/api/scan/${jobId}`);
         const data: ScanJob = await res.json();
         setJobs(prev => new Map(prev).set(jobId, data));
-        if (data.status === "done" || data.status === "failed" || n >= 60)
+        if (data.status === "done" || data.status === "failed" || n >= 60) {
           clearInterval(id);
+          pollIntervalsRef.current.delete(id);
+        }
       } catch {
-        if (n >= 60) clearInterval(id);
+        if (n >= 60) { clearInterval(id); pollIntervalsRef.current.delete(id); }
       }
     }, 2000);
+    pollIntervalsRef.current.add(id);
   };
 
   // ── Submit scan ───────────────────────────────────────────────────────────
   const submitScan = async () => {
     if (!selectedExamId) { setScanMsg({ text: "Select an exam first.", type: "error" }); return; }
     if (!file)           { setScanMsg({ text: "No file selected.",      type: "error" }); return; }
+    if (file.size > 10 * 1024 * 1024) { setScanMsg({ text: "File is too large (max 10 MB). Try a lower-resolution photo.", type: "error" }); return; }
     setSubmitting(true);
     setScanMsg({ text: "Uploading…", type: "info" });
     const fd = new FormData();
