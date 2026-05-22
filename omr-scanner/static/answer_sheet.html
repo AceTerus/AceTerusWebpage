@@ -49,12 +49,7 @@
       overflow: hidden;
     }
 
-    /*
-      Corner marker:  46×46 container
-        <img>   = omr_marker.jpg pattern for CropOnMarkers
-        .fiducial = 32×32 solid black square for CropPage corner detection
-                    (sits flush against the outermost corner)
-    */
+    /* Corner marker: 46×46 omr_marker.jpg — used by CropOnMarkers for alignment */
     .corner-wrap {
       position: absolute;
       width: 46px;
@@ -70,17 +65,6 @@
       height: 46px;
       display: block;
     }
-
-    .corner-wrap .fiducial {
-      position: absolute;
-      width: 32px;
-      height: 32px;
-      background: black;
-    }
-    .corner-wrap.tl .fiducial { top: 0;    left: 0; }
-    .corner-wrap.tr .fiducial { top: 0;    right: 0; }
-    .corner-wrap.bl .fiducial { bottom: 0; left: 0; }
-    .corner-wrap.br .fiducial { bottom: 0; right: 0; }
 
     /* Thin content border, inset inside the markers */
     .border-box {
@@ -149,11 +133,11 @@
 
   <div class="page">
 
-    <!-- Corner markers: omr_marker.jpg pattern + black CropPage fiducial -->
-    <div class="corner-wrap tl"><img src="omr_marker.jpg" alt=""><div class="fiducial"></div></div>
-    <div class="corner-wrap tr"><img src="omr_marker.jpg" alt=""><div class="fiducial"></div></div>
-    <div class="corner-wrap bl"><img src="omr_marker.jpg" alt=""><div class="fiducial"></div></div>
-    <div class="corner-wrap br"><img src="omr_marker.jpg" alt=""><div class="fiducial"></div></div>
+    <!-- Corner markers: omr_marker.jpg only — CropOnMarkers uses these for alignment -->
+    <div class="corner-wrap tl"><img src="omr_marker.jpg" alt=""></div>
+    <div class="corner-wrap tr"><img src="omr_marker.jpg" alt=""></div>
+    <div class="corner-wrap bl"><img src="omr_marker.jpg" alt=""></div>
+    <div class="corner-wrap br"><img src="omr_marker.jpg" alt=""></div>
     <div class="border-box"></div>
 
     <!-- ── Header ── -->

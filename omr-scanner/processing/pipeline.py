@@ -112,6 +112,30 @@ def _load_image_as_gray(image_path: str) -> np.ndarray:
     return img
 
 
+def _contour_perspective_fallback(gray: np.ndarray, page_dims: tuple) -> np.ndarray:
+    """
+    When CropOnMarkers cannot find the markers, try to locate the paper via
+    contour detection and apply a perspective warp before resizing.
+    Falls back to a plain resize if no quadrilateral contour is found.
+    """
+    blurred   = cv2.GaussianBlur(gray, (5, 5), 0)
+    clahe_fb  = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    enhanced  = clahe_fb.apply(blurred)
+    _, thresh = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    cnts, _   = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts      = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
+    for c in cnts:
+        peri  = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+        if len(approx) == 4:
+            _setup_omrchecker()
+            from src.utils.image import ImageUtils
+            warped = ImageUtils.four_point_transform(gray, approx.reshape(4, 2))
+            return cv2.resize(warped, page_dims, interpolation=cv2.INTER_AREA)
+    logger.warning("[OMR] Contour fallback found no quadrilateral — using plain resize")
+    return cv2.resize(gray, page_dims, interpolation=cv2.INTER_AREA)
+
+
 def _undetected_result(answer_keys: list) -> Dict[str, Any]:
     """
     Returned when the pipeline fails entirely (bad image, corrupt file, etc.).
@@ -158,6 +182,10 @@ def run_pipeline(image_path: str, answer_keys: list) -> Dict[str, Any]:
         gray = _load_image_as_gray(image_path)
         logger.info("[OMR] Loaded %s  shape=%s", Path(image_path).name, gray.shape)
 
+        # CLAHE: normalise uneven phone-camera lighting before any detection
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        gray  = clahe.apply(gray)
+
         # ── Step 3: Preprocess ────────────────────────────────────────────────
         #
         # apply_preprocessors does TWO things (see OMRChecker src/core.py):
@@ -173,22 +201,18 @@ def run_pipeline(image_path: str, answer_keys: list) -> Dict[str, Any]:
         )
 
         if processed is None:
-            # CropPage could not locate the page boundary.
-            # Common causes:
-            #   - PDF uploaded directly (no background border visible)
-            #   - Photo taken too close / corner fiducials cropped off
-            #   - Poor lighting washing out the black corner squares
+            # CropOnMarkers could not find the corner markers in the image.
+            # Common causes: marker cropped out of frame, extreme perspective,
+            # very poor lighting, or sheet printed without markers.
             #
-            # Recovery: skip CropPage and resize directly to the template's
-            # declared page_dimensions.  Bubble coordinates in omr_template.json
-            # are relative to these dimensions, so detection can still succeed
-            # if the sheet is mostly straight.
-            page_w, page_h = template.page_dimensions
-            processed = cv2.resize(gray, (page_w, page_h), interpolation=cv2.INTER_AREA)
+            # Recovery: try contour-based perspective correction first; if that
+            # also fails, fall back to a plain resize (last resort).
             logger.warning(
-                "[OMR] CropPage failed for '%s' — fallback resize to %dx%d",
-                Path(image_path).name, page_w, page_h,
+                "[OMR] CropOnMarkers failed for '%s' — trying contour fallback",
+                Path(image_path).name,
             )
+            page_w, page_h = template.page_dimensions
+            processed = _contour_perspective_fallback(gray, (page_w, page_h))
 
         # ── Step 4: Bubble detection (OMRChecker native) ─────────────────────
         #
