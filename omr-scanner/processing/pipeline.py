@@ -54,6 +54,16 @@ _OMRCHECKER_DIR    = Path(__file__).parent.parent / "OMRChecker"
 
 _PDF_DPI = 200   # higher DPI → sharper bubble edges for detection
 
+_template_cache = None  # loaded once, reused for every scan
+
+
+def _get_template():
+    """Return a cached Template instance (loaded once at first scan)."""
+    global _template_cache
+    if _template_cache is None:
+        _template_cache = _load_template()
+    return _template_cache
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Internal helpers
@@ -173,8 +183,8 @@ def run_pipeline(image_path: str, answer_keys: list) -> Dict[str, Any]:
                     overall_confidence, is_fallback
     """
     try:
-        # ── Step 1: Load OMRChecker template ─────────────────────────────────
-        template = _load_template()
+        # ── Step 1: Load OMRChecker template (cached after first scan) ────────
+        template = _get_template()
         _setup_omrchecker()
         from src.utils.parsing import get_concatenated_response
 

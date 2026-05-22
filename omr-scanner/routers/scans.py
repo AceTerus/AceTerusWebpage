@@ -46,7 +46,7 @@ async def _process_scan(job_id: str, image_path: str, exam_id: str) -> None:
 
         # 3. Run pipeline in thread pool (CPU-bound)
         from processing.pipeline import run_pipeline
-        loop   = asyncio.get_event_loop()
+        loop   = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, run_pipeline, image_path, answer_keys)
 
         # 4. Resolve student

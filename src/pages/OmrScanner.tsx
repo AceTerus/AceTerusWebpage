@@ -75,7 +75,9 @@ export default function OmrScanner() {
   const streamRef       = useRef<MediaStream | null>(null);
   const overlayRef      = useRef<HTMLCanvasElement>(null);
   const rafRef          = useRef<number | null>(null);
-  const cornerStableRef = useRef<number | null>(null);
+  const cornerStableRef    = useRef<number | null>(null);
+  const offscreenRef       = useRef<HTMLCanvasElement | null>(null);  // reused across frames
+  const userClosedCameraRef = useRef(false);  // true when user explicitly taps X
   const [cameraOpen,       setCameraOpen]       = useState(false);
   const [cameraError,      setCameraError]      = useState<string | null>(null);
   const [file,             setFile]             = useState<File | null>(null);
@@ -118,6 +120,11 @@ export default function OmrScanner() {
 
   useEffect(() => { checkApi(); }, []);
 
+  // Auto-select exam when only one exists
+  useEffect(() => {
+    if (exams.length === 1 && !selectedExamId) setSelectedExamId(exams[0].id);
+  }, [exams]); // eslint-disable-line
+
   // Auto-open camera for non-admins once API status is known
   useEffect(() => {
     if (isAdmin === false && apiOnline === true) {
@@ -132,10 +139,10 @@ export default function OmrScanner() {
   }, [isAdmin, apiOnline]); // eslint-disable-line
 
   // ── Camera ───────────────────────────────────────────────────────────────
-  // Constants defined first so the useCallbacks below can close over them
+  // Module-level constants (defined outside component avoids re-creation on render)
   const DARK_THR   = 70;
   const DARK_RATIO = 0.03;
-  const STABLE_MS  = 1500;
+  const STABLE_MS  = 2000;  // 2s hold — reduces false-positive auto-captures
 
   // 1) capture — no deps on other useCallbacks
   const triggerCapture = useCallback(() => {
@@ -176,8 +183,9 @@ export default function OmrScanner() {
       const dw = cvs.width,      dh = cvs.height;
 
       const SW = 320, SH = Math.round(vh / vw * 320);
-      const off = document.createElement("canvas");
-      off.width = SW; off.height = SH;
+      if (!offscreenRef.current) offscreenRef.current = document.createElement("canvas");
+      const off = offscreenRef.current;
+      if (off.width !== SW || off.height !== SH) { off.width = SW; off.height = SH; }
       const offCtx = off.getContext("2d")!;
       offCtx.drawImage(vid, 0, 0, SW, SH);
       const { data } = offCtx.getImageData(0, 0, SW, SH);
@@ -278,7 +286,7 @@ export default function OmrScanner() {
   }, [startCornerDetection]);
 
   // 4) close — no deps on other useCallbacks
-  const closeCamera = useCallback(() => {
+  const closeCamera = useCallback((intentional = false) => {
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     cornerStableRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
@@ -286,6 +294,7 @@ export default function OmrScanner() {
     setCameraOpen(false);
     setCornersDetected(false);
     setCaptureProgress(0);
+    if (intentional) userClosedCameraRef.current = true;
   }, []);
 
   const pickFile = (f: File) => {
@@ -333,8 +342,9 @@ export default function OmrScanner() {
       setScanMsg({ text: "Submitted! Processing…", type: "success" });
       clearFile();
       pollJob(data.job_id);
-      // Re-open camera for non-admins so they can scan the next sheet
-      if (!isAdmin) setTimeout(openCamera, 1200);
+      // Re-open camera for non-admins (only if they didn't intentionally close it)
+      if (!isAdmin && !userClosedCameraRef.current) setTimeout(openCamera, 1200);
+      userClosedCameraRef.current = false;
     } catch (e: any) {
       setScanMsg({ text: e.message, type: "error" });
     } finally {
@@ -532,7 +542,7 @@ export default function OmrScanner() {
             </span>
             <Button variant="ghost" size="icon"
               className="text-white hover:bg-white/20 rounded-full pointer-events-auto"
-              onClick={closeCamera}>
+              onClick={() => closeCamera(true)}>
               <X className="w-5 h-5" />
             </Button>
           </div>
@@ -613,9 +623,15 @@ export default function OmrScanner() {
                   </span>
                 )}
                 {job.status === "failed" && (
-                  <span className="ml-auto text-xs text-destructive truncate max-w-[160px]">
-                    {job.error_message}
-                  </span>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="text-xs text-destructive truncate max-w-[100px]">
+                      {job.error_message ?? "Scan failed"}
+                    </span>
+                    <Button size="sm" variant="outline" className="h-6 text-xs px-2"
+                      onClick={() => { clearFile(); openCamera(); }}>
+                      <RefreshCw className="w-3 h-3 mr-1" /> Retry
+                    </Button>
+                  </div>
                 )}
                 {job.status === "done" && (job.omr_results?.filter(r => r.is_flagged) ?? []).length > 0 && (
                   <span className="text-xs text-amber-600">
