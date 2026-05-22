@@ -69,11 +69,36 @@ def _get_template():
 # Internal helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _patch_screeninfo_for_headless() -> None:
+    """
+    OMRChecker imports screeninfo at module load time to query screen dimensions
+    for its display utilities. On headless servers (Render, CI) there is no
+    display, so get_monitors() raises ScreenInfoError. Inject a fake 1920×1080
+    monitor so those utilities initialise without error. This does NOT affect
+    any OMR detection logic — screeninfo is only used for GUI display sizing.
+    """
+    try:
+        import screeninfo
+        try:
+            screeninfo.get_monitors()   # succeeds on a real display → nothing to do
+        except Exception:
+            class _HeadlessMonitor:     # noqa: N801
+                x = y = 0
+                width, height = 1920, 1080
+                width_mm = height_mm = 0
+                name = "headless"
+            screeninfo.get_monitors = lambda: [_HeadlessMonitor()]
+            logger.info("[OMR] screeninfo patched for headless server")
+    except ImportError:
+        pass   # screeninfo not installed → nothing to patch
+
+
 def _setup_omrchecker() -> None:
     """Prepend OMRChecker to sys.path so its src.* modules resolve correctly."""
     omr_dir = str(_OMRCHECKER_DIR)
     if omr_dir not in sys.path:
         sys.path.insert(0, omr_dir)
+    _patch_screeninfo_for_headless()
 
 
 def _load_template():
