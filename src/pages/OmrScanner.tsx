@@ -70,13 +70,18 @@ export default function OmrScanner() {
   const [selectedExamId, setSelectedExamId] = useState("");
 
   // ── Camera / file ────────────────────────────────────────────────────────
-  const videoRef    = useRef<HTMLVideoElement>(null);
-  const canvasRef   = useRef<HTMLCanvasElement>(null);
-  const streamRef   = useRef<MediaStream | null>(null);
-  const [cameraOpen,  setCameraOpen]  = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [file,    setFile]    = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const videoRef        = useRef<HTMLVideoElement>(null);
+  const canvasRef       = useRef<HTMLCanvasElement>(null);
+  const streamRef       = useRef<MediaStream | null>(null);
+  const overlayRef      = useRef<HTMLCanvasElement>(null);
+  const rafRef          = useRef<number | null>(null);
+  const cornerStableRef = useRef<number | null>(null);
+  const [cameraOpen,       setCameraOpen]       = useState(false);
+  const [cameraError,      setCameraError]      = useState<string | null>(null);
+  const [file,             setFile]             = useState<File | null>(null);
+  const [preview,          setPreview]          = useState<string | null>(null);
+  const [cornersDetected,  setCornersDetected]  = useState(false);
+  const [captureProgress,  setCaptureProgress]  = useState(0);
 
   // ── Scan / jobs ──────────────────────────────────────────────────────────
   const [jobs,       setJobs]       = useState<Map<string, ScanJob>>(new Map());
@@ -127,6 +132,127 @@ export default function OmrScanner() {
   }, [isAdmin, apiOnline]); // eslint-disable-line
 
   // ── Camera ───────────────────────────────────────────────────────────────
+  // Constants defined first so the useCallbacks below can close over them
+  const DARK_THR   = 70;
+  const DARK_RATIO = 0.03;
+  const STABLE_MS  = 1500;
+
+  // 1) capture — no deps on other useCallbacks
+  const triggerCapture = useCallback(() => {
+    const video  = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    cornerStableRef.current = null;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d")!.drawImage(video, 0, 0);
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      setFile(new File([blob], "capture.jpg", { type: "image/jpeg" }));
+      setPreview(URL.createObjectURL(blob));
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+      setCameraOpen(false);
+      setCornersDetected(false);
+      setCaptureProgress(0);
+    }, "image/jpeg", 0.95);
+  }, []);
+
+  // 2) detection loop — depends on triggerCapture (already defined above)
+  const startCornerDetection = useCallback(() => {
+    const loop = () => {
+      const vid = videoRef.current;
+      const cvs = overlayRef.current;
+      if (!vid || !cvs) return;
+      if (vid.readyState < 2) { rafRef.current = requestAnimationFrame(loop); return; }
+
+      if (cvs.width !== cvs.offsetWidth || cvs.height !== cvs.offsetHeight) {
+        cvs.width  = cvs.offsetWidth  || window.innerWidth;
+        cvs.height = cvs.offsetHeight || window.innerHeight;
+      }
+
+      const vw = vid.videoWidth, vh = vid.videoHeight;
+      const dw = cvs.width,      dh = cvs.height;
+
+      const SW = 320, SH = Math.round(vh / vw * 320);
+      const off = document.createElement("canvas");
+      off.width = SW; off.height = SH;
+      const offCtx = off.getContext("2d")!;
+      offCtx.drawImage(vid, 0, 0, SW, SH);
+      const { data } = offCtx.getImageData(0, 0, SW, SH);
+
+      const cx = Math.floor(SW * 0.20), cy = Math.floor(SH * 0.20);
+      const regions = [
+        { x1: 0,     y1: 0,     x2: cx,  y2: cy  },
+        { x1: SW-cx, y1: 0,     x2: SW,  y2: cy  },
+        { x1: 0,     y1: SH-cy, x2: cx,  y2: SH  },
+        { x1: SW-cx, y1: SH-cy, x2: SW,  y2: SH  },
+      ];
+
+      const found = regions.map(r => {
+        let sx = 0, sy = 0, n = 0;
+        for (let y = r.y1; y < r.y2; y++) for (let x = r.x1; x < r.x2; x++) {
+          const i = (y * SW + x) * 4;
+          if (data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114 < DARK_THR) { sx += x; sy += y; n++; }
+        }
+        const total = (r.x2 - r.x1) * (r.y2 - r.y1);
+        return n / total >= DARK_RATIO ? { x: sx/n/SW, y: sy/n/SH } : null;
+      });
+
+      const allFound = found.every(Boolean);
+      const now = Date.now();
+      let progress = 0;
+      if (allFound) {
+        if (!cornerStableRef.current) cornerStableRef.current = now;
+        const elapsed = now - cornerStableRef.current;
+        progress = Math.min(elapsed / STABLE_MS * 100, 100);
+        if (elapsed >= STABLE_MS) { triggerCapture(); return; }
+      } else {
+        cornerStableRef.current = null;
+      }
+      setCornersDetected(allFound);
+      setCaptureProgress(progress);
+
+      const ctx = cvs.getContext("2d")!;
+      ctx.clearRect(0, 0, dw, dh);
+
+      if (allFound) {
+        const p = found as { x: number; y: number }[];
+        ctx.strokeStyle = `rgba(0,255,136,${0.25 + progress/100*0.6})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(p[0].x*dw, p[0].y*dh);
+        ctx.lineTo(p[1].x*dw, p[1].y*dh);
+        ctx.lineTo(p[3].x*dw, p[3].y*dh);
+        ctx.lineTo(p[2].x*dw, p[2].y*dh);
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      const defaultPts = [
+        { x: 40/dw, y: 40/dh }, { x: (dw-40)/dw, y: 40/dh },
+        { x: 40/dw, y: (dh-40)/dh }, { x: (dw-40)/dw, y: (dh-40)/dh },
+      ];
+      found.forEach((pt, i) => {
+        const isR = i === 1 || i === 3, isB = i === 2 || i === 3;
+        const p   = pt ?? defaultPts[i];
+        const px  = p.x * dw, py = p.y * dh, L = 28;
+        ctx.strokeStyle = pt ? (allFound ? "#00ff88" : "#facc15") : "#ef4444";
+        ctx.lineWidth = 4; ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(px + (isR ? L : -L), py);
+        ctx.lineTo(px, py);
+        ctx.lineTo(px, py + (isB ? L : -L));
+        ctx.stroke();
+      });
+
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+  }, [triggerCapture]); // eslint-disable-line
+
+  // 3) open — depends on startCornerDetection (already defined above)
   const openCamera = useCallback(async () => {
     setCameraError(null);
     try {
@@ -136,7 +262,10 @@ export default function OmrScanner() {
       streamRef.current = stream;
       setCameraOpen(true);
       setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => startCornerDetection();
+        }
       }, 50);
     } catch (e: any) {
       const msg = e.name === "NotAllowedError"
@@ -146,29 +275,18 @@ export default function OmrScanner() {
         : `Camera error: ${e.message}`;
       setCameraError(msg);
     }
-  }, []);
+  }, [startCornerDetection]);
 
+  // 4) close — no deps on other useCallbacks
   const closeCamera = useCallback(() => {
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    cornerStableRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     setCameraOpen(false);
+    setCornersDetected(false);
+    setCaptureProgress(0);
   }, []);
-
-  const capturePhoto = useCallback(() => {
-    const video  = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d")!.drawImage(video, 0, 0);
-    canvas.toBlob(blob => {
-      if (!blob) return;
-      const f = new File([blob], "capture.jpg", { type: "image/jpeg" });
-      setFile(f);
-      setPreview(URL.createObjectURL(blob));
-      closeCamera();
-    }, "image/jpeg", 0.95);
-  }, [closeCamera]);
 
   const pickFile = (f: File) => {
     setFile(f);
@@ -401,13 +519,46 @@ export default function OmrScanner() {
         </Alert>
       )}
 
-      {/* Camera view */}
+      {/* Full-screen camera */}
       {cameraOpen && (
-        <div className="rounded-xl overflow-hidden bg-black">
-          <video ref={videoRef} autoPlay playsInline className="w-full max-h-72 object-cover block" />
-          <div className="flex gap-2 p-3 bg-black/60 justify-center">
-            <Button onClick={capturePhoto}><Camera className="w-4 h-4 mr-1" /> Capture</Button>
-            <Button variant="outline" onClick={closeCamera}><X className="w-4 h-4" /></Button>
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          {/* Top bar */}
+          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 py-3
+                          bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+            <span className={`text-sm font-semibold transition-colors ${
+              cornersDetected ? "text-green-400" : "text-white/80"
+            }`}>
+              {cornersDetected ? "✓ Paper detected — hold still" : "Align all 4 corners in frame"}
+            </span>
+            <Button variant="ghost" size="icon"
+              className="text-white hover:bg-white/20 rounded-full pointer-events-auto"
+              onClick={closeCamera}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* Video + corner overlay canvas */}
+          <div className="relative flex-1 overflow-hidden">
+            <video ref={videoRef} autoPlay playsInline
+              className="absolute inset-0 w-full h-full object-cover" />
+            <canvas ref={overlayRef}
+              className="absolute inset-0 w-full h-full pointer-events-none" />
+          </div>
+
+          {/* Bottom bar — shutter button with progress ring */}
+          <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center pb-10 pt-4
+                          bg-gradient-to-t from-black/70 to-transparent">
+            <button onClick={triggerCapture} aria-label="Capture photo"
+              className="relative w-20 h-20 rounded-full bg-white shadow-xl active:scale-95 transition-transform">
+              {captureProgress > 0 && (
+                <svg className="absolute inset-0 -rotate-90 w-full h-full" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="#00ff88" strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray={`${captureProgress / 100 * 213.6} 213.6`} />
+                </svg>
+              )}
+              <Camera className="w-8 h-8 text-gray-700 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            </button>
           </div>
         </div>
       )}
