@@ -13,8 +13,8 @@
         "col_index":        0,
         "question_range":   [1, 10],
         "bubble_start_x":   153,
-        "bubble_spacing_x": 46,
-        "row_start_y":      189,
+        "bubble_spacing_x": 45,
+        "row_start_y":      190,
         "row_spacing_y":    68,
         "bubble_radius":    14
       },
@@ -22,8 +22,8 @@
         "col_index":        1,
         "question_range":   [11, 20],
         "bubble_start_x":   505,
-        "bubble_spacing_x": 46,
-        "row_start_y":      189,
+        "bubble_spacing_x": 45,
+        "row_start_y":      190,
         "row_spacing_y":    68,
         "bubble_radius":    14
       }

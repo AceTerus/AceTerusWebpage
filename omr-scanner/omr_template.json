@@ -19,16 +19,16 @@
     "MCQ_Q1_to_Q10": {
       "fieldLabels": ["q1..10"],
       "bubbleValues": ["A", "B", "C", "D"],
-      "origin":    [153, 189],
-      "bubblesGap": 46,
+      "origin":    [153, 190],
+      "bubblesGap": 45,
       "labelsGap":  68,
       "direction": "horizontal"
     },
     "MCQ_Q11_to_Q20": {
       "fieldLabels": ["q11..20"],
       "bubbleValues": ["A", "B", "C", "D"],
-      "origin":    [505, 189],
-      "bubblesGap": 46,
+      "origin":    [505, 190],
+      "bubblesGap": 45,
       "labelsGap":  68,
       "direction": "horizontal"
     }
