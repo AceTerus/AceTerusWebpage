@@ -385,18 +385,19 @@ export default function OmrScanner() {
 
   const pollJob = (jobId: string) => {
     let n = 0;
+    const MAX_POLLS = 150; // 150 × 2s = 5 min — covers cold-start + slow free-tier CPU
     const id = setInterval(async () => {
       n++;
       try {
         const res  = await fetch(`${OMR_API}/api/scan/${jobId}`);
         const data: ScanJob = await res.json();
         setJobs(prev => new Map(prev).set(jobId, data));
-        if (data.status === "done" || data.status === "failed" || n >= 60) {
+        if (data.status === "done" || data.status === "failed" || n >= MAX_POLLS) {
           clearInterval(id);
           pollIntervalsRef.current.delete(id);
         }
       } catch {
-        if (n >= 60) { clearInterval(id); pollIntervalsRef.current.delete(id); }
+        if (n >= MAX_POLLS) { clearInterval(id); pollIntervalsRef.current.delete(id); }
       }
     }, 2000);
     pollIntervalsRef.current.add(id);

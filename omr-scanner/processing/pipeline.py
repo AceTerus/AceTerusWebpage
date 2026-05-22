@@ -223,17 +223,29 @@ def run_pipeline(image_path: str, answer_keys: list) -> Dict[str, Any]:
 
         # ── Step 3: Preprocess ────────────────────────────────────────────────
         #
-        # apply_preprocessors does TWO things (see OMRChecker src/core.py):
-        #   a) Resize image to CONFIG_DEFAULTS.dimensions.processing_width/height
-        #   b) Run each pre_processor in template.pre_processors sequentially
-        #      → CropPage: detects the 4 corner fiducials, warps + crops the
-        #        image so the page exactly fills the frame at page_dimensions
+        # apply_preprocessors (src/core.py) force-resizes to
+        # (processing_width, processing_height) before running CropOnMarkers.
+        # The default values are 666×820 (portrait), but phone photos are
+        # landscape (e.g. 1920×1080). A hard stretch to 666×820 turns the
+        # square corner markers into 49px×107px rectangles — template matching
+        # against the square marker template then fails reliably.
         #
-        # Returns None if a pre_processor (e.g. CropPage) cannot find markers.
+        # Fix: pre-resize proportionally to processing_width so aspect ratio is
+        # preserved, then temporarily set processing_height to match so that
+        # apply_preprocessors' internal resize is a no-op.
         #
+        cfg_dims = template.image_instance_ops.tuning_config.dimensions
+        proc_w   = cfg_dims.processing_width
+        gh, gw   = gray.shape[:2]
+        proc_h   = int(gh * proc_w / gw)          # proportional height
+        gray     = cv2.resize(gray, (proc_w, proc_h))
+
+        orig_proc_h             = cfg_dims.processing_height
+        cfg_dims.processing_height = proc_h        # no-op re-resize inside apply_preprocessors
         processed = template.image_instance_ops.apply_preprocessors(
             image_path, gray, template
         )
+        cfg_dims.processing_height = orig_proc_h   # restore for next scan
 
         if processed is None:
             # CropOnMarkers could not find the corner markers in the image.
@@ -362,9 +374,17 @@ def run_pipeline_debug(image_path: str, answer_keys: list) -> Dict[str, Any]:
         diag["clahe_ok"] = True
 
         diag["stage"] = "apply_preprocessors"
+        cfg_dims = template.image_instance_ops.tuning_config.dimensions
+        proc_w   = cfg_dims.processing_width
+        gh, gw   = gray.shape[:2]
+        proc_h   = int(gh * proc_w / gw)
+        gray     = cv2.resize(gray, (proc_w, proc_h))
+        orig_proc_h             = cfg_dims.processing_height
+        cfg_dims.processing_height = proc_h
         processed = template.image_instance_ops.apply_preprocessors(
             image_path, gray, template
         )
+        cfg_dims.processing_height = orig_proc_h
         if processed is not None:
             diag["crop_ok"] = True
         else:
