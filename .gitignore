@@ -29,3 +29,12 @@ dist-ssr
 env.tmp
 !.env.example
 !.env.production
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# SQLite temp files
+*.db-shm
+*.db-wal
