@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Clock, CheckCircle2, PlayCircle, BookOpen, Loader2, X, Sparkles } from "lucide-react";
+import { Plus, Clock, CheckCircle2, PlayCircle, BookOpen, Loader2, X, Sparkles, Trash2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow, format } from "date-fns";
@@ -48,6 +48,8 @@ export default function TeacherDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [confirmAction, setConfirmAction] = useState<{ id: string; type: "delete" | "rerecord" } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
   const [form, setForm] = useState<NewSessionForm>({
     subject: "",
     class_name: "",
@@ -71,6 +73,32 @@ export default function TeacherDashboard() {
       .order("created_at", { ascending: false });
     setSessions((data as ClassSession[]) || []);
     setLoading(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    setActionLoading(true);
+    await supabase.from("conclusion_reports").delete().eq("session_id", id);
+    await supabase.from("class_sessions").delete().eq("id", id);
+    setSessions((prev) => prev.filter((s) => s.id !== id));
+    setConfirmAction(null);
+    setActionLoading(false);
+  };
+
+  const handleRerecord = async (id: string) => {
+    setActionLoading(true);
+    await supabase.from("conclusion_reports").delete().eq("session_id", id);
+    await supabase.from("class_sessions").update({
+      status: "pending",
+      started_at: null,
+      ended_at: null,
+      transcript_text: null,
+    }).eq("id", id);
+    setSessions((prev) =>
+      prev.map((s) => s.id === id ? { ...s, status: "pending", started_at: null, ended_at: null } : s)
+    );
+    setConfirmAction(null);
+    setActionLoading(false);
+    navigate(`/session/${id}`);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -181,58 +209,127 @@ export default function TeacherDashboard() {
           </div>
         ) : (
           <div className="space-y-3">
-            {sessions.map((s) => (
-              <button
-                key={s.id}
-                onClick={() =>
-                  s.status === "completed"
-                    ? navigate(`/report/${s.id}`)
-                    : navigate(`/session/${s.id}`)
-                }
-                className={`${CARD} w-full text-left p-5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_#0F172A] transition-all cursor-pointer`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      {statusBadge(s.status)}
-                      <span className="text-[11px] font-bold font-['Nunito'] text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5">
-                        {s.subject}
-                      </span>
-                      <span className="text-[11px] font-bold font-['Nunito'] text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5">
-                        {s.class_name}
-                      </span>
-                    </div>
-                    <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A] mb-1 truncate`}>
-                      {s.objective_text}
-                    </p>
-                    {s.key_concepts.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {s.key_concepts.slice(0, 4).map((c) => (
-                          <span key={c} className="text-[10px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#DDF3FF] text-[#2F7CFF] border border-[#2F7CFF]/20">
-                            {c}
-                          </span>
-                        ))}
-                        {s.key_concepts.length > 4 && (
-                          <span className="text-[10px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#0F172A]/5 text-[#0F172A]/50">
-                            +{s.key_concepts.length - 4} more
-                          </span>
-                        )}
+            {sessions.map((s) => {
+              const isConfirming = confirmAction?.id === s.id;
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => {
+                    if (isConfirming) return;
+                    s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`);
+                  }}
+                  className={`${CARD} w-full text-left p-5 transition-all ${isConfirming ? "cursor-default" : "hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_#0F172A] cursor-pointer"}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        {statusBadge(s.status)}
+                        <span className="text-[11px] font-bold font-['Nunito'] text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5">
+                          {s.subject}
+                        </span>
+                        <span className="text-[11px] font-bold font-['Nunito'] text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5">
+                          {s.class_name}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[11px] font-semibold font-['Nunito'] text-[#0F172A]/40">
-                      {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
-                    </p>
-                    {s.ended_at && (
-                      <p className="text-[11px] font-semibold font-['Nunito'] text-[#0F172A]/40 mt-0.5">
-                        {format(new Date(s.ended_at), "d MMM yyyy")}
+                      <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A] mb-1 truncate`}>
+                        {s.objective_text}
                       </p>
-                    )}
+                      {s.key_concepts.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {s.key_concepts.slice(0, 4).map((c) => (
+                            <span key={c} className="text-[10px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#DDF3FF] text-[#2F7CFF] border border-[#2F7CFF]/20">
+                              {c}
+                            </span>
+                          ))}
+                          {s.key_concepts.length > 4 && (
+                            <span className="text-[10px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#0F172A]/5 text-[#0F172A]/50">
+                              +{s.key_concepts.length - 4} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="shrink-0 flex flex-col items-end gap-2">
+                      <p className="text-[11px] font-semibold font-['Nunito'] text-[#0F172A]/40">
+                        {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
+                      </p>
+                      {s.ended_at && (
+                        <p className="text-[11px] font-semibold font-['Nunito'] text-[#0F172A]/40">
+                          {format(new Date(s.ended_at), "d MMM yyyy")}
+                        </p>
+                      )}
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        {s.status === "completed" && (
+                          <button
+                            onClick={() => setConfirmAction({ id: s.id, type: "rerecord" })}
+                            title="Re-record this session"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] border-[2px] border-[#0F172A]/15 text-[11px] font-bold font-['Nunito'] text-[#2E2BE5] hover:border-[#2E2BE5] hover:bg-[#EEEDFF] transition-all"
+                          >
+                            <RefreshCw className="w-3 h-3" /> Re-record
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setConfirmAction({ id: s.id, type: "delete" })}
+                          title="Delete session"
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] border-[2px] border-[#0F172A]/15 text-[11px] font-bold font-['Nunito'] text-red-500 hover:border-red-300 hover:bg-red-50 transition-all"
+                        >
+                          <Trash2 className="w-3 h-3" /> Delete
+                        </button>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Inline confirm strip */}
+                  {isConfirming && (
+                    <div
+                      className="mt-4 pt-4 border-t-[2px] border-[#0F172A]/10 flex items-center justify-between gap-3 flex-wrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div>
+                        <p className="font-['Nunito'] text-[13px] font-bold text-[#0F172A]">
+                          {confirmAction.type === "delete"
+                            ? "Delete this session permanently?"
+                            : "Reset and re-record this session?"}
+                        </p>
+                        <p className="font-['Nunito'] text-[11px] text-[#0F172A]/50 mt-0.5">
+                          {confirmAction.type === "delete"
+                            ? "This will remove all session data and the report. This cannot be undone."
+                            : "The existing report will be deleted and you'll re-record from scratch."}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => setConfirmAction(null)}
+                          className="px-3 py-1.5 rounded-[10px] border-[2px] border-[#0F172A]/20 text-[12px] font-bold font-['Nunito'] text-[#0F172A]/60 hover:border-[#0F172A] hover:text-[#0F172A] transition-all"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() =>
+                            confirmAction.type === "delete"
+                              ? handleDelete(s.id)
+                              : handleRerecord(s.id)
+                          }
+                          disabled={actionLoading}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border-[2px] border-[#0F172A] text-[12px] font-bold font-['Nunito'] text-white shadow-[2px_2px_0_0_#0F172A] hover:-translate-y-0.5 transition-all disabled:opacity-60 ${
+                            confirmAction.type === "delete" ? "bg-red-500 border-red-600 shadow-[2px_2px_0_0_#991B1B]" : "bg-[#2E2BE5]"
+                          }`}
+                        >
+                          {actionLoading
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : confirmAction.type === "delete"
+                              ? <><Trash2 className="w-3 h-3" /> Delete</>
+                              : <><RefreshCw className="w-3 h-3" /> Re-record</>
+                          }
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

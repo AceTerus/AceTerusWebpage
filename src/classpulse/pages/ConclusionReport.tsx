@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { CheckCircle2, XCircle, ArrowLeft, TrendingUp, Users, Target, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, XCircle, ArrowLeft, TrendingUp, Users, Target, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
@@ -81,6 +82,22 @@ export default function ConclusionReport() {
   const navigate = useNavigate();
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRerecordConfirm, setShowRerecordConfirm] = useState(false);
+  const [rerecordLoading, setRerecordLoading] = useState(false);
+
+  const handleRerecord = async () => {
+    if (!id) return;
+    setRerecordLoading(true);
+    await supabase.from("conclusion_reports").delete().eq("session_id", id);
+    await supabase.from("class_sessions").update({
+      status: "pending",
+      started_at: null,
+      ended_at: null,
+      transcript_text: null,
+    }).eq("id", id);
+    setRerecordLoading(false);
+    navigate(`/session/${id}`);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -156,9 +173,36 @@ export default function ConclusionReport() {
                 {sessionDuration && ` · ${sessionDuration} min`}
               </p>
             </div>
-            <span className="text-[12px] font-bold font-['Nunito'] text-[#0F172A]/30 border border-[#0F172A]/10 rounded-full px-3 py-1">
-              Private — Teacher only
-            </span>
+            <div className="flex flex-col items-end gap-2">
+              <span className="text-[12px] font-bold font-['Nunito'] text-[#0F172A]/30 border border-[#0F172A]/10 rounded-full px-3 py-1">
+                Private — Teacher only
+              </span>
+              {!showRerecordConfirm ? (
+                <button
+                  onClick={() => setShowRerecordConfirm(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border-[2px] border-[#0F172A]/20 text-[12px] font-bold font-['Nunito'] text-[#2E2BE5] hover:border-[#2E2BE5] hover:bg-[#EEEDFF] transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Re-record Session
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-[14px] border-[2px] border-[#0F172A]/15 bg-white shadow-[2px_2px_0_0_#0F172A]">
+                  <p className="font-['Nunito'] text-[12px] font-bold text-[#0F172A]/70 mr-1">Reset and re-record?</p>
+                  <button
+                    onClick={() => setShowRerecordConfirm(false)}
+                    className="px-2.5 py-1 rounded-[8px] border-[2px] border-[#0F172A]/20 text-[11px] font-bold font-['Nunito'] text-[#0F172A]/60 hover:border-[#0F172A] transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRerecord}
+                    disabled={rerecordLoading}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-[8px] border-[2px] border-[#0F172A] bg-[#2E2BE5] text-white text-[11px] font-bold font-['Nunito'] shadow-[2px_2px_0_0_#0F172A] hover:-translate-y-0.5 transition-all disabled:opacity-60"
+                  >
+                    {rerecordLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <><RefreshCw className="w-3 h-3" /> Re-record</>}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
