@@ -459,15 +459,29 @@ function TeacherCard({ group }: { group: TeacherGroup }) {
 export default function SchoolDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [teacherGroups, setTeacherGroups] = useState<TeacherGroup[]>([]);
 
   useEffect(() => {
-    if (user) loadData();
+    if (!user) return;
+    loadData();
+
+    const channel = supabase
+      .channel("school-coverage-live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "conclusion_reports" },
+        () => { loadData(true); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (silent) setRefreshing(true);
+    else setLoading(true);
 
     const { data: cpUser } = await supabase
       .from("classpulse_users")
@@ -490,6 +504,7 @@ export default function SchoolDashboard() {
     if (!teachers || teachers.length === 0) {
       setTeacherGroups(DEMO_TEACHER_GROUPS);
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
@@ -512,6 +527,7 @@ export default function SchoolDashboard() {
     if (!sessions || sessions.length === 0) {
       setTeacherGroups(DEMO_TEACHER_GROUPS);
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
@@ -571,6 +587,7 @@ export default function SchoolDashboard() {
 
     setTeacherGroups([...groups, ...DEMO_TEACHER_GROUPS]);
     setLoading(false);
+    setRefreshing(false);
   };
 
   const allSessions = teacherGroups.flatMap(g => g.sessions);
@@ -643,6 +660,12 @@ export default function SchoolDashboard() {
               </p>
             </div>
           </div>
+          {refreshing && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2E2BE5]/10 border border-[#2E2BE5]/20">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2E2BE5]" />
+              <span className="font-['Nunito'] text-[12px] font-bold text-[#2E2BE5]">Updating…</span>
+            </div>
+          )}
           <button
             onClick={handleExport}
             disabled={allSessions.length === 0}
