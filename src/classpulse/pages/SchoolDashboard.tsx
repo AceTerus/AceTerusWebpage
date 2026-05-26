@@ -461,7 +461,6 @@ export default function SchoolDashboard() {
   const [loading, setLoading] = useState(true);
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [teacherGroups, setTeacherGroups] = useState<TeacherGroup[]>([]);
-  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     if (user) loadData();
@@ -490,7 +489,6 @@ export default function SchoolDashboard() {
 
     if (!teachers || teachers.length === 0) {
       setTeacherGroups(DEMO_TEACHER_GROUPS);
-      setIsDemo(true);
       setLoading(false);
       return;
     }
@@ -513,7 +511,6 @@ export default function SchoolDashboard() {
 
     if (!sessions || sessions.length === 0) {
       setTeacherGroups(DEMO_TEACHER_GROUPS);
-      setIsDemo(true);
       setLoading(false);
       return;
     }
@@ -572,7 +569,7 @@ export default function SchoolDashboard() {
       })
       .sort((a: TeacherGroup, b: TeacherGroup) => b.avg_coverage - a.avg_coverage);
 
-    setTeacherGroups(groups);
+    setTeacherGroups([...groups, ...DEMO_TEACHER_GROUPS]);
     setLoading(false);
   };
 
@@ -661,12 +658,6 @@ export default function SchoolDashboard() {
           </div>
         ) : (
           <>
-            {isDemo && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-[2px] border-[#2E2BE5]/30 bg-[#2E2BE5]/5 text-[#2E2BE5] font-['Nunito'] text-[12px] font-bold w-fit">
-                <span>✨</span> Showing sample data — real data will appear once teachers complete sessions
-              </div>
-            )}
-
             {/* Overall School Performance */}
             <div
               className="border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[3px_3px_0_0_#0F172A] overflow-hidden"
