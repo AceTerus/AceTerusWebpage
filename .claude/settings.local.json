@@ -67,7 +67,10 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\" -Force)",
       "Bash(Select-Object Name, Mode)",
       "PowerShell(Copy-Item *)",
-      "Bash(Get-ChildItem -Recurse -Filter \"*iveSession*\" \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\\\\src\")"
+      "Bash(Get-ChildItem -Recurse -Filter \"*iveSession*\" \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\\\\src\")",
+      "Bash(git pull *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\\\\omr-scanner\" -File)",
+      "Bash(Select-Object Name)"
     ]
   },
   "enabledPlugins": {

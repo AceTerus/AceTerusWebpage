@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "../../hooks/useAuth";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 
 const DISPLAY = "font-['Baloo_2'] tracking-tight";
 const CARD = "border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[3px_3px_0_0_#0F172A] bg-white";
@@ -36,6 +36,168 @@ interface TeacherGroup {
   total_sessions: number;
   goals_achieved: number;
 }
+
+const now = new Date();
+
+const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
+  {
+    user_id: "demo-1",
+    display_name: "En. Ahmad Faizi Razali",
+    avg_coverage: 83,
+    total_sessions: 3,
+    goals_achieved: 2,
+    sessions: [
+      {
+        id: "ds1", teacher_id: "demo-1", class_name: "4 Amanah", subject: "Mathematics",
+        objective_text: "Students will understand differentiation and its applications.",
+        key_concepts: ["Differentiation", "Chain Rule", "Product Rule", "Applications"],
+        started_at: subDays(now, 4).toISOString(), ended_at: subDays(now, 4).toISOString(),
+        transcript_text: "Good morning class. Today we will cover differentiation...\n\nTeacher walked through several examples on the board. Students asked questions about chain rule applications.",
+        coverage_score: 87, teacher_talk_ratio: 58, student_participation_count: 24,
+        concepts_covered: ["Differentiation", "Chain Rule", "Product Rule", "Applications"],
+        concepts_missed: [],
+        ai_coaching_note: "Excellent session. Students were highly engaged with the board examples.",
+      },
+      {
+        id: "ds2", teacher_id: "demo-1", class_name: "5 Bestari", subject: "Mathematics",
+        objective_text: "Introduction to integration techniques.",
+        key_concepts: ["Integration", "Substitution Method", "Definite Integrals", "Area Under Curve"],
+        started_at: subDays(now, 2).toISOString(), ended_at: subDays(now, 2).toISOString(),
+        transcript_text: "Let's continue from last week. Integration is the reverse of differentiation...",
+        coverage_score: 73, teacher_talk_ratio: 71, student_participation_count: 18,
+        concepts_covered: ["Integration", "Substitution Method"],
+        concepts_missed: ["Definite Integrals", "Area Under Curve"],
+        ai_coaching_note: "Consider allocating more time for definite integrals — students need practice with bounds.",
+      },
+      {
+        id: "ds3", teacher_id: "demo-1", class_name: "4 Amanah", subject: "Physics",
+        objective_text: "Understand Newton's Laws of Motion and their applications.",
+        key_concepts: ["Newton's 1st Law", "Newton's 2nd Law", "Newton's 3rd Law", "Friction"],
+        started_at: subDays(now, 1).toISOString(), ended_at: subDays(now, 1).toISOString(),
+        transcript_text: null,
+        coverage_score: 91, teacher_talk_ratio: 45, student_participation_count: 29,
+        concepts_covered: ["Newton's 1st Law", "Newton's 2nd Law", "Newton's 3rd Law", "Friction"],
+        concepts_missed: [],
+        ai_coaching_note: "Outstanding student talk ratio. The group activity worked very well.",
+      },
+    ],
+  },
+  {
+    user_id: "demo-2",
+    display_name: "Cik Nurul Huda Azman",
+    avg_coverage: 79,
+    total_sessions: 3,
+    goals_achieved: 2,
+    sessions: [
+      {
+        id: "ds4", teacher_id: "demo-2", class_name: "4 Bestari", subject: "Biology",
+        objective_text: "Cell division — mitosis and meiosis.",
+        key_concepts: ["Mitosis", "Meiosis", "Chromosomes", "Cell Cycle"],
+        started_at: subDays(now, 4).toISOString(), ended_at: subDays(now, 4).toISOString(),
+        transcript_text: "Today we will examine cell division in detail. Mitosis produces identical daughter cells...",
+        coverage_score: 94, teacher_talk_ratio: 40, student_participation_count: 31,
+        concepts_covered: ["Mitosis", "Meiosis", "Chromosomes", "Cell Cycle"],
+        concepts_missed: [],
+        ai_coaching_note: "Excellent use of diagrams and peer discussion. A model session.",
+      },
+      {
+        id: "ds5", teacher_id: "demo-2", class_name: "5 Cemerlang", subject: "Chemistry",
+        objective_text: "Acid-base reactions and titration.",
+        key_concepts: ["Acids & Bases", "Neutralisation", "Titration", "pH Scale", "Buffer Solutions"],
+        started_at: subDays(now, 3).toISOString(), ended_at: subDays(now, 3).toISOString(),
+        transcript_text: null,
+        coverage_score: 65, teacher_talk_ratio: 68, student_participation_count: 14,
+        concepts_covered: ["Acids & Bases", "Neutralisation", "Titration"],
+        concepts_missed: ["pH Scale", "Buffer Solutions"],
+        ai_coaching_note: "Buffer solutions need a dedicated follow-up — students showed confusion during Q&A.",
+      },
+      {
+        id: "ds6", teacher_id: "demo-2", class_name: "4 Bestari", subject: "Chemistry",
+        objective_text: "Ionic and covalent bonding.",
+        key_concepts: ["Ionic Bonding", "Covalent Bonding", "Electronegativity", "Bond Energy"],
+        started_at: subDays(now, 1).toISOString(), ended_at: subDays(now, 1).toISOString(),
+        transcript_text: "Atoms bond to achieve a stable electron configuration...",
+        coverage_score: 78, teacher_talk_ratio: 55, student_participation_count: 22,
+        concepts_covered: ["Ionic Bonding", "Covalent Bonding", "Electronegativity", "Bond Energy"],
+        concepts_missed: [],
+        ai_coaching_note: "Good pacing. The electronegativity table exercise was effective.",
+      },
+    ],
+  },
+  {
+    user_id: "demo-3",
+    display_name: "En. Radzuan Ismail",
+    avg_coverage: 82,
+    total_sessions: 3,
+    goals_achieved: 3,
+    sessions: [
+      {
+        id: "ds7", teacher_id: "demo-3", class_name: "5 Dinamik", subject: "BM",
+        objective_text: "Penulisan karangan jenis perbincangan.",
+        key_concepts: ["Struktur Karangan", "Hujah Utama", "Hujah Sokongan", "Penutup"],
+        started_at: subDays(now, 4).toISOString(), ended_at: subDays(now, 4).toISOString(),
+        transcript_text: "Selamat pagi semua. Hari ini kita akan belajar cara menulis karangan perbincangan...",
+        coverage_score: 88, teacher_talk_ratio: 50, student_participation_count: 27,
+        concepts_covered: ["Struktur Karangan", "Hujah Utama", "Hujah Sokongan", "Penutup"],
+        concepts_missed: [],
+        ai_coaching_note: "Students produced strong draft paragraphs during class time.",
+      },
+      {
+        id: "ds8", teacher_id: "demo-3", class_name: "4 Cemerlang", subject: "History",
+        objective_text: "The formation of Malaysia — key events and figures.",
+        key_concepts: ["Independence 1957", "Malaysia 1963", "Tunku Abdul Rahman", "Merger & Separation"],
+        started_at: subDays(now, 2).toISOString(), ended_at: subDays(now, 2).toISOString(),
+        transcript_text: "Today we trace the journey from Merdeka in 1957 to the formation of Malaysia in 1963...",
+        coverage_score: 82, teacher_talk_ratio: 52, student_participation_count: 25,
+        concepts_covered: ["Independence 1957", "Malaysia 1963", "Tunku Abdul Rahman", "Merger & Separation"],
+        concepts_missed: [],
+        ai_coaching_note: "Timeline activity boosted retention. Consider extending it next session.",
+      },
+      {
+        id: "ds9", teacher_id: "demo-3", class_name: "5 Dinamik", subject: "English",
+        objective_text: "Comprehension strategies and passive voice.",
+        key_concepts: ["Skimming", "Scanning", "Passive Voice", "Inference Skills"],
+        started_at: subDays(now, 0).toISOString(), ended_at: subDays(now, 0).toISOString(),
+        transcript_text: null,
+        coverage_score: 76, teacher_talk_ratio: 58, student_participation_count: 20,
+        concepts_covered: ["Skimming", "Scanning", "Passive Voice", "Inference Skills"],
+        concepts_missed: [],
+        ai_coaching_note: "Students need more practice with inference questions — a common SPM weak point.",
+      },
+    ],
+  },
+  {
+    user_id: "demo-4",
+    display_name: "Pn. Salmah Mohamad",
+    avg_coverage: 51,
+    total_sessions: 2,
+    goals_achieved: 0,
+    sessions: [
+      {
+        id: "ds10", teacher_id: "demo-4", class_name: "5 Bestari", subject: "Mathematics",
+        objective_text: "Statistics — mean, mode, median and standard deviation.",
+        key_concepts: ["Mean", "Median", "Mode", "Standard Deviation", "Normal Distribution"],
+        started_at: subDays(now, 3).toISOString(), ended_at: subDays(now, 3).toISOString(),
+        transcript_text: null,
+        coverage_score: 54, teacher_talk_ratio: 72, student_participation_count: 10,
+        concepts_covered: ["Mean", "Median"],
+        concepts_missed: ["Mode", "Standard Deviation", "Normal Distribution"],
+        ai_coaching_note: "Session ran short on time. Standard deviation and normal distribution were skipped. Recommend scheduling a catch-up.",
+      },
+      {
+        id: "ds11", teacher_id: "demo-4", class_name: "4 Dinamik", subject: "Mathematics",
+        objective_text: "Trigonometry — sine, cosine, tangent rules.",
+        key_concepts: ["Sine Rule", "Cosine Rule", "Trigonometric Identities", "Graphs"],
+        started_at: subDays(now, 1).toISOString(), ended_at: subDays(now, 1).toISOString(),
+        transcript_text: null,
+        coverage_score: 47, teacher_talk_ratio: 74, student_participation_count: 8,
+        concepts_covered: ["Sine Rule"],
+        concepts_missed: ["Cosine Rule", "Trigonometric Identities", "Graphs"],
+        ai_coaching_note: "Critical coverage gap. Cosine rule and identities are high-frequency SPM topics — urgent follow-up needed.",
+      },
+    ],
+  },
+];
 
 function scoreColor(score: number) {
   return score >= 80 ? "#22C55E" : score >= 60 ? "#F59E0B" : "#EF4444";
@@ -72,7 +234,6 @@ function TranscriptModal({ session, onClose }: { session: SessionData; onClose: 
         className={`relative ${CARD} w-full max-w-2xl max-h-[85vh] flex flex-col`}
         onClick={e => e.stopPropagation()}
       >
-        {/* Modal header */}
         <div className="p-5 border-b-[2.5px] border-[#0F172A] flex items-start justify-between gap-3 shrink-0">
           <div>
             <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -96,7 +257,6 @@ function TranscriptModal({ session, onClose }: { session: SessionData; onClose: 
           </button>
         </div>
 
-        {/* Modal body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {session.objective_text && (
             <div className="bg-[#D6D4FF]/30 rounded-[16px] border-[2px] border-[#2E2BE5]/20 p-4">
@@ -176,7 +336,6 @@ function TeacherCard({ group }: { group: TeacherGroup }) {
   return (
     <>
       <div className={CARD}>
-        {/* Teacher header */}
         <div className="p-5 border-b-[2.5px] border-[#0F172A]">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
@@ -216,7 +375,6 @@ function TeacherCard({ group }: { group: TeacherGroup }) {
           </div>
         </div>
 
-        {/* Sessions table */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -236,7 +394,7 @@ function TeacherCard({ group }: { group: TeacherGroup }) {
                   <tr key={s.id} className="border-b border-[#0F172A]/5 hover:bg-[#0F172A]/[0.02] transition-colors">
                     <td className="px-5 py-3">
                       <span className="font-['Nunito'] text-[13px] font-bold text-[#0F172A]">{s.class_name}</span>
-                      {duration && <span className="font-['Nunito'] text-[11px] text-[#0F172A]/40 ml-1.5">{duration}m</span>}
+                      {duration !== null && duration > 0 && <span className="font-['Nunito'] text-[11px] text-[#0F172A]/40 ml-1.5">{duration}m</span>}
                     </td>
                     <td className="px-5 py-3 font-['Nunito'] text-[13px] text-[#0F172A]/60">{s.subject}</td>
                     <td className="px-5 py-3">
@@ -303,6 +461,7 @@ export default function SchoolDashboard() {
   const [loading, setLoading] = useState(true);
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [teacherGroups, setTeacherGroups] = useState<TeacherGroup[]>([]);
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     if (user) loadData();
@@ -311,7 +470,6 @@ export default function SchoolDashboard() {
   const loadData = async () => {
     setLoading(true);
 
-    // Get school authority's school_name
     const { data: cpUser } = await supabase
       .from("classpulse_users")
       .select("school_name")
@@ -321,7 +479,6 @@ export default function SchoolDashboard() {
     const sName = cpUser?.school_name ?? null;
     setSchoolName(sName);
 
-    // Get all teachers in this school
     let teacherQuery = supabase
       .from("classpulse_users")
       .select("user_id")
@@ -332,13 +489,14 @@ export default function SchoolDashboard() {
     const { data: teachers } = await teacherQuery;
 
     if (!teachers || teachers.length === 0) {
+      setTeacherGroups(DEMO_TEACHER_GROUPS);
+      setIsDemo(true);
       setLoading(false);
       return;
     }
 
     const teacherIds = teachers.map((t: any) => t.user_id);
 
-    // Get profiles for teachers
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, username")
@@ -346,7 +504,6 @@ export default function SchoolDashboard() {
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p.username]));
 
-    // Get all completed sessions for these teachers
     const { data: sessions } = await supabase
       .from("class_sessions")
       .select("id, teacher_id, class_name, subject, objective_text, key_concepts, started_at, ended_at, transcript_text, status")
@@ -355,13 +512,14 @@ export default function SchoolDashboard() {
       .order("ended_at", { ascending: false });
 
     if (!sessions || sessions.length === 0) {
+      setTeacherGroups(DEMO_TEACHER_GROUPS);
+      setIsDemo(true);
       setLoading(false);
       return;
     }
 
     const sessionIds = sessions.map((s: any) => s.id);
 
-    // Get conclusion reports
     const { data: reports } = await supabase
       .from("conclusion_reports")
       .select("session_id, coverage_score, teacher_talk_ratio, student_participation_count, concepts_covered, concepts_missed, ai_coaching_note")
@@ -369,7 +527,6 @@ export default function SchoolDashboard() {
 
     const reportMap = new Map((reports || []).map((r: any) => [r.session_id, r]));
 
-    // Merge sessions + reports
     const merged: SessionData[] = sessions.map((s: any) => {
       const r = (reportMap.get(s.id) as any) || {};
       return {
@@ -391,7 +548,6 @@ export default function SchoolDashboard() {
       };
     });
 
-    // Group by teacher
     const groupMap = new Map<string, SessionData[]>();
     merged.forEach(s => {
       if (!groupMap.has(s.teacher_id)) groupMap.set(s.teacher_id, []);
@@ -420,7 +576,6 @@ export default function SchoolDashboard() {
     setLoading(false);
   };
 
-  // Overall stats
   const allSessions = teacherGroups.flatMap(g => g.sessions);
   const overallAvg = allSessions.length > 0
     ? Math.round(allSessions.reduce((a, s) => a + s.coverage_score, 0) / allSessions.length)
@@ -431,7 +586,6 @@ export default function SchoolDashboard() {
   const totalGoalsAchieved = allSessions.filter(s => s.concepts_missed.length === 0).length;
   const flaggedCount = allSessions.filter(s => s.coverage_score < 60).length;
 
-  // Subject breakdown
   const subjectMap = new Map<string, number[]>();
   allSessions.forEach(s => {
     if (!subjectMap.has(s.subject)) subjectMap.set(s.subject, []);
@@ -448,7 +602,7 @@ export default function SchoolDashboard() {
   const handleExport = () => {
     const lines = [
       "ClassPulse School Analytics Report",
-      schoolName ? `School: ${schoolName}` : "",
+      schoolName ? `School: ${schoolName}` : "School: SMK Tinggi Bukit Mertajam",
       `Generated: ${format(new Date(), "d MMM yyyy")}`,
       "",
       "Overall Performance",
@@ -487,9 +641,9 @@ export default function SchoolDashboard() {
             </div>
             <div>
               <h1 className={`${DISPLAY} font-extrabold text-2xl text-[#0F172A]`}>School Analytics</h1>
-              {schoolName && (
-                <p className="font-['Nunito'] text-[13px] text-[#0F172A]/50 font-semibold">{schoolName}</p>
-              )}
+              <p className="font-['Nunito'] text-[13px] text-[#0F172A]/50 font-semibold">
+                {schoolName || "SMK Tinggi Bukit Mertajam"}
+              </p>
             </div>
           </div>
           <button
@@ -505,17 +659,15 @@ export default function SchoolDashboard() {
           <div className="flex justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-[#2E2BE5]" />
           </div>
-        ) : teacherGroups.length === 0 ? (
-          <div className={`${CARD} py-20 flex flex-col items-center gap-3 text-center`}>
-            <div className="text-5xl">🏫</div>
-            <p className={`${DISPLAY} font-extrabold text-xl text-[#0F172A]`}>No teacher sessions yet</p>
-            <p className="font-['Nunito'] text-[14px] text-[#0F172A]/50 max-w-sm">
-              Session reports will appear here once teachers in your school complete their classes.
-            </p>
-          </div>
         ) : (
           <>
-            {/* ── Overall School Performance ── */}
+            {isDemo && (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-[2px] border-[#2E2BE5]/30 bg-[#2E2BE5]/5 text-[#2E2BE5] font-['Nunito'] text-[12px] font-bold w-fit">
+                <span>✨</span> Showing sample data — real data will appear once teachers complete sessions
+              </div>
+            )}
+
+            {/* Overall School Performance */}
             <div
               className="border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[3px_3px_0_0_#0F172A] overflow-hidden"
               style={{ background: "linear-gradient(135deg, #2E2BE5 0%, #2F7CFF 100%)" }}
@@ -587,7 +739,7 @@ export default function SchoolDashboard() {
               </div>
             </div>
 
-            {/* ── Individual Teacher Performance ── */}
+            {/* Individual Teacher Performance */}
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Users className="w-5 h-5 text-[#0F172A]/40" />

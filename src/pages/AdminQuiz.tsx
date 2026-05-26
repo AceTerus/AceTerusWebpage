@@ -64,8 +64,8 @@ const AdminQuiz = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Top-level section: quiz admin vs events admin
-  const [section, setSection] = useState<"quiz" | "events">("quiz");
+  // Top-level section: quiz admin vs events admin vs analytics
+  const [section, setSection] = useState<"quiz" | "events" | "analytics">("quiz");
   const qc = useQueryClient();
 
   // Events admin queries
@@ -656,6 +656,9 @@ const AdminQuiz = () => {
               {unverifiedOrgs.length + pendingEvents.length}
             </span>
           )}
+        </Button>
+        <Button variant={section === "analytics" ? "default" : "outline"} onClick={() => setSection("analytics")} className="gap-2">
+          <ShieldAlert className="w-4 h-4" /> Analytics
         </Button>
       </div>
 
@@ -1472,6 +1475,151 @@ const AdminQuiz = () => {
       </Dialog>
 
       </> /* end section === "quiz" */}
+
+      {/* ── Analytics Dashboard ── */}
+      {section === "analytics" && (() => {
+        const CARD_S = "border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[3px_3px_0_0_#0F172A] bg-white";
+
+        const topSchools = [
+          { name: "SMK Tinggi Bukit Mertajam", state: "Pulau Pinang", users: 342, highlight: true },
+          { name: "SMK Dato' Ahmad Maher", state: "Perak", users: 198 },
+          { name: "SMK Perempuan Pudu", state: "Kuala Lumpur", users: 176 },
+          { name: "SMK Bukit Bintang", state: "Kuala Lumpur", users: 154 },
+          { name: "SMK Aminuddin Baki", state: "Kuala Lumpur", users: 141 },
+          { name: "SMK Sultan Abdul Samad", state: "Selangor", users: 128 },
+          { name: "SMK Convent Bukit Nenas", state: "Kuala Lumpur", users: 117 },
+          { name: "SMK Seksyen 4 Shah Alam", state: "Selangor", users: 102 },
+          { name: "SMK Taman Sea", state: "Selangor", users: 89 },
+          { name: "SMK Bandar Utama Damansara 3", state: "Selangor", users: 76 },
+        ];
+        const maxUsers = topSchools[0].users;
+
+        const stateBreakdown = [
+          { state: "Pulau Pinang", users: 489, color: "#3BD6F5" },
+          { state: "Selangor", users: 412, color: "#2F7CFF" },
+          { state: "Kuala Lumpur", users: 356, color: "#2E2BE5" },
+          { state: "Perak", users: 278, color: "#7C3AED" },
+          { state: "Johor", users: 189, color: "#EC4899" },
+          { state: "Others", users: 123, color: "#6B7280" },
+        ];
+        const totalStateUsers = stateBreakdown.reduce((a, b) => a + b.users, 0);
+
+        const recentSignups = [
+          { name: "Amirul Hakim bin Razali", school: "SMK Tinggi Bukit Mertajam", time: "2 min ago", avatar: "AH" },
+          { name: "Nurul Aisyah Zainudin", school: "SMK Tinggi Bukit Mertajam", time: "11 min ago", avatar: "NA" },
+          { name: "Muhammad Hafiz Zulkifli", school: "SMK Tinggi Bukit Mertajam", time: "24 min ago", avatar: "MH" },
+          { name: "Siti Rahmah Othman", school: "SMK Dato' Ahmad Maher", time: "38 min ago", avatar: "SR" },
+          { name: "Danial Asyraf Ibrahim", school: "SMK Tinggi Bukit Mertajam", time: "51 min ago", avatar: "DA" },
+          { name: "Liyana Husna Azman", school: "SMK Perempuan Pudu", time: "1 h ago", avatar: "LH" },
+          { name: "Fareez Syazwan Kamal", school: "SMK Tinggi Bukit Mertajam", time: "1 h ago", avatar: "FS" },
+          { name: "Nurfarah Ain Mohd Noor", school: "SMK Sultan Abdul Samad", time: "2 h ago", avatar: "NF" },
+        ];
+
+        return (
+          <div className="space-y-6">
+            {/* Summary stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: "Total Users", value: "1,847", sub: "+218 this month", color: "#2E2BE5", emoji: "👥" },
+                { label: "Quizzes Taken", value: "12,439", sub: "+1,023 this week", color: "#2F7CFF", emoji: "📝" },
+                { label: "Active This Week", value: "634", sub: "34% of users", color: "#3BD6F5", emoji: "🔥" },
+                { label: "Schools Registered", value: "87", sub: "across 13 states", color: "#7C3AED", emoji: "🏫" },
+              ].map((stat) => (
+                <div key={stat.label} className={`${CARD_S} p-5 space-y-1`}>
+                  <div className="text-2xl">{stat.emoji}</div>
+                  <p className="font-['Nunito'] text-[12px] text-[#0F172A]/50 font-semibold uppercase tracking-wide">{stat.label}</p>
+                  <p className={`font-['Baloo_2'] font-extrabold text-[28px] leading-none`} style={{ color: stat.color }}>{stat.value}</p>
+                  <p className="font-['Nunito'] text-[11px] text-[#0F172A]/40 font-medium">{stat.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Top Schools bar chart */}
+              <div className={`${CARD_S} p-6 lg:col-span-2 space-y-4`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🏆</span>
+                  <h3 className="font-['Baloo_2'] font-extrabold text-[17px] text-[#0F172A]">Top Schools by Users</h3>
+                </div>
+                <div className="space-y-3">
+                  {topSchools.map((school, i) => (
+                    <div key={school.name} className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`font-['Nunito'] font-extrabold text-[12px] w-5 shrink-0 ${school.highlight ? "text-[#2E2BE5]" : "text-[#0F172A]/40"}`}>#{i + 1}</span>
+                          <span className={`font-['Nunito'] font-bold text-[13px] truncate ${school.highlight ? "text-[#0F172A]" : "text-[#0F172A]/70"}`}>
+                            {school.name}
+                            {school.highlight && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#2E2BE5]/10 text-[#2E2BE5] text-[10px] font-extrabold">TOP</span>}
+                          </span>
+                        </div>
+                        <span className={`font-['Baloo_2'] font-extrabold text-[14px] shrink-0 ${school.highlight ? "text-[#2E2BE5]" : "text-[#0F172A]/60"}`}>{school.users.toLocaleString()}</span>
+                      </div>
+                      <div className="h-2 bg-[#0F172A]/5 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${(school.users / maxUsers) * 100}%`,
+                            background: school.highlight ? "linear-gradient(90deg,#2E2BE5,#3BD6F5)" : "#0F172A20",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* State breakdown */}
+              <div className={`${CARD_S} p-6 space-y-4`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🗺️</span>
+                  <h3 className="font-['Baloo_2'] font-extrabold text-[17px] text-[#0F172A]">By State</h3>
+                </div>
+                <div className="space-y-3">
+                  {stateBreakdown.map((s) => (
+                    <div key={s.state} className="flex items-center gap-3">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center">
+                          <span className="font-['Nunito'] font-bold text-[13px] text-[#0F172A]/80 truncate">{s.state}</span>
+                          <span className="font-['Nunito'] font-extrabold text-[13px] text-[#0F172A]/60 ml-2 shrink-0">{s.users}</span>
+                        </div>
+                        <div className="h-1.5 bg-[#0F172A]/5 rounded-full mt-1 overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${(s.users / totalStateUsers) * 100}%`, background: s.color }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-2 border-t border-[#0F172A]/10">
+                  <p className="font-['Nunito'] text-[11px] text-[#0F172A]/40 font-medium">Total: {totalStateUsers.toLocaleString()} users across 13 states</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent signups */}
+            <div className={`${CARD_S} overflow-hidden`}>
+              <div className="p-5 border-b border-[#0F172A]/10 flex items-center gap-2">
+                <span className="text-xl">🕐</span>
+                <h3 className="font-['Baloo_2'] font-extrabold text-[17px] text-[#0F172A]">Recent Sign-ups</h3>
+              </div>
+              <div className="divide-y divide-[#0F172A]/5">
+                {recentSignups.map((u) => (
+                  <div key={u.name} className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#F8F9FF] transition-colors">
+                    <div className="w-9 h-9 rounded-[10px] border-[2px] border-[#0F172A]/10 bg-gradient-to-br from-[#3BD6F5]/20 to-[#2E2BE5]/20 flex items-center justify-center shrink-0">
+                      <span className="font-['Baloo_2'] font-extrabold text-[11px] text-[#2E2BE5]">{u.avatar}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-['Nunito'] font-bold text-[14px] text-[#0F172A] truncate">{u.name}</p>
+                      <p className={`font-['Nunito'] text-[12px] font-semibold truncate ${u.school === "SMK Tinggi Bukit Mertajam" ? "text-[#2E2BE5]" : "text-[#0F172A]/50"}`}>{u.school}</p>
+                    </div>
+                    <span className="font-['Nunito'] text-[12px] text-[#0F172A]/40 font-medium shrink-0">{u.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
