@@ -320,7 +320,11 @@ const Index = () => {
             </nav>
             <div className="flex items-center gap-2">
               <a href="https://classpulse.aceterus.com" target="_blank" rel="noopener noreferrer">
-                <button className={`${BTN} !py-2 !px-4 !text-sm text-white`} style={{ background: C.indigo }}>
+                <button
+                  className={`${BTN} !py-2 !px-5 !text-sm text-white gap-1.5`}
+                  style={{ background: `linear-gradient(135deg, ${C.indigo} 0%, #7C3AED 100%)` }}
+                >
+                  <span className="text-base leading-none">👩‍🏫</span>
                   ClassPulse
                 </button>
               </a>
@@ -554,7 +558,7 @@ const Index = () => {
           <div className="grid md:grid-cols-3 gap-6">
             {([
               { q: "Very clean and well designed interface thats not too distracting like some other study apps/websites ive used, keeps me focused when im doing quizzes!", n: "anonymous",  r: "Form 3 Student, Sekolah Seri Puteri",    bg: "#fff",   starColor: C.blue,   avBg: C.cyan,   tilt: tiltL },
-              { q: "The streak system is evil in the best way. I literally cannot miss a day.",              n: "Dhiren", r: "Secondary School, Bangi", bg: C.cyan,   starColor: C.indigo, avBg: C.indigo             },
+              { q: "The streak system is evil in the best way. I literally cannot miss a day.",              n: "Darren", r: "Secondary School, Bangi", bg: C.cyan,   starColor: C.indigo, avBg: C.indigo             },
               { q: "Comel gilaaaaa, macam main Game! I will definitely use this kalau go back in time waktu tengah study SPM.",    n: "Yasmin Hanani",    r: "Undergraduate, UKM Bangi",        bg: C.indigo, starColor: C.sun,    avBg: C.sun,    tilt: tiltR, text: "#fff" },
             ] as { q: string; n: string; r: string; bg: string; starColor: string; avBg: string; tilt?: React.CSSProperties; text?: string }[]).map((x, i) => (
               <Reveal key={i} delay={i * 110} from={i === 0 ? "left" : i === 2 ? "right" : "bottom"}>
