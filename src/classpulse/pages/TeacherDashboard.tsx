@@ -216,7 +216,8 @@ export default function TeacherDashboard() {
                   key={s.id}
                   onClick={() => {
                     if (isConfirming) return;
-                    s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`);
+                    if (s.status === "completed") navigate(`/report/${s.id}`);
+                    else navigate(`/session/${s.id}`);
                   }}
                   className={`${CARD} w-full text-left p-5 transition-all ${isConfirming ? "cursor-default" : "hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_#0F172A] cursor-pointer"}`}
                 >

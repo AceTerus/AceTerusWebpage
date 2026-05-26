@@ -172,11 +172,14 @@ function parseQuestionsFromResponse(raw: string): GeneratedQuestion[] {
 
   if (!Array.isArray(parsed)) throw new Error("Response is not a JSON array");
 
-  return parsed
-    .filter((q: any) => q.text && Array.isArray(q.answers) && q.answers.length >= 2)
-    .map((q: any): GeneratedQuestion => ({
+  interface RawAnswer { text?: unknown; is_correct?: unknown; }
+  interface RawQuestion { text?: unknown; answers?: RawAnswer[]; explanation?: unknown; }
+
+  return (parsed as RawQuestion[])
+    .filter((q) => q.text && Array.isArray(q.answers) && (q.answers as RawAnswer[]).length >= 2)
+    .map((q): GeneratedQuestion => ({
       text: String(q.text).trim(),
-      answers: (q.answers as any[]).slice(0, 4).map((a: any) => ({
+      answers: (q.answers as RawAnswer[]).slice(0, 4).map((a) => ({
         text: String(a.text ?? "").trim(),
         is_correct: Boolean(a.is_correct),
       })),

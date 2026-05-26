@@ -113,7 +113,7 @@ Respond ONLY with a valid JSON array (no markdown, no extra text) with one objec
     return new Response(JSON.stringify({ results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err: any) {
-    return jsonError(500, err?.message ?? "Internal server error");
+  } catch (err: unknown) {
+    return jsonError(500, err instanceof Error ? err.message : "Internal server error");
   }
 });

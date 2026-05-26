@@ -53,24 +53,27 @@ serve(async (req) => {
       ? current.questions_data
       : [];
 
+    interface QuestionRecord { text?: string; is_correct?: boolean; was_skipped?: boolean; }
+    interface HistoryRecord { deck_name?: string; category?: string; score?: number; completed_at?: string; }
+
     // Build prompt
-    const wrongList = questionsData
-      .filter((q: any) => !q.is_correct && !q.was_skipped)
-      .map((q: any) => `- ${q.text}`)
+    const wrongList = (questionsData as QuestionRecord[])
+      .filter((q) => !q.is_correct && !q.was_skipped)
+      .map((q) => `- ${q.text}`)
       .join("\n");
 
-    const skippedList = questionsData
-      .filter((q: any) => q.was_skipped)
-      .map((q: any) => `- ${q.text}`)
+    const skippedList = (questionsData as QuestionRecord[])
+      .filter((q) => q.was_skipped)
+      .map((q) => `- ${q.text}`)
       .join("\n");
 
     const historySection =
       history.length === 0
         ? "This is the student's first quiz attempt."
-        : `Previous results (most recent first):\n${history
+        : `Previous results (most recent first):\n${(history as HistoryRecord[])
             .map(
-              (h: any, i: number) =>
-                `${i + 1}. "${h.deck_name}" (${h.category}) — ${Number(h.score).toFixed(1)}% on ${new Date(h.completed_at).toLocaleDateString()}`
+              (h, i) =>
+                `${i + 1}. "${h.deck_name}" (${h.category}) — ${Number(h.score).toFixed(1)}% on ${new Date(h.completed_at ?? "").toLocaleDateString()}`
             )
             .join("\n")}`;
 
