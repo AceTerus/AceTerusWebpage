@@ -318,11 +318,18 @@ const Index = () => {
               <a href="#squad"   className="atl-nav-link hover:text-[#2F7CFF]">Squad</a>
               <a href="#rewards" className="atl-nav-link hover:text-[#2F7CFF]">Rewards</a>
             </nav>
-            <Link to="/auth">
-              <button className={`${BTN} !py-2 !px-4 !text-sm text-white`} style={{ background: C.blue }}>
-                Jump in <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <a href="https://classpulse.aceterus.com" target="_blank" rel="noopener noreferrer">
+                <button className={`${BTN} !py-2 !px-4 !text-sm text-white`} style={{ background: C.indigo }}>
+                  ClassPulse
+                </button>
+              </a>
+              <Link to="/auth">
+                <button className={`${BTN} !py-2 !px-4 !text-sm text-white`} style={{ background: C.blue }}>
+                  Jump in <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            </div>
           </div>
         </header>
 
