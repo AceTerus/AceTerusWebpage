@@ -74,7 +74,7 @@ function ScoreRing({ score }: { score: number }) {
         className="font-['Nunito'] font-extrabold text-[#0F172A]/50 uppercase"
         style={{ fontSize: "10px", letterSpacing: "0.06em" }}
       >
-        Effectiveness
+        TES
       </span>
     </div>
   );

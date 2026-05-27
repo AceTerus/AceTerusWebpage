@@ -254,31 +254,53 @@ export default function ConclusionReport() {
           );
         })()}
 
-        {/* 5-Criteria Breakdown */}
-        {report.criteria_scores && Object.keys(report.criteria_scores).length > 0 && (
-          <div className={`${CARD} p-5`}>
-            <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A] mb-4`}>Criteria Breakdown</p>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {Object.entries(report.criteria_scores).map(([key, { score, weight }]) => {
-                const meta = CRITERIA_META[key];
-                if (!meta) return null;
-                const color = score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
-                const bg    = score >= 80 ? "#ECFAF3"  : score >= 60 ? "#FFF6E2"  : "#FEEFEC";
-                return (
-                  <div key={key} className="flex flex-col items-center gap-2 p-3 rounded-[14px] border-[2px] border-[#0F172A]/10 text-center" style={{ background: bg }}>
-                    <MiniScoreRing score={score} size={52} />
-                    <p className="font-['Nunito'] font-extrabold text-[11px] text-[#0F172A] leading-tight">{meta.name}</p>
-                    <p className="font-['Nunito'] font-semibold text-[10px] text-[#0F172A]/50 leading-tight">{meta.desc}</p>
-                    <span className="font-['Nunito'] font-extrabold text-[9.5px] px-2 py-0.5 rounded-full border"
-                      style={{ color, borderColor: `${color}40`, background: "white" }}>
-                      {weight}% weight
-                    </span>
-                  </div>
-                );
-              })}
+        {/* 5-Criteria Breakdown — always shown; falls back to derived values if criteria_scores missing */}
+        {(() => {
+          const stored = report.criteria_scores && Object.keys(report.criteria_scores).length > 0
+            ? report.criteria_scores
+            : null;
+
+          // Derive approximate criteria from available report fields when not stored
+          const derived: Record<string, { score: number; weight: number }> = stored ?? {
+            content_coverage:     { score: report.coverage_score,                                                                                   weight: 30 },
+            lesson_pacing:        { score: Math.max(0, Math.min(100, Math.round(100 - Math.abs(report.teacher_talk_ratio - 63) * 2.5))),             weight: 20 },
+            student_engagement:   { score: Math.min(100, Math.round(report.student_participation_count * 4)),                                        weight: 20 },
+            concept_clarity:      { score: Math.min(100, Math.round((report.concepts_covered.length / Math.max(session.key_concepts.length, 1)) * 80 + 20)), weight: 15 },
+            delivery_consistency: { score: Math.min(100, Math.round(report.teacher_talk_ratio >= 40 ? 72 : 40)),                                    weight: 15 },
+          };
+
+          return (
+            <div className={`${CARD} p-5`}>
+              <div className="flex items-center justify-between mb-4">
+                <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A]`}>TES Criteria Breakdown</p>
+                {!stored && (
+                  <span className="font-['Nunito'] font-semibold text-[11px] text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5">
+                    estimated
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {Object.entries(derived).map(([key, { score, weight }]) => {
+                  const meta = CRITERIA_META[key];
+                  if (!meta) return null;
+                  const color = score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
+                  const bg    = score >= 80 ? "#ECFAF3"  : score >= 60 ? "#FFF6E2"  : "#FEEFEC";
+                  return (
+                    <div key={key} className="flex flex-col items-center gap-2 p-3 rounded-[14px] border-[2px] border-[#0F172A]/10 text-center" style={{ background: bg }}>
+                      <MiniScoreRing score={score} size={52} />
+                      <p className="font-['Nunito'] font-extrabold text-[11px] text-[#0F172A] leading-tight">{meta.name}</p>
+                      <p className="font-['Nunito'] font-semibold text-[10px] text-[#0F172A]/50 leading-tight">{meta.desc}</p>
+                      <span className="font-['Nunito'] font-extrabold text-[9.5px] px-2 py-0.5 rounded-full border"
+                        style={{ color, borderColor: `${color}40`, background: "white" }}>
+                        {weight}% weight
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Metrics row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
