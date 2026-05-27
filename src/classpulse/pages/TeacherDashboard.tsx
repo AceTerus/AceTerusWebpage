@@ -316,16 +316,16 @@ export default function TeacherDashboard() {
 
             {/* Column headers */}
             <div
-              className="hidden md:grid items-center px-5 h-10 bg-[#F8F9FF] border-b-[2px] border-[#0F172A]/10 font-['Nunito'] font-extrabold text-[#0F172A]/45 uppercase"
-              style={{ gridTemplateColumns: "36px 130px 1fr 100px 140px 1fr 90px", gap: "14px", fontSize: "10.5px", letterSpacing: "0.055em" }}
+              className="hidden md:grid items-stretch bg-[#F8F9FF] border-b-[2px] border-[#0F172A]/10 font-['Nunito'] font-extrabold text-[#0F172A]/45 uppercase"
+              style={{ gridTemplateColumns: "36px 130px 1fr 100px 140px 1fr 90px", gap: 0, minHeight: "42px", fontSize: "10.5px", letterSpacing: "0.055em" }}
             >
-              <span>#</span>
-              <span>Session</span>
-              <span>Objective</span>
-              <span>Status</span>
-              <span>Coverage</span>
-              <span>Topics</span>
-              <span />
+              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>#</span></div>
+              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>Session</span></div>
+              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>Objective</span></div>
+              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>Status</span></div>
+              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>Coverage</span></div>
+              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>Topics</span></div>
+              <div className="flex items-center px-4"><span /></div>
             </div>
 
             {/* Rows */}
@@ -361,28 +361,36 @@ export default function TeacherDashboard() {
                   <div
                     key={s.id}
                     onClick={() => s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`)}
-                    className="grid items-center px-5 py-3.5 cursor-pointer transition-colors hover:bg-[#F6F7FF] border-b border-[#0F172A]/8 last:border-b-0"
-                    style={{ gridTemplateColumns: "36px 130px 1fr 100px 140px 1fr 90px", gap: "14px", minHeight: "60px" }}
+                    className="grid items-stretch cursor-pointer transition-colors hover:bg-[#F6F7FF] border-b border-[#0F172A]/8 last:border-b-0"
+                    style={{ gridTemplateColumns: "36px 130px 1fr 100px 140px 1fr 90px", gap: 0, minHeight: "60px" }}
                   >
                     {/* # */}
-                    <span className={`${DISPLAY} font-extrabold text-[16px] text-[#0F172A]/20`}>{i + 1}</span>
+                    <div className="flex items-center px-4 border-r border-[#0F172A]/10">
+                      <span className={`${DISPLAY} font-extrabold text-[16px] text-[#0F172A]/20`}>{i + 1}</span>
+                    </div>
 
                     {/* Session: class + subject */}
-                    <div className="min-w-0">
-                      <p className="font-['Nunito'] font-extrabold text-[13px] text-[#0F172A] truncate leading-tight">{s.class_name}</p>
-                      <p className="font-['Nunito'] font-bold text-[11px] text-[#0F172A]/45 truncate mt-0.5">{s.subject}</p>
+                    <div className="flex items-center px-4 border-r border-[#0F172A]/10 min-w-0">
+                      <div className="min-w-0 w-full">
+                        <p className="font-['Nunito'] font-extrabold text-[13px] text-[#0F172A] truncate leading-tight">{s.class_name}</p>
+                        <p className="font-['Nunito'] font-bold text-[11px] text-[#0F172A]/45 truncate mt-0.5">{s.subject}</p>
+                      </div>
                     </div>
 
                     {/* Objective */}
-                    <p className="font-['Nunito'] font-semibold text-[12.5px] text-[#0F172A]/60 truncate">{s.objective_text}</p>
+                    <div className="flex items-center px-4 border-r border-[#0F172A]/10 min-w-0">
+                      <p className="font-['Nunito'] font-semibold text-[12.5px] text-[#0F172A]/60 truncate w-full">{s.objective_text}</p>
+                    </div>
 
                     {/* Status */}
-                    <div><StatusBadge status={s.status} /></div>
+                    <div className="flex items-center px-4 border-r border-[#0F172A]/10">
+                      <StatusBadge status={s.status} />
+                    </div>
 
                     {/* Coverage % + bar */}
-                    <div>
+                    <div className="flex items-center px-4 border-r border-[#0F172A]/10">
                       {hasReport ? (
-                        <>
+                        <div className="w-full">
                           <span
                             className={`${DISPLAY} font-extrabold text-[15px] block leading-none mb-1.5`}
                             style={{ color: scoreColor }}
@@ -392,29 +400,31 @@ export default function TeacherDashboard() {
                           <div className="w-full h-[6px] rounded-full overflow-hidden" style={{ background: "#EEF1F9", border: "1.5px solid rgba(15,23,42,0.10)" }}>
                             <div className="h-full rounded-full" style={{ width: `${score}%`, background: barColor }} />
                           </div>
-                        </>
+                        </div>
                       ) : (
                         <span className="font-['Nunito'] font-bold text-[13px] text-[#0F172A]/25">—</span>
                       )}
                     </div>
 
                     {/* Topic pills */}
-                    <div className="flex flex-wrap gap-1">
-                      {topicPills.map((t) => (
-                        <span
-                          key={t.label}
-                          className={`font-['Nunito'] font-extrabold px-1.5 py-0.5 rounded-full border-[1.5px] ${pillStyle[t.type]}`}
-                          style={{ fontSize: "10px" }}
-                        >
-                          {t.label}
-                        </span>
-                      ))}
+                    <div className="flex items-center px-4 border-r border-[#0F172A]/10">
+                      <div className="flex flex-wrap gap-1">
+                        {topicPills.map((t) => (
+                          <span
+                            key={t.label}
+                            className={`font-['Nunito'] font-extrabold px-1.5 py-0.5 rounded-full border-[1.5px] ${pillStyle[t.type]}`}
+                            style={{ fontSize: "10px" }}
+                          >
+                            {t.label}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* CTA button */}
-                    <div onClick={(e) => e.stopPropagation()}>
+                    {/* CTA button — last cell, no border-r */}
+                    <div className="flex items-center justify-center px-4">
                       <button
-                        onClick={() => s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`)}
+                        onClick={(e) => { e.stopPropagation(); s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`); }}
                         className={`flex items-center gap-1 px-3 py-1.5 rounded-[9px] border-[2px] font-['Nunito'] font-extrabold transition-all hover:-translate-y-0.5 ${ctaStyle}`}
                         style={{ fontSize: "11.5px" }}
                       >
