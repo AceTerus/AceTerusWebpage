@@ -229,7 +229,7 @@ export default function TeacherDashboard() {
 
   const kpis = [
     { label: "Total Sessions", value: sessions.length, sub: "all time" },
-    { label: "Avg Coverage", value: avgCoverage != null ? `${avgCoverage}%` : "—", sub: "analysed", color: avgColor },
+    { label: "Avg TES", value: avgCoverage != null ? `${avgCoverage}%` : "—", sub: "analysed", color: avgColor },
     { label: "This Week", value: thisWeekCount, sub: "sessions" },
     { label: "Completed", value: completedCount, sub: "sessions" },
   ];
@@ -336,8 +336,6 @@ export default function TeacherDashboard() {
             return { kind: "free" as const, period: p, time };
           });
 
-          const totalSessions = sessions.length;
-
           return (
             <div className={`${CARD} mb-6 overflow-hidden`}>
               {/* Header */}
@@ -349,7 +347,7 @@ export default function TeacherDashboard() {
                   <h2 className={`${DISPLAY} font-extrabold text-[20px] text-[#0F172A]`}>Today's Schedule</h2>
                 </div>
                 <p className="font-['Nunito'] font-semibold text-[12px] text-[#0F172A]/40">
-                  {format(new Date(), "EEEE, d MMMM yyyy")} · {totalSessions} periods scheduled
+                  {format(new Date(), "EEEE, d MMMM yyyy")} · {sessions.length} session{sessions.length !== 1 ? "s" : ""}
                 </p>
               </div>
 
@@ -377,7 +375,7 @@ export default function TeacherDashboard() {
                   /* ── FREE ── */
                   if (slot.kind === "free") return (
                     <div key={slot.period}
-                      className="flex flex-col rounded-[16px] p-4 border-[2px] border-dashed border-[#0F172A]/12 bg-white"
+                      className="flex flex-col rounded-[16px] p-4 border-[2px] border-dashed border-[#0F172A]/10 bg-white"
                       style={{
                         minHeight: "200px",
                         background: "repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(15,23,42,0.035) 6px,rgba(15,23,42,0.035) 7px)",
@@ -411,7 +409,7 @@ export default function TeacherDashboard() {
 
                   const cfg = {
                     done:   { bg: "#e6f9f0", border: "rgba(22,165,107,0.5)", shadow: "none",                                                      labelColor: "#16A56B", badgeText: `P${slot.period} · DONE`,    nameColor: "#0F172A", emoji: "📊" },
-                    live:   { bg: "#fde8e8", border: "#DC2626",               shadow: "0 0 0 3px rgba(220,38,38,0.12),0 0 20px rgba(220,38,38,0.1)", labelColor: "#DC2626", badgeText: "● LIVE",              nameColor: "#0F172A", emoji: "🎙️" },
+                    live:   { bg: "#fde8e8", border: "#DC2626",               shadow: "0 0 0 3px rgba(220,38,38,0.12),0 0 20px rgba(220,38,38,0.1)", labelColor: "#DC2626", badgeText: "LIVE",                nameColor: "#0F172A", emoji: "🎙️" },
                     upnext: { bg: "#eeeaff", border: "#2E2BE5",               shadow: "none",                                                      labelColor: "#2E2BE5", badgeText: `P${slot.period} · UP NEXT`, nameColor: "#2E2BE5", emoji: "▶️" },
                   }[slot.kind];
 
