@@ -19,6 +19,13 @@ const SUBJECTS = [
 
 const PERIODS = ["Period 1", "Period 2", "Period 3", "Period 4", "Period 5", "Period 6", "Period 7", "Period 8"];
 
+interface ConclReport {
+  coverage_score: number | null;
+  ai_coaching_note: string | null;
+  concepts_covered: string[];
+  concepts_missed: string[];
+}
+
 interface ClassSession {
   id: string;
   class_name: string;
@@ -29,6 +36,7 @@ interface ClassSession {
   started_at: string | null;
   ended_at: string | null;
   created_at: string;
+  conclusion_reports?: ConclReport[] | null;
 }
 
 interface NewSessionForm {
@@ -38,6 +46,24 @@ interface NewSessionForm {
   key_concepts_input: string;
   date: string;
   period: string;
+}
+
+function MiniScoreRing({ score }: { score: number }) {
+  const r = 22;
+  const circ = 2 * Math.PI * r;
+  const color = score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
+  return (
+    <svg width="52" height="52" viewBox="0 0 52 52">
+      <circle cx="26" cy="26" r={r} fill="none" stroke="#0F172A15" strokeWidth="4.5" />
+      <circle
+        cx="26" cy="26" r={r} fill="none" stroke={color} strokeWidth="4.5"
+        strokeDasharray={`${(score / 100) * circ} ${circ}`}
+        strokeLinecap="round" transform="rotate(-90 26 26)"
+      />
+      <text x="26" y="31" textAnchor="middle" fontSize="11" fontWeight="800"
+        fill={color} fontFamily="Baloo 2, sans-serif">{score}%</text>
+    </svg>
+  );
 }
 
 export default function TeacherDashboard() {
@@ -68,7 +94,7 @@ export default function TeacherDashboard() {
     setLoading(true);
     const { data } = await supabase
       .from("class_sessions")
-      .select("*")
+      .select("*, conclusion_reports(coverage_score, ai_coaching_note, concepts_covered, concepts_missed)")
       .eq("teacher_id", user.id)
       .order("created_at", { ascending: false });
     setSessions((data as ClassSession[]) || []);
@@ -94,7 +120,7 @@ export default function TeacherDashboard() {
       transcript_text: null,
     }).eq("id", id);
     setSessions((prev) =>
-      prev.map((s) => s.id === id ? { ...s, status: "pending", started_at: null, ended_at: null } : s)
+      prev.map((s) => s.id === id ? { ...s, status: "pending", started_at: null, ended_at: null, conclusion_reports: null } : s)
     );
     setConfirmAction(null);
     setActionLoading(false);
@@ -152,8 +178,8 @@ export default function TeacherDashboard() {
       </span>
     );
     if (status === "active") return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-green-50 text-green-600 border border-green-200">
-        <PlayCircle className="w-3 h-3" /> Live
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-green-50 text-green-600 border border-green-200">
+        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Live
       </span>
     );
     return (
@@ -163,13 +189,23 @@ export default function TeacherDashboard() {
     );
   };
 
+  // KPI stats derived from loaded sessions
+  const completedWithReport = sessions.filter(s => s.conclusion_reports?.[0]?.coverage_score != null);
+  const avgCoverage = completedWithReport.length > 0
+    ? Math.round(completedWithReport.reduce((sum, s) => sum + (s.conclusion_reports![0].coverage_score ?? 0), 0) / completedWithReport.length)
+    : null;
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const thisWeekCount = sessions.filter(s => new Date(s.created_at).getTime() > sevenDaysAgo).length;
+  const avgColor = avgCoverage == null ? C.ink : avgCoverage >= 80 ? "#16A56B" : avgCoverage >= 60 ? "#C77800" : "#DC2626";
+
   return (
     <div className="min-h-screen bg-[#F8F9FF]">
       <div className="max-w-5xl mx-auto px-4 py-8 pb-16">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between mb-8 gap-4">
+          {/* Left: logo + title */}
+          <div className="flex items-center gap-3 flex-shrink-0">
             <div className="w-12 h-12 rounded-[16px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] flex items-center justify-center" style={{ background: C.blue }}>
               <BookOpen className="w-6 h-6 text-white" />
             </div>
@@ -180,9 +216,31 @@ export default function TeacherDashboard() {
               </p>
             </div>
           </div>
+
+          {/* Center: KPI chips */}
+          {!loading && sessions.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border border-[#0F172A]/15 bg-white shadow-[1px_1px_0_0_rgba(15,23,42,0.08)]">
+                <span className={`${DISPLAY} font-extrabold text-[13px] text-[#0F172A]`}>{sessions.length}</span>
+                <span className="font-['Nunito'] text-[11px] font-bold text-[#0F172A]/50">Total</span>
+              </div>
+              {avgCoverage != null && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border border-[#0F172A]/15 bg-white shadow-[1px_1px_0_0_rgba(15,23,42,0.08)]">
+                  <span className={`${DISPLAY} font-extrabold text-[13px]`} style={{ color: avgColor }}>{avgCoverage}%</span>
+                  <span className="font-['Nunito'] text-[11px] font-bold text-[#0F172A]/50">Avg Coverage</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border border-[#0F172A]/15 bg-white shadow-[1px_1px_0_0_rgba(15,23,42,0.08)]">
+                <span className={`${DISPLAY} font-extrabold text-[13px] text-[#0F172A]`}>{thisWeekCount}</span>
+                <span className="font-['Nunito'] text-[11px] font-bold text-[#0F172A]/50">This Week</span>
+              </div>
+            </div>
+          )}
+
+          {/* Right: New Session */}
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-[2.5px] border-[#0F172A] bg-[#2E2BE5] text-white font-bold font-['Nunito'] text-[14px] shadow-[3px_3px_0_0_#0F172A] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_#0F172A] transition-all"
+            className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl border-[2.5px] border-[#0F172A] bg-[#2E2BE5] text-white font-bold font-['Nunito'] text-[14px] shadow-[3px_3px_0_0_#0F172A] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_#0F172A] transition-all"
           >
             <Plus className="w-4 h-4" /> New Session
           </button>
@@ -211,6 +269,9 @@ export default function TeacherDashboard() {
           <div className="space-y-3">
             {sessions.map((s) => {
               const isConfirming = confirmAction?.id === s.id;
+              const report = s.conclusion_reports?.[0] ?? null;
+              const hasReport = s.status === "completed" && report != null && report.coverage_score != null;
+
               return (
                 <div
                   key={s.id}
@@ -219,65 +280,117 @@ export default function TeacherDashboard() {
                     if (s.status === "completed") navigate(`/report/${s.id}`);
                     else navigate(`/session/${s.id}`);
                   }}
-                  className={`${CARD} w-full text-left p-5 transition-all ${isConfirming ? "cursor-default" : "hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_#0F172A] cursor-pointer"}`}
+                  className={`${CARD} w-full text-left transition-all overflow-hidden ${isConfirming ? "cursor-default" : "hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_#0F172A] cursor-pointer"}`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        {statusBadge(s.status)}
-                        <span className="text-[11px] font-bold font-['Nunito'] text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5">
-                          {s.subject}
-                        </span>
-                        <span className="text-[11px] font-bold font-['Nunito'] text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5">
-                          {s.class_name}
-                        </span>
-                      </div>
-                      <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A] mb-1 truncate`}>
-                        {s.objective_text}
-                      </p>
-                      {s.key_concepts.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {s.key_concepts.slice(0, 4).map((c) => (
-                            <span key={c} className="text-[10px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#DDF3FF] text-[#2F7CFF] border border-[#2F7CFF]/20">
-                              {c}
-                            </span>
-                          ))}
-                          {s.key_concepts.length > 4 && (
-                            <span className="text-[10px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#0F172A]/5 text-[#0F172A]/50">
-                              +{s.key_concepts.length - 4} more
-                            </span>
-                          )}
+                  <div className="p-5">
+                    <div className="flex items-start gap-4">
+
+                      {/* Score ring column — only for completed sessions with a report */}
+                      {hasReport && (
+                        <div className="flex-shrink-0 flex flex-col items-center pt-0.5">
+                          <MiniScoreRing score={Math.round(report!.coverage_score!)} />
+                          <span className="text-[9px] font-bold font-['Nunito'] text-[#0F172A]/40 mt-0.5 tracking-wide uppercase">Coverage</span>
                         </div>
                       )}
-                    </div>
 
-                    <div className="shrink-0 flex flex-col items-end gap-2">
-                      <p className="text-[11px] font-semibold font-['Nunito'] text-[#0F172A]/40">
-                        {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
-                      </p>
-                      {s.ended_at && (
-                        <p className="text-[11px] font-semibold font-['Nunito'] text-[#0F172A]/40">
-                          {format(new Date(s.ended_at), "d MMM yyyy")}
-                        </p>
-                      )}
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        {s.status === "completed" && (
-                          <button
-                            onClick={() => setConfirmAction({ id: s.id, type: "rerecord" })}
-                            title="Re-record this session"
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] border-[2px] border-[#0F172A]/15 text-[11px] font-bold font-['Nunito'] text-[#2E2BE5] hover:border-[#2E2BE5] hover:bg-[#EEEDFF] transition-all"
-                          >
-                            <RefreshCw className="w-3 h-3" /> Re-record
-                          </button>
+                      {/* Main content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            {/* Badges row */}
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              {statusBadge(s.status)}
+                              <span className="text-[11px] font-bold font-['Nunito'] text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5">
+                                {s.subject}
+                              </span>
+                              <span className="text-[11px] font-bold font-['Nunito'] text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5">
+                                {s.class_name}
+                              </span>
+                            </div>
+
+                            {/* Objective */}
+                            <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A] mb-2`}>
+                              {s.objective_text}
+                            </p>
+
+                            {/* Concept pills */}
+                            {hasReport ? (
+                              <div className="flex flex-wrap gap-1">
+                                {report!.concepts_covered.slice(0, 4).map((c) => (
+                                  <span key={c} className="text-[10px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#ECFAF3] text-[#16A56B] border border-[#16A56B]/25">
+                                    ✓ {c}
+                                  </span>
+                                ))}
+                                {report!.concepts_missed.slice(0, 3).map((c) => (
+                                  <span key={c} className="text-[10px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#FEEFEC] text-[#DC2626] border border-[#DC2626]/25">
+                                    ✗ {c}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : s.key_concepts.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {s.key_concepts.slice(0, 4).map((c) => (
+                                  <span key={c} className="text-[10px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#DDF3FF] text-[#2F7CFF] border border-[#2F7CFF]/20">
+                                    {c}
+                                  </span>
+                                ))}
+                                {s.key_concepts.length > 4 && (
+                                  <span className="text-[10px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#0F172A]/5 text-[#0F172A]/50">
+                                    +{s.key_concepts.length - 4} more
+                                  </span>
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          {/* Right: timestamp + actions */}
+                          <div className="shrink-0 flex flex-col items-end gap-2">
+                            <p className="text-[11px] font-semibold font-['Nunito'] text-[#0F172A]/40">
+                              {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
+                            </p>
+                            {s.ended_at && (
+                              <p className="text-[11px] font-semibold font-['Nunito'] text-[#0F172A]/40">
+                                {format(new Date(s.ended_at), "d MMM yyyy")}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              {s.status === "pending" && (
+                                <button
+                                  onClick={() => navigate(`/session/${s.id}`)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border-[2px] border-[#0F172A] bg-[#2E2BE5] text-white text-[11px] font-bold font-['Nunito'] shadow-[2px_2px_0_0_#0F172A] hover:-translate-y-0.5 transition-all"
+                                >
+                                  <PlayCircle className="w-3.5 h-3.5" /> Go Live
+                                </button>
+                              )}
+                              {s.status === "completed" && (
+                                <button
+                                  onClick={() => setConfirmAction({ id: s.id, type: "rerecord" })}
+                                  title="Re-record this session"
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] border-[2px] border-[#0F172A]/15 text-[11px] font-bold font-['Nunito'] text-[#2E2BE5] hover:border-[#2E2BE5] hover:bg-[#EEEDFF] transition-all"
+                                >
+                                  <RefreshCw className="w-3 h-3" /> Re-record
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setConfirmAction({ id: s.id, type: "delete" })}
+                                title="Delete session"
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] border-[2px] border-[#0F172A]/15 text-[11px] font-bold font-['Nunito'] text-red-500 hover:border-red-300 hover:bg-red-50 transition-all"
+                              >
+                                <Trash2 className="w-3 h-3" /> Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* AI coaching note strip */}
+                        {hasReport && report!.ai_coaching_note && (
+                          <div className="mt-3 flex items-start gap-2 bg-[#EEEDFF] rounded-[10px] px-3 py-2">
+                            <Sparkles className="w-3.5 h-3.5 text-[#2E2BE5] flex-shrink-0 mt-0.5" />
+                            <p className="font-['Nunito'] text-[11px] font-semibold text-[#2E2BE5] leading-relaxed overflow-hidden" style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" }}>
+                              {report!.ai_coaching_note}
+                            </p>
+                          </div>
                         )}
-                        <button
-                          onClick={() => setConfirmAction({ id: s.id, type: "delete" })}
-                          title="Delete session"
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] border-[2px] border-[#0F172A]/15 text-[11px] font-bold font-['Nunito'] text-red-500 hover:border-red-300 hover:bg-red-50 transition-all"
-                        >
-                          <Trash2 className="w-3 h-3" /> Delete
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -285,17 +398,17 @@ export default function TeacherDashboard() {
                   {/* Inline confirm strip */}
                   {isConfirming && (
                     <div
-                      className="mt-4 pt-4 border-t-[2px] border-[#0F172A]/10 flex items-center justify-between gap-3 flex-wrap"
+                      className="px-5 pb-5 pt-4 border-t-[2px] border-[#0F172A]/10 flex items-center justify-between gap-3 flex-wrap"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div>
                         <p className="font-['Nunito'] text-[13px] font-bold text-[#0F172A]">
-                          {confirmAction.type === "delete"
+                          {confirmAction!.type === "delete"
                             ? "Delete this session permanently?"
                             : "Reset and re-record this session?"}
                         </p>
                         <p className="font-['Nunito'] text-[11px] text-[#0F172A]/50 mt-0.5">
-                          {confirmAction.type === "delete"
+                          {confirmAction!.type === "delete"
                             ? "This will remove all session data and the report. This cannot be undone."
                             : "The existing report will be deleted and you'll re-record from scratch."}
                         </p>
@@ -309,18 +422,18 @@ export default function TeacherDashboard() {
                         </button>
                         <button
                           onClick={() =>
-                            confirmAction.type === "delete"
+                            confirmAction!.type === "delete"
                               ? handleDelete(s.id)
                               : handleRerecord(s.id)
                           }
                           disabled={actionLoading}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border-[2px] border-[#0F172A] text-[12px] font-bold font-['Nunito'] text-white shadow-[2px_2px_0_0_#0F172A] hover:-translate-y-0.5 transition-all disabled:opacity-60 ${
-                            confirmAction.type === "delete" ? "bg-red-500 border-red-600 shadow-[2px_2px_0_0_#991B1B]" : "bg-[#2E2BE5]"
+                            confirmAction!.type === "delete" ? "bg-red-500 border-red-600 shadow-[2px_2px_0_0_#991B1B]" : "bg-[#2E2BE5]"
                           }`}
                         >
                           {actionLoading
                             ? <Loader2 className="w-3 h-3 animate-spin" />
-                            : confirmAction.type === "delete"
+                            : confirmAction!.type === "delete"
                               ? <><Trash2 className="w-3 h-3" /> Delete</>
                               : <><RefreshCw className="w-3 h-3" /> Re-record</>
                           }
