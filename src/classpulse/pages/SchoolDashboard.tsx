@@ -182,6 +182,7 @@ interface SessionData {
   ended_at: string | null;
   transcript_text: string | null;
   coverage_score: number;
+  teaching_effectiveness_score?: number;
   teacher_talk_ratio: number;
   student_participation_count: number;
   concepts_covered: string[];
@@ -194,6 +195,7 @@ interface TeacherGroup {
   display_name: string;
   sessions: SessionData[];
   avg_coverage: number;
+  avg_tes?: number;
   total_sessions: number;
   goals_achieved: number;
   trend?: number;
@@ -1235,15 +1237,15 @@ function TeacherTableRow({ teacher, open, onToggle, onOpenSession }: {
         </div>
 
         <div className="cpa-coverage-cell">
-          <ScoreRingCPA score={teacher.avg_coverage} size={40} />
-          <PillCPA tone={scoreTone(teacher.avg_coverage)} dot={false}>
-            {teacher.avg_coverage >= 80 ? "High" : teacher.avg_coverage >= 65 ? "Steady" : teacher.avg_coverage >= 50 ? "Watch" : "Critical"}
+          <ScoreRingCPA score={teacher.avg_tes ?? teacher.avg_coverage} size={40} />
+          <PillCPA tone={scoreTone(teacher.avg_tes ?? teacher.avg_coverage)} dot={false}>
+            {(teacher.avg_tes ?? teacher.avg_coverage) >= 80 ? "High" : (teacher.avg_tes ?? teacher.avg_coverage) >= 65 ? "Steady" : (teacher.avg_tes ?? teacher.avg_coverage) >= 50 ? "Watch" : "Critical"}
           </PillCPA>
         </div>
 
         <div className="cpa-trend-cell">
           {trendData.length >= 2 && (
-            <Sparkline data={trendData} width={80} height={26} color={scoreColor(teacher.avg_coverage)} />
+            <Sparkline data={trendData} width={80} height={26} color={scoreColor(teacher.avg_tes ?? teacher.avg_coverage)} />
           )}
           <span className="cpa-trend-num" style={{
             color: trend > 0 ? "#16A56B" : trend < 0 ? "#DC2626" : "rgba(15,23,42,.5)"
@@ -1423,7 +1425,7 @@ export default function SchoolDashboard() {
     const sessionIds = sessions.map((s: any) => s.id);
     const { data: reports } = await supabase
       .from("conclusion_reports")
-      .select("session_id, coverage_score, teacher_talk_ratio, student_participation_count, concepts_covered, concepts_missed, ai_coaching_note")
+      .select("session_id, coverage_score, teaching_effectiveness_score, teacher_talk_ratio, student_participation_count, concepts_covered, concepts_missed, ai_coaching_note")
       .in("session_id", sessionIds);
 
     const reportMap = new Map((reports || []).map((r: any) => [r.session_id, r]));
@@ -1434,7 +1436,7 @@ export default function SchoolDashboard() {
         id: s.id, teacher_id: s.teacher_id, class_name: s.class_name, subject: s.subject,
         objective_text: s.objective_text || "", key_concepts: s.key_concepts || [],
         started_at: s.started_at, ended_at: s.ended_at, transcript_text: s.transcript_text,
-        coverage_score: r.coverage_score ?? 0, teacher_talk_ratio: r.teacher_talk_ratio ?? 0,
+        coverage_score: r.coverage_score ?? 0, teaching_effectiveness_score: r.teaching_effectiveness_score ?? r.coverage_score ?? 0, teacher_talk_ratio: r.teacher_talk_ratio ?? 0,
         student_participation_count: r.student_participation_count ?? 0,
         concepts_covered: r.concepts_covered ?? [], concepts_missed: r.concepts_missed ?? [],
         ai_coaching_note: r.ai_coaching_note ?? "",
@@ -1452,11 +1454,13 @@ export default function SchoolDashboard() {
       .map((id: string, idx: number) => {
         const ts = groupMap.get(id)!;
         const avg = Math.round(ts.reduce((a, s) => a + s.coverage_score, 0) / ts.length);
+        const avgTes = Math.round(ts.reduce((a, s) => a + (s.teaching_effectiveness_score ?? s.coverage_score), 0) / ts.length);
         return {
           user_id: id,
           display_name: profileMap.get(id) || `Teacher ${idx + 1}`,
           sessions: ts,
           avg_coverage: avg,
+          avg_tes: avgTes,
           total_sessions: ts.length,
           goals_achieved: ts.filter(s => s.concepts_missed.length === 0).length,
           trend: 0,
@@ -1484,13 +1488,15 @@ export default function SchoolDashboard() {
         );
         if (sessions.length === 0) return null;
         const avg = Math.round(sessions.reduce((a, s) => a + s.coverage_score, 0) / sessions.length);
+        const avgTes = Math.round(sessions.reduce((a, s) => a + (s.teaching_effectiveness_score ?? s.coverage_score), 0) / sessions.length);
         return {
           ...g,
           sessions,
           total_sessions: sessions.length,
           goals_achieved: sessions.filter(s => s.concepts_missed.length === 0).length,
           avg_coverage: avg,
-          flagged: g.flagged || avg < 60,
+          avg_tes: avgTes,
+          flagged: g.flagged || avgTes < 60,
         };
       })
       .filter((g): g is TeacherGroup => g !== null),
@@ -1499,7 +1505,7 @@ export default function SchoolDashboard() {
   // Derived — all from period-filtered groups
   const allSessions = useMemo(() => periodGroups.flatMap(g => g.sessions), [periodGroups]);
   const overallAvg = useMemo(() =>
-    allSessions.length > 0 ? Math.round(allSessions.reduce((a, s) => a + s.coverage_score, 0) / allSessions.length) : 0,
+    allSessions.length > 0 ? Math.round(allSessions.reduce((a, s) => a + (s.teaching_effectiveness_score ?? s.coverage_score), 0) / allSessions.length) : 0,
     [allSessions]);
   const avgStudentTalk = useMemo(() =>
     allSessions.length > 0 ? Math.round(allSessions.reduce((a, s) => a + (100 - s.teacher_talk_ratio), 0) / allSessions.length) : 0,
@@ -1514,7 +1520,7 @@ export default function SchoolDashboard() {
     const map = new Map<string, number[]>();
     allSessions.forEach(s => {
       if (!map.has(s.subject)) map.set(s.subject, []);
-      map.get(s.subject)!.push(s.coverage_score);
+      map.get(s.subject)!.push(s.teaching_effectiveness_score ?? s.coverage_score);
     });
     return Array.from(map.entries())
       .map(([subject, scores]) => ({
@@ -1681,7 +1687,7 @@ export default function SchoolDashboard() {
                   </div>
                 </div>
                 <div className="cpa-kpis">
-                  <KpiCPA label="Avg Coverage" value={`${overallAvg}%`} delta={3} spark={kpiSpark} />
+                  <KpiCPA label="Avg Effectiveness" value={`${overallAvg}%`} delta={3} spark={kpiSpark} />
                   <KpiCPA label="Student Talk" value={`${avgStudentTalk}%`} delta={5} spark={talkSpark} />
                   <KpiCPA label="Goals Hit" value={`${totalGoalsAchieved}`} sub={`/${allSessions.length}`} delta={-2} />
                   <KpiCPA label="Participation" value={`${avgParticipation}`} sub="/class" delta={2} />
@@ -1748,7 +1754,7 @@ export default function SchoolDashboard() {
                 <div className="cpa-thead">
                   <div></div>
                   <div>Teacher</div>
-                  <div>Avg Coverage</div>
+                  <div>Effectiveness</div>
                   <div>30-day trend</div>
                   <div>Sessions</div>
                   <div>Goals</div>

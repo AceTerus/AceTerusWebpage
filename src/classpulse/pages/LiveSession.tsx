@@ -19,12 +19,61 @@ interface Session {
   status: "pending" | "active" | "completed";
 }
 
+type CriteriaScores = Record<string, { score: number; weight: number }>;
+
+function computeTES(args: {
+  coverage_score: number;
+  teacher_talk_ratio: number;
+  student_participation_count: number;
+  transcript_text: string;
+  concepts_covered: string[];
+  session_seconds: number;
+}): { teaching_effectiveness_score: number; criteria_scores: CriteriaScores } {
+  const { coverage_score, teacher_talk_ratio, student_participation_count, transcript_text, concepts_covered, session_seconds } = args;
+
+  // 1. Content Coverage (30%) — direct from coverage_score
+  const contentCoverage = coverage_score;
+
+  // 2. Lesson Pacing (20%) — deviation from ideal ~63% teacher talk
+  const lessonPacing = Math.max(0, Math.min(100, Math.round(100 - Math.abs(teacher_talk_ratio - 63) * 2.5)));
+
+  // 3. Student Engagement (20%) — participation turns (25 turns = full score)
+  const studentEngagement = Math.min(100, Math.round(student_participation_count * 4));
+
+  // 4. Concept Clarity (15%) — words per covered concept (60 words/concept = full)
+  const wordCount = transcript_text.trim() ? transcript_text.trim().split(/\s+/).length : 0;
+  const conceptClarity = Math.min(100, Math.round((wordCount / Math.max(concepts_covered.length, 1) / 60) * 100));
+
+  // 5. Delivery Consistency (15%) — session length (40 min = 2400s = full); drops if teacher barely spoke
+  const deliveryConsistency = teacher_talk_ratio >= 40
+    ? Math.min(100, Math.round((session_seconds / 2400) * 100))
+    : 40;
+
+  const teaching_effectiveness_score = Math.round(
+    contentCoverage * 0.30 +
+    lessonPacing    * 0.20 +
+    studentEngagement * 0.20 +
+    conceptClarity  * 0.15 +
+    deliveryConsistency * 0.15,
+  );
+
+  const criteria_scores: CriteriaScores = {
+    content_coverage:      { score: contentCoverage,       weight: 30 },
+    lesson_pacing:         { score: lessonPacing,           weight: 20 },
+    student_engagement:    { score: studentEngagement,      weight: 20 },
+    concept_clarity:       { score: conceptClarity,         weight: 15 },
+    delivery_consistency:  { score: deliveryConsistency,    weight: 15 },
+  };
+
+  return { teaching_effectiveness_score, criteria_scores };
+}
+
 function generateReport(
   session: Session,
   transcript: string,
   sessionSeconds: number,
   teacherActiveSeconds: number,
-): { coverage_score: number; teacher_talk_ratio: number; student_participation_count: number; concepts_covered: string[]; concepts_missed: string[]; ai_coaching_note: string } {
+) {
   const lowerTranscript = transcript.toLowerCase();
   const covered = session.key_concepts.filter((c) =>
     lowerTranscript.includes(c.toLowerCase())
@@ -55,7 +104,16 @@ function generateReport(
     ai_coaching_note = `Several key concepts from your lesson objective were not covered today. Focus on ${missed.slice(0, 3).join(", ")} in your next session. Breaking the objective into smaller segments may help ensure full coverage.`;
   }
 
-  return { coverage_score, teacher_talk_ratio, student_participation_count, concepts_covered: covered, concepts_missed: missed, ai_coaching_note };
+  const tes = computeTES({
+    coverage_score,
+    teacher_talk_ratio,
+    student_participation_count,
+    transcript_text: transcript,
+    concepts_covered: covered,
+    session_seconds: sessionSeconds,
+  });
+
+  return { coverage_score, teacher_talk_ratio, student_participation_count, concepts_covered: covered, concepts_missed: missed, ai_coaching_note, ...tes };
 }
 
 function generateStudentSummary(
@@ -190,7 +248,15 @@ export default function LiveSession() {
         };
       };
 
-      report = teacher_report;
+      const tes = computeTES({
+        coverage_score: teacher_report.coverage_score,
+        teacher_talk_ratio: teacher_report.teacher_talk_ratio,
+        student_participation_count: teacher_report.student_participation_count,
+        transcript_text: finalTranscript,
+        concepts_covered: teacher_report.concepts_covered,
+        session_seconds: sessionSeconds,
+      });
+      report = { ...teacher_report, ...tes };
       summaryData = {
         covered_notes: Array.isArray(student_summary.covered_notes)
           ? student_summary.covered_notes.join("\n")

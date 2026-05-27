@@ -25,6 +25,7 @@ const PERIODS = ["Period 1", "Period 2", "Period 3", "Period 4", "Period 5", "Pe
 
 interface ConclReport {
   coverage_score: number | null;
+  teaching_effectiveness_score?: number | null;
   ai_coaching_note: string | null;
   concepts_covered: string[];
   concepts_missed: string[];
@@ -145,7 +146,7 @@ export default function TeacherDashboard() {
     setLoading(true);
     const { data } = await supabase
       .from("class_sessions")
-      .select("*, conclusion_reports(coverage_score, ai_coaching_note, concepts_covered, concepts_missed)")
+      .select("*, conclusion_reports(teaching_effectiveness_score, coverage_score, ai_coaching_note, concepts_covered, concepts_missed)")
       .eq("teacher_id", user.id)
       .order("created_at", { ascending: false });
     setSessions((data as ClassSession[]) || []);
@@ -216,7 +217,10 @@ export default function TeacherDashboard() {
   /* ── KPI stats ── */
   const completedWithReport = sessions.filter(s => s.conclusion_reports?.[0]?.coverage_score != null);
   const avgCoverage = completedWithReport.length > 0
-    ? Math.round(completedWithReport.reduce((sum, s) => sum + (s.conclusion_reports![0].coverage_score ?? 0), 0) / completedWithReport.length)
+    ? Math.round(completedWithReport.reduce((sum, s) => {
+        const r = s.conclusion_reports![0];
+        return sum + (r.teaching_effectiveness_score ?? r.coverage_score ?? 0);
+      }, 0) / completedWithReport.length)
     : null;
   const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const thisWeekCount = sessions.filter(s => new Date(s.created_at).getTime() > sevenDaysAgo).length;
@@ -321,7 +325,7 @@ export default function TeacherDashboard() {
               {sessions.map((s, i) => {
                 const report = s.conclusion_reports?.[0] ?? null;
                 const hasReport = s.status === "completed" && report?.coverage_score != null;
-                const score = hasReport ? Math.round(report!.coverage_score!) : null;
+                const score = hasReport ? Math.round((report!.teaching_effectiveness_score ?? report!.coverage_score)!) : null;
                 const scoreColor = score == null ? C.ink : score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
                 const barColor  = score == null ? "#EEF1F9" : score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
 
@@ -469,7 +473,7 @@ export default function TeacherDashboard() {
                     {/* Ring / status icon */}
                     <div className="flex items-start pt-0.5">
                       {hasReport
-                        ? <ScoreRing score={Math.round(report!.coverage_score!)} />
+                        ? <ScoreRing score={Math.round((report!.teaching_effectiveness_score ?? report!.coverage_score)!)} />
                         : <StatusBox status={s.status as "pending" | "active"} />
                       }
                     </div>

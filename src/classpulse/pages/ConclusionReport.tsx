@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { CheckCircle2, XCircle, ArrowLeft, TrendingUp, Users, Target, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 const DISPLAY = "font-['Baloo_2'] tracking-tight";
@@ -26,6 +25,8 @@ interface ReportData {
     concepts_missed: string[];
     ai_coaching_note: string;
     created_at: string;
+    teaching_effectiveness_score?: number | null;
+    criteria_scores?: Record<string, { score: number; weight: number }> | null;
   };
   history: { coverage_score: number; created_at: string }[];
 }
@@ -54,6 +55,30 @@ function ScoreRing({ score }: { score: number }) {
     </div>
   );
 }
+
+function MiniScoreRing({ score, size = 56 }: { score: number; size?: number }) {
+  const r = size / 2 - 6;
+  const circ = 2 * Math.PI * r;
+  const color = score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth="4.5" />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="4.5"
+        strokeDasharray={`${(score/100)*circ} ${circ}`} strokeLinecap="round"
+        transform={`rotate(-90 ${size/2} ${size/2})`} />
+      <text x={size/2} y={size/2 + 4} textAnchor="middle" fontSize={size < 50 ? "10" : "12"} fontWeight="800"
+        fill={color} fontFamily="Baloo 2, sans-serif">{score}%</text>
+    </svg>
+  );
+}
+
+const CRITERIA_META: Record<string, { name: string; desc: string }> = {
+  content_coverage:     { name: "Content Coverage",      desc: "% of planned topics mentioned in lesson" },
+  lesson_pacing:        { name: "Lesson Pacing",          desc: "Teacher vs student talk balance" },
+  student_engagement:   { name: "Student Engagement",     desc: "Volume of participation turns" },
+  concept_clarity:      { name: "Concept Clarity",        desc: "Depth of explanation per topic" },
+  delivery_consistency: { name: "Delivery Consistency",   desc: "Sustained pacing over full session" },
+};
 
 function MiniSparkline({ history, today }: { history: number[]; today: number }) {
   const all = [...history, today];
@@ -206,14 +231,63 @@ export default function ConclusionReport() {
           </div>
         </div>
 
+        {/* TES Hero */}
+        {(() => {
+          const tes = report.teaching_effectiveness_score ?? report.coverage_score;
+          const tesColor = tes >= 80 ? "#16A56B" : tes >= 60 ? "#C77800" : "#DC2626";
+          return (
+            <div className={`${CARD} p-6 flex items-center gap-6`}>
+              <ScoreRing score={tes} />
+              <div className="flex-1 min-w-0">
+                <p className="font-['Nunito'] font-extrabold text-[10.5px] text-[#0F172A]/40 uppercase mb-1" style={{ letterSpacing: "0.06em" }}>
+                  Teaching Effectiveness Score
+                </p>
+                <p className={`${DISPLAY} font-extrabold leading-none mb-1`} style={{ fontSize: "34px", letterSpacing: "-0.022em", color: tesColor }}>
+                  {tes}%
+                </p>
+                <p className="font-['Nunito'] font-semibold text-[13px] text-[#0F172A]/50">
+                  Composite of 5 teaching criteria
+                </p>
+              </div>
+              <Target className="w-8 h-8 text-[#0F172A]/15 flex-shrink-0" />
+            </div>
+          );
+        })()}
+
+        {/* 5-Criteria Breakdown */}
+        {report.criteria_scores && Object.keys(report.criteria_scores).length > 0 && (
+          <div className={`${CARD} p-5`}>
+            <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A] mb-4`}>Criteria Breakdown</p>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {Object.entries(report.criteria_scores).map(([key, { score, weight }]) => {
+                const meta = CRITERIA_META[key];
+                if (!meta) return null;
+                const color = score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
+                const bg    = score >= 80 ? "#ECFAF3"  : score >= 60 ? "#FFF6E2"  : "#FEEFEC";
+                return (
+                  <div key={key} className="flex flex-col items-center gap-2 p-3 rounded-[14px] border-[2px] border-[#0F172A]/10 text-center" style={{ background: bg }}>
+                    <MiniScoreRing score={score} size={52} />
+                    <p className="font-['Nunito'] font-extrabold text-[11px] text-[#0F172A] leading-tight">{meta.name}</p>
+                    <p className="font-['Nunito'] font-semibold text-[10px] text-[#0F172A]/50 leading-tight">{meta.desc}</p>
+                    <span className="font-['Nunito'] font-extrabold text-[9.5px] px-2 py-0.5 rounded-full border"
+                      style={{ color, borderColor: `${color}40`, background: "white" }}>
+                      {weight}% weight
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Metrics row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Coverage score */}
+          {/* Coverage score (kept for reference) */}
           <div className={`${CARD} p-5 flex flex-col items-center gap-3`}>
             <Target className="w-5 h-5 text-[#0F172A]/40" />
             <ScoreRing score={report.coverage_score} />
             <div className="text-center">
-              <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A]`}>Coverage Score</p>
+              <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A]`}>Content Coverage</p>
               <p className="font-['Nunito'] text-[12px] text-[#0F172A]/50">
                 {report.concepts_covered.length} / {session.key_concepts.length} concepts covered
               </p>
