@@ -310,9 +310,10 @@ export default function TeacherDashboard() {
                 <div className="w-7 h-7 rounded-[9px] border-[2px] border-[#0F172A] bg-[#2E2BE5] flex items-center justify-center shadow-[2px_2px_0_0_#0F172A]">
                   <CalendarDays className="w-3.5 h-3.5 text-white" />
                 </div>
-                <h2 className={`${DISPLAY} font-extrabold text-[20px] text-[#0F172A]`}>Today's Schedule</h2>
-                <span className="font-['Nunito'] font-extrabold text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5" style={{ fontSize: "12.5px" }}>
-                  {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+                <h2 className={`${DISPLAY} font-extrabold text-[20px] text-[#0F172A]`}>Live Now</h2>
+                <span className="inline-flex items-center gap-1.5 font-['Nunito'] font-extrabold rounded-full px-2.5 py-0.5 border border-red-200 bg-red-50 text-red-600" style={{ fontSize: "12.5px" }}>
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  {sessions.filter(s => s.status === "active").length} recording
                 </span>
               </div>
               <p className="hidden sm:block font-['Nunito'] font-bold text-[11.5px] text-[#0F172A]/50">
@@ -320,9 +321,16 @@ export default function TeacherDashboard() {
               </p>
             </div>
 
-            {/* Period card grid */}
+            {/* Live session cards — only shown while recording */}
+            {sessions.filter(s => s.status === "active").length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-12 text-center">
+                <span className="text-4xl">🎙️</span>
+                <p className={`${DISPLAY} font-extrabold text-[16px] text-[#0F172A]/40`}>No live sessions right now</p>
+                <p className="font-['Nunito'] font-semibold text-[13px] text-[#0F172A]/30">Cards appear here as soon as a teacher starts recording</p>
+              </div>
+            ) : (
             <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-              {sessions.map((s, i) => {
+              {sessions.filter(s => s.status === "active").map((s, i) => {
                 const report = s.conclusion_reports?.[0] ?? null;
                 const hasReport = s.status === "completed" && report?.coverage_score != null;
                 const score = hasReport ? Math.round((report!.teaching_effectiveness_score ?? report!.coverage_score)!) : null;
@@ -419,6 +427,7 @@ export default function TeacherDashboard() {
                 );
               })}
             </div>
+            )}
           </div>
         )}
 
