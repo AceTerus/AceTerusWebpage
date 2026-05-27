@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Plus, Clock, CheckCircle2, PlayCircle, BookOpen,
   Loader2, X, Sparkles, Trash2, RefreshCw, Zap,
-  CalendarDays, ArrowRight,
+  CalendarDays,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -297,138 +297,118 @@ export default function TeacherDashboard() {
           )}
         </div>
 
-        {/* ── Today's Schedule Table ── */}
+        {/* ── Today's Schedule ── */}
         {!loading && sessions.length > 0 && (
           <div className={`${CARD} mb-6 overflow-hidden`}>
-            {/* Table section header */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b-[2px] border-[#0F172A]/10 bg-[#F8F9FF]">
-              <div className="w-7 h-7 rounded-[9px] border-[2px] border-[#0F172A] bg-[#2E2BE5] flex items-center justify-center shadow-[2px_2px_0_0_#0F172A]">
-                <CalendarDays className="w-3.5 h-3.5 text-white" />
+            {/* Section header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b-[2px] border-[#0F172A]/10 bg-[#F8F9FF]">
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-[9px] border-[2px] border-[#0F172A] bg-[#2E2BE5] flex items-center justify-center shadow-[2px_2px_0_0_#0F172A]">
+                  <CalendarDays className="w-3.5 h-3.5 text-white" />
+                </div>
+                <h2 className={`${DISPLAY} font-extrabold text-[16px] text-[#0F172A]`}>Today's Schedule</h2>
+                <span className="font-['Nunito'] font-extrabold text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5" style={{ fontSize: "10.5px" }}>
+                  {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+                </span>
               </div>
-              <h2 className={`${DISPLAY} font-extrabold text-[16px] text-[#0F172A]`}>Today's Schedule</h2>
-              <span
-                className="font-['Nunito'] font-extrabold text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5"
-                style={{ fontSize: "10.5px" }}
-              >
-                {sessions.length} session{sessions.length !== 1 ? "s" : ""}
-              </span>
+              <p className="hidden sm:block font-['Nunito'] font-bold text-[11.5px] text-[#0F172A]/50">
+                {format(new Date(), "EEEE, d MMMM yyyy")}
+              </p>
             </div>
 
-            {/* Column headers */}
-            <div
-              className="hidden md:grid items-stretch bg-[#F8F9FF] border-b-[2px] border-[#0F172A]/10 font-['Nunito'] font-extrabold text-[#0F172A]/45 uppercase"
-              style={{ gridTemplateColumns: "36px 130px 1fr 100px 140px 1fr 90px", gap: 0, minHeight: "42px", fontSize: "10.5px", letterSpacing: "0.055em" }}
-            >
-              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>#</span></div>
-              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>Session</span></div>
-              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>Objective</span></div>
-              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>Status</span></div>
-              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>Coverage</span></div>
-              <div className="flex items-center px-4 border-r border-[#0F172A]/15"><span>Topics</span></div>
-              <div className="flex items-center px-4"><span /></div>
-            </div>
-
-            {/* Rows */}
-            <div>
+            {/* Period card grid */}
+            <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
               {sessions.map((s, i) => {
                 const report = s.conclusion_reports?.[0] ?? null;
                 const hasReport = s.status === "completed" && report?.coverage_score != null;
                 const score = hasReport ? Math.round(report!.coverage_score!) : null;
-                const scoreColor = score == null ? "#0F172A" : score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
-                const barColor = score == null ? "#DDF3FF" : score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
+                const scoreColor = score == null ? C.ink : score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
+                const barColor  = score == null ? "#EEF1F9" : score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
 
-                const topicPills = hasReport
+                const topics = hasReport
                   ? [
-                      ...report!.concepts_covered.slice(0, 2).map(c => ({ label: `✓ ${c}`, type: "covered" as const })),
-                      ...report!.concepts_missed.slice(0, 1).map(c => ({ label: `✗ ${c}`, type: "missed" as const })),
+                      ...report!.concepts_covered.slice(0, 2).map(c => ({ label: c, dot: "#16A56B", bg: "#ECFAF3", text: "#16A56B" })),
+                      ...report!.concepts_missed.slice(0, 1).map(c  => ({ label: c, dot: "#DC2626", bg: "#FEEFEC", text: "#DC2626" })),
                     ]
-                  : s.key_concepts.slice(0, 3).map(c => ({ label: c, type: "neutral" as const }));
+                  : s.key_concepts.slice(0, 3).map(c => ({ label: c, dot: "#2F7CFF", bg: "#DDF3FF", text: "#2F7CFF" }));
 
-                const pillStyle = {
-                  covered: "bg-[#ECFAF3] text-[#16A56B] border-[#16A56B]/25",
-                  missed:  "bg-[#FEEFEC] text-[#DC2626] border-[#DC2626]/25",
-                  neutral: "bg-[#DDF3FF] text-[#2F7CFF] border-[#2F7CFF]/20",
-                };
-
-                const ctaLabel = s.status === "completed" ? "Report" : s.status === "active" ? "Live" : "Start";
-                const ctaStyle = s.status === "completed"
-                  ? "border-[#0F172A] bg-[#0F172A] text-white shadow-[2px_2px_0_0_rgba(15,23,42,0.35)]"
+                const card = s.status === "completed"
+                  ? { bg: "#ECFAF3", border: "rgba(22,165,107,0.35)", shadow: "2px 2px 0 0 rgba(22,165,107,0.28)", labelColor: "#16A56B", topLabel: `P${i + 1} · Done` }
                   : s.status === "active"
-                  ? "border-[#DC2626] bg-[#DC2626] text-white shadow-[2px_2px_0_0_rgba(220,38,38,0.3)]"
-                  : "border-[#2E2BE5] bg-[#2E2BE5] text-white shadow-[2px_2px_0_0_rgba(46,43,229,0.3)]";
+                  ? { bg: "#FFF1ED", border: "#DC2626",              shadow: "2px 2px 0 0 #DC2626",              labelColor: "#DC2626", topLabel: "● Live" }
+                  : { bg: "#EEEDFF", border: "#2E2BE5",              shadow: "2px 2px 0 0 #2E2BE5",              labelColor: "#2E2BE5", topLabel: `P${i + 1} · Up next` };
+
+                const emoji = s.status === "completed" ? "📊" : s.status === "active" ? "🎙️" : "▶️";
 
                 return (
                   <div
                     key={s.id}
                     onClick={() => s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`)}
-                    className="grid items-stretch cursor-pointer transition-colors hover:bg-[#F6F7FF] border-b border-[#0F172A]/8 last:border-b-0"
-                    style={{ gridTemplateColumns: "36px 130px 1fr 100px 140px 1fr 90px", gap: 0, minHeight: "60px" }}
+                    className="relative flex flex-col rounded-[12px] p-3 cursor-pointer transition-all hover:-translate-y-0.5"
+                    style={{ background: card.bg, border: `2px solid ${card.border}`, boxShadow: card.shadow, minHeight: "150px" }}
                   >
-                    {/* # */}
-                    <div className="flex items-center px-4 border-r border-[#0F172A]/10">
-                      <span className={`${DISPLAY} font-extrabold text-[16px] text-[#0F172A]/20`}>{i + 1}</span>
-                    </div>
-
-                    {/* Session: class + subject */}
-                    <div className="flex items-center px-4 border-r border-[#0F172A]/10 min-w-0">
-                      <div className="min-w-0 w-full">
-                        <p className="font-['Nunito'] font-extrabold text-[13px] text-[#0F172A] truncate leading-tight">{s.class_name}</p>
-                        <p className="font-['Nunito'] font-bold text-[11px] text-[#0F172A]/45 truncate mt-0.5">{s.subject}</p>
-                      </div>
-                    </div>
-
-                    {/* Objective */}
-                    <div className="flex items-center px-4 border-r border-[#0F172A]/10 min-w-0">
-                      <p className="font-['Nunito'] font-semibold text-[12.5px] text-[#0F172A]/60 truncate w-full">{s.objective_text}</p>
-                    </div>
-
-                    {/* Status */}
-                    <div className="flex items-center px-4 border-r border-[#0F172A]/10">
-                      <StatusBadge status={s.status} />
-                    </div>
-
-                    {/* Coverage % + bar */}
-                    <div className="flex items-center px-4 border-r border-[#0F172A]/10">
-                      {hasReport ? (
-                        <div className="w-full">
-                          <span
-                            className={`${DISPLAY} font-extrabold text-[15px] block leading-none mb-1.5`}
-                            style={{ color: scoreColor }}
-                          >
-                            {score}%
-                          </span>
-                          <div className="w-full h-[6px] rounded-full overflow-hidden" style={{ background: "#EEF1F9", border: "1.5px solid rgba(15,23,42,0.10)" }}>
-                            <div className="h-full rounded-full" style={{ width: `${score}%`, background: barColor }} />
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="font-['Nunito'] font-bold text-[13px] text-[#0F172A]/25">—</span>
+                    {/* Top row: period label + time */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-['Nunito'] font-extrabold uppercase" style={{ fontSize: "10.5px", letterSpacing: "0.05em", color: card.labelColor }}>
+                        {card.topLabel}
+                      </span>
+                      {s.started_at && (
+                        <span className="font-mono font-semibold text-[#0F172A]/40" style={{ fontSize: "10px" }}>
+                          {format(new Date(s.started_at), "HH:mm")}
+                        </span>
                       )}
                     </div>
 
-                    {/* Topic pills */}
-                    <div className="flex items-center px-4 border-r border-[#0F172A]/10">
-                      <div className="flex flex-wrap gap-1">
-                        {topicPills.map((t) => (
+                    {/* Class + subject */}
+                    <p className={`${DISPLAY} font-extrabold text-[14px] text-[#0F172A] leading-snug`} style={{ letterSpacing: "-0.01em" }}>
+                      {s.class_name}
+                    </p>
+                    <p className="font-['Nunito'] font-bold text-[#0F172A]/50 mt-0.5 mb-2" style={{ fontSize: "10.5px" }}>
+                      {s.subject} · {s.objective_text.length > 36 ? s.objective_text.slice(0, 36) + "…" : s.objective_text}
+                    </p>
+
+                    {/* Coverage bar */}
+                    {hasReport && score != null && (
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-['Nunito'] font-extrabold text-[#0F172A]/50 uppercase" style={{ fontSize: "9.5px", letterSpacing: "0.05em" }}>
+                            Coverage
+                          </span>
+                          <span className={`${DISPLAY} font-extrabold`} style={{ fontSize: "13px", color: scoreColor }}>
+                            {score}%
+                          </span>
+                        </div>
+                        <div className="w-full rounded-full overflow-hidden" style={{ height: "5px", background: "rgba(15,23,42,0.10)", border: "1px solid rgba(15,23,42,0.08)" }}>
+                          <div className="h-full rounded-full" style={{ width: `${score}%`, background: barColor }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Topic pills with colored dots */}
+                    {topics.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {topics.map((t) => (
                           <span
                             key={t.label}
-                            className={`font-['Nunito'] font-extrabold px-1.5 py-0.5 rounded-full border-[1.5px] ${pillStyle[t.type]}`}
-                            style={{ fontSize: "10px" }}
+                            className="font-['Nunito'] font-extrabold inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border-[1.5px]"
+                            style={{ fontSize: "9.5px", color: t.text, background: t.bg, borderColor: `${t.dot}40` }}
                           >
+                            <span className="rounded-full flex-shrink-0" style={{ width: "5px", height: "5px", background: t.dot }} />
                             {t.label}
                           </span>
                         ))}
                       </div>
-                    </div>
+                    )}
 
-                    {/* CTA button — last cell, no border-r */}
-                    <div className="flex items-center justify-center px-4">
+                    {/* Emoji circle button — bottom right */}
+                    <div className="mt-auto flex justify-end">
                       <button
+                        title={s.status === "completed" ? "View Report" : s.status === "active" ? "Join Live Session" : "Start Session"}
                         onClick={(e) => { e.stopPropagation(); if (s.status === "completed") navigate(`/report/${s.id}`); else navigate(`/session/${s.id}`); }}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-[9px] border-[2px] font-['Nunito'] font-extrabold transition-all hover:-translate-y-0.5 ${ctaStyle}`}
-                        style={{ fontSize: "11.5px" }}
+                        className="flex items-center justify-center rounded-full bg-white border-[1.5px] border-[#0F172A]/20 shadow-[1px_1px_0_0_rgba(15,23,42,0.15)] hover:-translate-y-0.5 hover:shadow-[2px_2px_0_0_rgba(15,23,42,0.2)] transition-all"
+                        style={{ width: "30px", height: "30px", fontSize: "15px" }}
                       >
-                        {ctaLabel} <ArrowRight className="w-3 h-3" />
+                        {emoji}
                       </button>
                     </div>
                   </div>
