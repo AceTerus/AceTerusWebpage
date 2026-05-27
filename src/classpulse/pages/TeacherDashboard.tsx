@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Plus, Clock, CheckCircle2, PlayCircle, BookOpen,
   Loader2, X, Sparkles, Trash2, RefreshCw, Zap,
+  CalendarDays, ArrowRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -295,6 +296,137 @@ export default function TeacherDashboard() {
             </div>
           )}
         </div>
+
+        {/* ── Today's Schedule Table ── */}
+        {!loading && sessions.length > 0 && (
+          <div className={`${CARD} mb-6 overflow-hidden`}>
+            {/* Table section header */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b-[2px] border-[#0F172A]/10 bg-[#F8F9FF]">
+              <div className="w-7 h-7 rounded-[9px] border-[2px] border-[#0F172A] bg-[#2E2BE5] flex items-center justify-center shadow-[2px_2px_0_0_#0F172A]">
+                <CalendarDays className="w-3.5 h-3.5 text-white" />
+              </div>
+              <h2 className={`${DISPLAY} font-extrabold text-[16px] text-[#0F172A]`}>Today's Schedule</h2>
+              <span
+                className="font-['Nunito'] font-extrabold text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5"
+                style={{ fontSize: "10.5px" }}
+              >
+                {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            {/* Column headers */}
+            <div
+              className="hidden md:grid items-center px-5 h-10 bg-[#F8F9FF] border-b-[2px] border-[#0F172A]/10 font-['Nunito'] font-extrabold text-[#0F172A]/45 uppercase"
+              style={{ gridTemplateColumns: "36px 130px 1fr 100px 140px 1fr 90px", gap: "14px", fontSize: "10.5px", letterSpacing: "0.055em" }}
+            >
+              <span>#</span>
+              <span>Session</span>
+              <span>Objective</span>
+              <span>Status</span>
+              <span>Coverage</span>
+              <span>Topics</span>
+              <span />
+            </div>
+
+            {/* Rows */}
+            <div>
+              {sessions.map((s, i) => {
+                const report = s.conclusion_reports?.[0] ?? null;
+                const hasReport = s.status === "completed" && report?.coverage_score != null;
+                const score = hasReport ? Math.round(report!.coverage_score!) : null;
+                const scoreColor = score == null ? "#0F172A" : score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
+                const barColor = score == null ? "#DDF3FF" : score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
+
+                const topicPills = hasReport
+                  ? [
+                      ...report!.concepts_covered.slice(0, 2).map(c => ({ label: `✓ ${c}`, type: "covered" as const })),
+                      ...report!.concepts_missed.slice(0, 1).map(c => ({ label: `✗ ${c}`, type: "missed" as const })),
+                    ]
+                  : s.key_concepts.slice(0, 3).map(c => ({ label: c, type: "neutral" as const }));
+
+                const pillStyle = {
+                  covered: "bg-[#ECFAF3] text-[#16A56B] border-[#16A56B]/25",
+                  missed:  "bg-[#FEEFEC] text-[#DC2626] border-[#DC2626]/25",
+                  neutral: "bg-[#DDF3FF] text-[#2F7CFF] border-[#2F7CFF]/20",
+                };
+
+                const ctaLabel = s.status === "completed" ? "Report" : s.status === "active" ? "Live" : "Start";
+                const ctaStyle = s.status === "completed"
+                  ? "border-[#0F172A] bg-[#0F172A] text-white shadow-[2px_2px_0_0_rgba(15,23,42,0.35)]"
+                  : s.status === "active"
+                  ? "border-[#DC2626] bg-[#DC2626] text-white shadow-[2px_2px_0_0_rgba(220,38,38,0.3)]"
+                  : "border-[#2E2BE5] bg-[#2E2BE5] text-white shadow-[2px_2px_0_0_rgba(46,43,229,0.3)]";
+
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`)}
+                    className="grid items-center px-5 py-3.5 cursor-pointer transition-colors hover:bg-[#F6F7FF] border-b border-[#0F172A]/8 last:border-b-0"
+                    style={{ gridTemplateColumns: "36px 130px 1fr 100px 140px 1fr 90px", gap: "14px", minHeight: "60px" }}
+                  >
+                    {/* # */}
+                    <span className={`${DISPLAY} font-extrabold text-[16px] text-[#0F172A]/20`}>{i + 1}</span>
+
+                    {/* Session: class + subject */}
+                    <div className="min-w-0">
+                      <p className="font-['Nunito'] font-extrabold text-[13px] text-[#0F172A] truncate leading-tight">{s.class_name}</p>
+                      <p className="font-['Nunito'] font-bold text-[11px] text-[#0F172A]/45 truncate mt-0.5">{s.subject}</p>
+                    </div>
+
+                    {/* Objective */}
+                    <p className="font-['Nunito'] font-semibold text-[12.5px] text-[#0F172A]/60 truncate">{s.objective_text}</p>
+
+                    {/* Status */}
+                    <div><StatusBadge status={s.status} /></div>
+
+                    {/* Coverage % + bar */}
+                    <div>
+                      {hasReport ? (
+                        <>
+                          <span
+                            className={`${DISPLAY} font-extrabold text-[15px] block leading-none mb-1.5`}
+                            style={{ color: scoreColor }}
+                          >
+                            {score}%
+                          </span>
+                          <div className="w-full h-[6px] rounded-full overflow-hidden" style={{ background: "#EEF1F9", border: "1.5px solid rgba(15,23,42,0.10)" }}>
+                            <div className="h-full rounded-full" style={{ width: `${score}%`, background: barColor }} />
+                          </div>
+                        </>
+                      ) : (
+                        <span className="font-['Nunito'] font-bold text-[13px] text-[#0F172A]/25">—</span>
+                      )}
+                    </div>
+
+                    {/* Topic pills */}
+                    <div className="flex flex-wrap gap-1">
+                      {topicPills.map((t) => (
+                        <span
+                          key={t.label}
+                          className={`font-['Nunito'] font-extrabold px-1.5 py-0.5 rounded-full border-[1.5px] ${pillStyle[t.type]}`}
+                          style={{ fontSize: "10px" }}
+                        >
+                          {t.label}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* CTA button */}
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`)}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-[9px] border-[2px] font-['Nunito'] font-extrabold transition-all hover:-translate-y-0.5 ${ctaStyle}`}
+                        style={{ fontSize: "11.5px" }}
+                      >
+                        {ctaLabel} <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Toolbar ── */}
         {!loading && sessions.length > 0 && (
