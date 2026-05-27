@@ -55,26 +55,26 @@ interface NewSessionForm {
 
 /* ── Score ring (56 px, label underneath) ── */
 function ScoreRing({ score }: { score: number }) {
-  const r = 23;
+  const r = 27;
   const circ = 2 * Math.PI * r;
   const color = score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <svg width="56" height="56" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r={r} fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth="4.5" />
+    <div className="flex flex-col items-center gap-1">
+      <svg width="68" height="68" viewBox="0 0 68 68">
+        <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth="5" />
         <circle
-          cx="28" cy="28" r={r} fill="none" stroke={color} strokeWidth="4.5"
+          cx="34" cy="34" r={r} fill="none" stroke={color} strokeWidth="5"
           strokeDasharray={`${(score / 100) * circ} ${circ}`}
-          strokeLinecap="round" transform="rotate(-90 28 28)"
+          strokeLinecap="round" transform="rotate(-90 34 34)"
         />
-        <text x="28" y="33" textAnchor="middle" fontSize="12" fontWeight="800"
+        <text x="34" y="40" textAnchor="middle" fontSize="15" fontWeight="800"
           fill={color} fontFamily="Baloo 2, sans-serif">{score}%</text>
       </svg>
       <span
         className="font-['Nunito'] font-extrabold text-[#0F172A]/50 uppercase"
-        style={{ fontSize: "9.5px", letterSpacing: "0.05em" }}
+        style={{ fontSize: "10px", letterSpacing: "0.06em" }}
       >
-        Coverage
+        Effectiveness
       </span>
     </div>
   );
@@ -83,22 +83,22 @@ function ScoreRing({ score }: { score: number }) {
 /* ── Status icon box for pending / active ── */
 function StatusBox({ status }: { status: "pending" | "active" }) {
   if (status === "active") return (
-    <div className="relative w-14 h-14 rounded-[14px] bg-red-50 border-[2px] border-red-200 flex items-center justify-center overflow-hidden">
-      <span className="absolute inset-0 bg-red-400/15 animate-pulse rounded-[14px]" />
-      <PlayCircle className="w-6 h-6 text-red-500 relative z-10" />
+    <div className="relative w-[68px] h-[68px] rounded-[16px] bg-red-50 border-[2px] border-red-200 flex items-center justify-center overflow-hidden">
+      <span className="absolute inset-0 bg-red-400/15 animate-pulse rounded-[16px]" />
+      <PlayCircle className="w-8 h-8 text-red-500 relative z-10" />
     </div>
   );
   return (
-    <div className="w-14 h-14 rounded-[14px] bg-amber-50 border-[2px] border-amber-200 flex items-center justify-center">
-      <Clock className="w-6 h-6 text-amber-500" />
+    <div className="w-[68px] h-[68px] rounded-[16px] bg-amber-50 border-[2px] border-amber-200 flex items-center justify-center">
+      <Clock className="w-8 h-8 text-amber-500" />
     </div>
   );
 }
 
 /* ── Status badge ── */
 function StatusBadge({ status }: { status: ClassSession["status"] }) {
-  const base = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border font-['Nunito'] font-extrabold uppercase";
-  const size = "text-[10.5px]";
+  const base = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full border font-['Nunito'] font-extrabold uppercase";
+  const size = "text-[12px]";
   const ls = { letterSpacing: "0.04em" };
 
   if (status === "pending") return (
@@ -253,12 +253,12 @@ export default function TeacherDashboard() {
                 <div className="flex items-center gap-2 mb-0.5">
                   <span
                     className="font-['Nunito'] font-extrabold text-white/80 uppercase"
-                    style={{ fontSize: "10px", letterSpacing: "0.06em" }}
+                    style={{ fontSize: "12px", letterSpacing: "0.08em" }}
                   >
                     Teacher Dashboard
                   </span>
                 </div>
-                <h1 className={`${DISPLAY} font-extrabold text-[26px] text-white leading-none`} style={{ letterSpacing: "-0.022em" }}>
+                <h1 className={`${DISPLAY} font-extrabold text-[38px] text-white leading-none`} style={{ letterSpacing: "-0.025em" }}>
                   My Sessions
                 </h1>
               </div>
@@ -282,18 +282,18 @@ export default function TeacherDashboard() {
                 >
                   <p
                     className="font-['Nunito'] font-extrabold text-white/80 uppercase mb-1.5"
-                    style={{ fontSize: "10.5px", letterSpacing: "0.04em" }}
+                    style={{ fontSize: "12px", letterSpacing: "0.05em" }}
                   >
                     {k.label}
                   </p>
                   <div className="flex items-baseline gap-1.5">
                     <span
                       className={`${DISPLAY} font-extrabold leading-none`}
-                      style={{ fontSize: "28px", letterSpacing: "-0.022em", color: k.color ?? "white" }}
+                      style={{ fontSize: "40px", letterSpacing: "-0.025em", color: k.color ?? "white" }}
                     >
                       {loading ? "—" : k.value}
                     </span>
-                    <span className="font-['Nunito'] font-bold text-white/60 text-[12px]">{k.sub}</span>
+                    <span className="font-['Nunito'] font-bold text-white/60 text-[14px]">{k.sub}</span>
                   </div>
                 </div>
               ))}
@@ -310,8 +310,8 @@ export default function TeacherDashboard() {
                 <div className="w-7 h-7 rounded-[9px] border-[2px] border-[#0F172A] bg-[#2E2BE5] flex items-center justify-center shadow-[2px_2px_0_0_#0F172A]">
                   <CalendarDays className="w-3.5 h-3.5 text-white" />
                 </div>
-                <h2 className={`${DISPLAY} font-extrabold text-[16px] text-[#0F172A]`}>Today's Schedule</h2>
-                <span className="font-['Nunito'] font-extrabold text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5" style={{ fontSize: "10.5px" }}>
+                <h2 className={`${DISPLAY} font-extrabold text-[20px] text-[#0F172A]`}>Today's Schedule</h2>
+                <span className="font-['Nunito'] font-extrabold text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5" style={{ fontSize: "12.5px" }}>
                   {sessions.length} session{sessions.length !== 1 ? "s" : ""}
                 </span>
               </div>
@@ -353,7 +353,7 @@ export default function TeacherDashboard() {
                   >
                     {/* Top row: period label + time */}
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-['Nunito'] font-extrabold uppercase" style={{ fontSize: "10.5px", letterSpacing: "0.05em", color: card.labelColor }}>
+                      <span className="font-['Nunito'] font-extrabold uppercase" style={{ fontSize: "13px", letterSpacing: "0.05em", color: card.labelColor }}>
                         {card.topLabel}
                       </span>
                       {s.started_at && (
@@ -364,10 +364,10 @@ export default function TeacherDashboard() {
                     </div>
 
                     {/* Class + subject */}
-                    <p className={`${DISPLAY} font-extrabold text-[14px] text-[#0F172A] leading-snug`} style={{ letterSpacing: "-0.01em" }}>
+                    <p className={`${DISPLAY} font-extrabold text-[18px] text-[#0F172A] leading-snug`} style={{ letterSpacing: "-0.015em" }}>
                       {s.class_name}
                     </p>
-                    <p className="font-['Nunito'] font-bold text-[#0F172A]/50 mt-0.5 mb-2" style={{ fontSize: "10.5px" }}>
+                    <p className="font-['Nunito'] font-bold text-[#0F172A]/50 mt-0.5 mb-2" style={{ fontSize: "13px" }}>
                       {s.subject} · {s.objective_text.length > 36 ? s.objective_text.slice(0, 36) + "…" : s.objective_text}
                     </p>
 
@@ -375,10 +375,10 @@ export default function TeacherDashboard() {
                     {hasReport && score != null && (
                       <div className="mb-2">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-['Nunito'] font-extrabold text-[#0F172A]/50 uppercase" style={{ fontSize: "9.5px", letterSpacing: "0.05em" }}>
+                          <span className="font-['Nunito'] font-extrabold text-[#0F172A]/50 uppercase" style={{ fontSize: "11px", letterSpacing: "0.05em" }}>
                             Coverage
                           </span>
-                          <span className={`${DISPLAY} font-extrabold`} style={{ fontSize: "13px", color: scoreColor }}>
+                          <span className={`${DISPLAY} font-extrabold`} style={{ fontSize: "18px", color: scoreColor }}>
                             {score}%
                           </span>
                         </div>
@@ -395,7 +395,7 @@ export default function TeacherDashboard() {
                           <span
                             key={t.label}
                             className="font-['Nunito'] font-extrabold inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border-[1.5px]"
-                            style={{ fontSize: "9.5px", color: t.text, background: t.bg, borderColor: `${t.dot}40` }}
+                            style={{ fontSize: "11px", color: t.text, background: t.bg, borderColor: `${t.dot}40` }}
                           >
                             <span className="rounded-full flex-shrink-0" style={{ width: "5px", height: "5px", background: t.dot }} />
                             {t.label}
@@ -468,7 +468,7 @@ export default function TeacherDashboard() {
                   className={`${CARD} transition-all overflow-hidden ${isConfirming ? "cursor-default" : "hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_#0F172A] cursor-pointer"}`}
                 >
                   {/* Card body — 3-column: ring | content | actions */}
-                  <div className="p-5 grid gap-4" style={{ gridTemplateColumns: "56px 1fr 120px" }}>
+                  <div className="p-5 grid gap-4" style={{ gridTemplateColumns: "68px 1fr 120px" }}>
 
                     {/* Ring / status icon */}
                     <div className="flex items-start pt-0.5">
@@ -485,21 +485,21 @@ export default function TeacherDashboard() {
                         <StatusBadge status={s.status} />
                         <span
                           className="font-['Nunito'] font-extrabold text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5"
-                          style={{ fontSize: "10.5px", letterSpacing: "0.02em" }}
+                          style={{ fontSize: "12.5px", letterSpacing: "0.02em" }}
                         >
                           {s.subject}
                         </span>
                         <span
                           className="font-['Nunito'] font-extrabold text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5"
-                          style={{ fontSize: "10.5px", letterSpacing: "0.02em" }}
+                          style={{ fontSize: "12.5px", letterSpacing: "0.02em" }}
                         >
                           {s.class_name}
                         </span>
                       </div>
 
                       {/* Objective */}
-                      <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A] mb-2 leading-snug`}
-                        style={{ letterSpacing: "-0.015em" }}>
+                      <p className={`${DISPLAY} font-extrabold text-[18px] text-[#0F172A] mb-2 leading-snug`}
+                        style={{ letterSpacing: "-0.018em" }}>
                         {s.objective_text}
                       </p>
 
@@ -508,19 +508,19 @@ export default function TeacherDashboard() {
                         <div className="flex flex-wrap gap-1">
                           {report!.concepts_covered.slice(0, 3).map((c) => (
                             <span key={c} className="font-['Nunito'] font-extrabold px-2 py-0.5 rounded-full bg-[#ECFAF3] text-[#16A56B] border-[1.5px] border-[#16A56B]/25"
-                              style={{ fontSize: "10.5px" }}>
+                              style={{ fontSize: "12.5px" }}>
                               ✓ {c}
                             </span>
                           ))}
                           {report!.concepts_missed.slice(0, 2).map((c) => (
                             <span key={c} className="font-['Nunito'] font-extrabold px-2 py-0.5 rounded-full bg-[#FEEFEC] text-[#DC2626] border-[1.5px] border-[#DC2626]/25"
-                              style={{ fontSize: "10.5px" }}>
+                              style={{ fontSize: "12.5px" }}>
                               ✗ {c}
                             </span>
                           ))}
                           {(report!.concepts_covered.length + report!.concepts_missed.length) > 5 && (
                             <span className="font-['Nunito'] font-extrabold px-2 py-0.5 rounded-full bg-[#EEF1F9] text-[#0F172A]/50 border-[1.5px] border-[#0F172A]/10"
-                              style={{ fontSize: "10.5px" }}>
+                              style={{ fontSize: "12.5px" }}>
                               +{(report!.concepts_covered.length + report!.concepts_missed.length) - 5} more
                             </span>
                           )}
@@ -529,13 +529,13 @@ export default function TeacherDashboard() {
                         <div className="flex flex-wrap gap-1">
                           {s.key_concepts.slice(0, 4).map((c) => (
                             <span key={c} className="font-['Nunito'] font-extrabold px-2 py-0.5 rounded-full bg-[#DDF3FF] text-[#2F7CFF] border-[1.5px] border-[#2F7CFF]/20"
-                              style={{ fontSize: "10.5px" }}>
+                              style={{ fontSize: "12.5px" }}>
                               {c}
                             </span>
                           ))}
                           {s.key_concepts.length > 4 && (
                             <span className="font-['Nunito'] font-extrabold px-2 py-0.5 rounded-full bg-[#EEF1F9] text-[#0F172A]/50 border-[1.5px] border-[#0F172A]/10"
-                              style={{ fontSize: "10.5px" }}>
+                              style={{ fontSize: "12.5px" }}>
                               +{s.key_concepts.length - 4} more
                             </span>
                           )}

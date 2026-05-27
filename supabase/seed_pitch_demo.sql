@@ -8,6 +8,8 @@ DECLARE
   s1  uuid;
   s2  uuid;
   s3  uuid;
+  s5  uuid;
+  s6  uuid;
 BEGIN
   SELECT id INTO tid FROM auth.users WHERE email = 'dhirendhiren97@gmail.com';
 
@@ -23,7 +25,8 @@ BEGIN
   -- Clean up previous demo rows (idempotent)
   DELETE FROM class_sessions
   WHERE teacher_id = tid
-    AND class_name IN ('4 Amanah', '3 Bestari', '5 Cemerlang', '4 Wawasan');
+    AND class_name IN ('4 Amanah', '3 Bestari', '5 Cemerlang', '4 Wawasan',
+                       '4 Bestari', '5 Amanah', '3 Cemerlang', '4 Wira');
 
   -- ─── Session 1: English · 4 Amanah ──────────────────────────────────────
   -- coverage=89%, TES=84%
@@ -121,6 +124,83 @@ BEGIN
     ARRAY['Mitosis', 'Meiosis', 'Cell Cycle', 'Chromosomes', 'DNA Replication'],
     'pending',
     now() - interval '20 minutes'
+  );
+
+  -- ─── Session 5: Fizik · 4 Bestari · TES 78% (green-ish) ────────────────
+  INSERT INTO class_sessions
+    (teacher_id, class_name, subject, objective_text, key_concepts, status, started_at, ended_at, created_at)
+  VALUES (
+    tid, '4 Bestari', 'Fizik',
+    'Students apply Newton''s three laws of motion to analyse forces in real-world scenarios',
+    ARRAY['Newton''s First Law', 'Newton''s Second Law', 'Newton''s Third Law', 'Momentum', 'Friction'],
+    'completed',
+    now() - interval '7 days 50 minutes',
+    now() - interval '7 days',
+    now() - interval '7 days 1 hour'
+  )
+  RETURNING id INTO s5;
+
+  INSERT INTO conclusion_reports
+    (session_id, coverage_score, teacher_talk_ratio, student_participation_count,
+     concepts_covered, concepts_missed, ai_coaching_note,
+     teaching_effectiveness_score, criteria_scores)
+  VALUES (
+    s5, 80, 65, 21,
+    ARRAY['Newton''s First Law', 'Newton''s Second Law', 'Newton''s Third Law', 'Momentum'],
+    ARRAY['Friction'],
+    'Strong delivery of Newton''s laws with good student interaction. Friction was not discussed — integrate a practical friction demo in the next class to complete coverage.',
+    78,
+    '{"content_coverage":{"score":80,"weight":30},"lesson_pacing":{"score":95,"weight":20},"student_engagement":{"score":84,"weight":20},"concept_clarity":{"score":68,"weight":15},"delivery_consistency":{"score":62,"weight":15}}'::jsonb
+  );
+
+  -- ─── Session 6: Kimia · 5 Amanah · TES 91% (high green) ─────────────────
+  INSERT INTO class_sessions
+    (teacher_id, class_name, subject, objective_text, key_concepts, status, started_at, ended_at, created_at)
+  VALUES (
+    tid, '5 Amanah', 'Kimia',
+    'Students describe ionic bonding and predict properties of ionic compounds from their structure',
+    ARRAY['Ionic Bonding', 'Electrostatic Attraction', 'Lattice Energy', 'Conductivity', 'Solubility'],
+    'completed',
+    now() - interval '9 days 45 minutes',
+    now() - interval '9 days',
+    now() - interval '9 days 1 hour'
+  )
+  RETURNING id INTO s6;
+
+  INSERT INTO conclusion_reports
+    (session_id, coverage_score, teacher_talk_ratio, student_participation_count,
+     concepts_covered, concepts_missed, ai_coaching_note,
+     teaching_effectiveness_score, criteria_scores)
+  VALUES (
+    s6, 100, 60, 28,
+    ARRAY['Ionic Bonding', 'Electrostatic Attraction', 'Lattice Energy', 'Conductivity', 'Solubility'],
+    ARRAY[]::text[],
+    'Outstanding session — all 5 concepts fully covered with excellent student engagement. The class-to-class comparisons you used for lattice energy were particularly effective. Consider this approach a model for future lessons.',
+    91,
+    '{"content_coverage":{"score":100,"weight":30},"lesson_pacing":{"score":92,"weight":20},"student_engagement":{"score":100,"weight":20},"concept_clarity":{"score":82,"weight":15},"delivery_consistency":{"score":72,"weight":15}}'::jsonb
+  );
+
+  -- ─── Session 7: Sejarah · 3 Cemerlang · LIVE (active) ───────────────────
+  INSERT INTO class_sessions
+    (teacher_id, class_name, subject, objective_text, key_concepts, status, started_at, created_at)
+  VALUES (
+    tid, '3 Cemerlang', 'Sejarah',
+    'Students analyse the causes and effects of the Malayan Union proposal on Malay sovereignty',
+    ARRAY['Malayan Union', 'MacMichael Treaty', 'UMNO', 'Malay Nationalism', 'British Policy'],
+    'active',
+    now() - interval '28 minutes',
+    now() - interval '35 minutes'
+  );
+
+  -- ─── Session 8: Bahasa Melayu · 4 Wira · Pending ────────────────────────
+  INSERT INTO class_sessions
+    (teacher_id, class_name, subject, objective_text, key_concepts, status, created_at)
+  VALUES (
+    tid, '4 Wira', 'Bahasa Melayu',
+    'Pelajar menghasilkan karangan jenis perbahasan menggunakan teknik hujah yang berkesan',
+    ARRAY['Hujah Utama', 'Bukti Sokongan', 'Nada Bersopan', 'Struktur Karangan', 'Kesimpulan'],
+    'pending',
+    now() - interval '10 minutes'
   );
 
   RAISE NOTICE 'Demo data seeded successfully for %', tid;
