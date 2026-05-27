@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Plus, Clock, CheckCircle2, PlayCircle, BookOpen,
   Loader2, X, Sparkles, Trash2, RefreshCw, Zap,
-  CalendarDays,
+  CalendarDays, Settings,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -302,125 +302,181 @@ export default function TeacherDashboard() {
         </div>
 
         {/* ── Today's Schedule ── */}
-        {!loading && sessions.length > 0 && (
-          <div className={`${CARD} mb-6 overflow-hidden`}>
-            {/* Section header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b-[2px] border-[#0F172A]/10 bg-[#F8F9FF]">
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-[9px] border-[2px] border-[#0F172A] bg-[#2E2BE5] flex items-center justify-center shadow-[2px_2px_0_0_#0F172A]">
-                  <CalendarDays className="w-3.5 h-3.5 text-white" />
-                </div>
-                <h2 className={`${DISPLAY} font-extrabold text-[20px] text-[#0F172A]`}>Today's Schedule</h2>
-                <span className="font-['Nunito'] font-extrabold text-[#0F172A]/40 border border-[#0F172A]/15 rounded-full px-2 py-0.5" style={{ fontSize: "12.5px" }}>
-                  {sessions.length} session{sessions.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <p className="hidden sm:block font-['Nunito'] font-bold text-[11.5px] text-[#0F172A]/50">
-                {format(new Date(), "EEEE, d MMMM yyyy")}
-              </p>
-            </div>
+        {!loading && (() => {
+          const PERIOD_TIMES = ["07:40","08:20","09:00","09:40","10:10","10:50","11:30","12:10"];
 
-            {/* Period card grid */}
-            <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-              {sessions.map((s, i) => {
-                const report = s.conclusion_reports?.[0] ?? null;
-                const hasReport = s.status === "completed" && report?.coverage_score != null;
-                const score = hasReport ? Math.round((report!.teaching_effectiveness_score ?? report!.coverage_score)!) : null;
-                const scoreColor = score == null ? C.ink : score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
-                const barColor  = score == null ? "#EEF1F9" : score >= 80 ? "#16A56B" : score >= 60 ? "#C77800" : "#DC2626";
+          // Slot assignment: completed (high TES first) → P1-P3,
+          // active → first post-break slot, pending → remaining, FREE for rest
+          const completedSorted = sessions
+            .filter(s => s.status === "completed")
+            .sort((a, b) => {
+              const aTes = a.conclusion_reports?.[0]?.teaching_effectiveness_score ?? a.conclusion_reports?.[0]?.coverage_score ?? 0;
+              const bTes = b.conclusion_reports?.[0]?.teaching_effectiveness_score ?? b.conclusion_reports?.[0]?.coverage_score ?? 0;
+              return bTes - aTes;
+            });
+          const activeSessions = sessions.filter(s => s.status === "active");
+          const pendingSorted  = sessions.filter(s => s.status === "pending");
 
-                const topics = hasReport
-                  ? [
-                      ...report!.concepts_covered.slice(0, 2).map(c => ({ label: c, dot: "#16A56B", bg: "#ECFAF3", text: "#16A56B" })),
-                      ...report!.concepts_missed.slice(0, 1).map(c  => ({ label: c, dot: "#DC2626", bg: "#FEEFEC", text: "#DC2626" })),
-                    ]
-                  : s.key_concepts.slice(0, 3).map(c => ({ label: c, dot: "#2F7CFF", bg: "#DDF3FF", text: "#2F7CFF" }));
+          let compIdx = 0, actIdx = 0, pendIdx = 0;
+          type Slot =
+            | { kind: "done" | "live" | "upnext"; session: ClassSession; period: number; time: string }
+            | { kind: "break" | "free"; period: number; time: string };
 
-                const card = s.status === "completed"
-                  ? { bg: "#ECFAF3", border: "rgba(22,165,107,0.35)", shadow: "2px 2px 0 0 rgba(22,165,107,0.28)", labelColor: "#16A56B", topLabel: `P${i + 1} · Done` }
-                  : s.status === "active"
-                  ? { bg: "#FFF1ED", border: "#DC2626",              shadow: "2px 2px 0 0 #DC2626",              labelColor: "#DC2626", topLabel: "● Live" }
-                  : { bg: "#EEEDFF", border: "#2E2BE5",              shadow: "2px 2px 0 0 #2E2BE5",              labelColor: "#2E2BE5", topLabel: `P${i + 1} · Up next` };
+          const slots: Slot[] = [1,2,3,4,5,6,7,8].map((p, i) => {
+            const time = PERIOD_TIMES[i];
+            if (p === 4) return { kind: "break" as const, period: p, time };
+            if (p <= 3 && compIdx < completedSorted.length)
+              return { kind: "done" as const,   session: completedSorted[compIdx++], period: p, time };
+            if (p > 4 && actIdx < activeSessions.length)
+              return { kind: "live" as const,   session: activeSessions[actIdx++],  period: p, time };
+            if (p > 4 && pendIdx < pendingSorted.length)
+              return { kind: "upnext" as const, session: pendingSorted[pendIdx++],  period: p, time };
+            if (compIdx < completedSorted.length)
+              return { kind: "done" as const,   session: completedSorted[compIdx++], period: p, time };
+            return { kind: "free" as const, period: p, time };
+          });
 
-                const emoji = s.status === "completed" ? "📊" : s.status === "active" ? "🎙️" : "▶️";
+          const totalSessions = sessions.length;
 
-                return (
-                  <div
-                    key={s.id}
-                    onClick={() => s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`)}
-                    className="relative flex flex-col rounded-[12px] p-3 cursor-pointer transition-all hover:-translate-y-0.5"
-                    style={{ background: card.bg, border: `2px solid ${card.border}`, boxShadow: card.shadow, minHeight: "150px" }}
-                  >
-                    {/* Top row: period label + time */}
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-['Nunito'] font-extrabold uppercase" style={{ fontSize: "13px", letterSpacing: "0.05em", color: card.labelColor }}>
-                        {card.topLabel}
-                      </span>
-                      {s.started_at && (
-                        <span className="font-mono font-semibold text-[#0F172A]/40" style={{ fontSize: "10px" }}>
-                          {format(new Date(s.started_at), "HH:mm")}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Class + subject */}
-                    <p className={`${DISPLAY} font-extrabold text-[18px] text-[#0F172A] leading-snug`} style={{ letterSpacing: "-0.015em" }}>
-                      {s.class_name}
-                    </p>
-                    <p className="font-['Nunito'] font-bold text-[#0F172A]/50 mt-0.5 mb-2" style={{ fontSize: "13px" }}>
-                      {s.subject} · {s.objective_text.length > 36 ? s.objective_text.slice(0, 36) + "…" : s.objective_text}
-                    </p>
-
-                    {/* Coverage bar */}
-                    {hasReport && score != null && (
-                      <div className="mb-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-['Nunito'] font-extrabold text-[#0F172A]/50 uppercase" style={{ fontSize: "11px", letterSpacing: "0.05em" }}>
-                            Coverage
-                          </span>
-                          <span className={`${DISPLAY} font-extrabold`} style={{ fontSize: "18px", color: scoreColor }}>
-                            {score}%
-                          </span>
-                        </div>
-                        <div className="w-full rounded-full overflow-hidden" style={{ height: "5px", background: "rgba(15,23,42,0.10)", border: "1px solid rgba(15,23,42,0.08)" }}>
-                          <div className="h-full rounded-full" style={{ width: `${score}%`, background: barColor }} />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Topic pills with colored dots */}
-                    {topics.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {topics.map((t) => (
-                          <span
-                            key={t.label}
-                            className="font-['Nunito'] font-extrabold inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border-[1.5px]"
-                            style={{ fontSize: "11px", color: t.text, background: t.bg, borderColor: `${t.dot}40` }}
-                          >
-                            <span className="rounded-full flex-shrink-0" style={{ width: "5px", height: "5px", background: t.dot }} />
-                            {t.label}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Emoji circle button — bottom right */}
-                    <div className="mt-auto flex justify-end">
-                      <button
-                        title={s.status === "completed" ? "View Report" : s.status === "active" ? "Join Live Session" : "Start Session"}
-                        onClick={(e) => { e.stopPropagation(); if (s.status === "completed") navigate(`/report/${s.id}`); else navigate(`/session/${s.id}`); }}
-                        className="flex items-center justify-center rounded-full bg-white border-[1.5px] border-[#0F172A]/20 shadow-[1px_1px_0_0_rgba(15,23,42,0.15)] hover:-translate-y-0.5 hover:shadow-[2px_2px_0_0_rgba(15,23,42,0.2)] transition-all"
-                        style={{ width: "30px", height: "30px", fontSize: "15px" }}
-                      >
-                        {emoji}
-                      </button>
-                    </div>
+          return (
+            <div className={`${CARD} mb-6 overflow-hidden`}>
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b-[2px] border-[#0F172A]/10 bg-[#F8F9FF]">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-[9px] border-[2px] border-[#0F172A] bg-[#2E2BE5] flex items-center justify-center shadow-[2px_2px_0_0_#0F172A]">
+                    <CalendarDays className="w-3.5 h-3.5 text-white" />
                   </div>
-                );
-              })}
+                  <h2 className={`${DISPLAY} font-extrabold text-[20px] text-[#0F172A]`}>Today's Schedule</h2>
+                </div>
+                <p className="font-['Nunito'] font-semibold text-[12px] text-[#0F172A]/40">
+                  {format(new Date(), "EEEE, d MMMM yyyy")} · {totalSessions} periods scheduled
+                </p>
+              </div>
+
+              {/* 2×4 period grid */}
+              <div className="p-6 grid grid-cols-4 gap-4">
+                {slots.map((slot) => {
+                  /* ── BREAK ── */
+                  if (slot.kind === "break") return (
+                    <div key={slot.period}
+                      className="flex flex-col rounded-[16px] p-4 border-[2px] border-dashed border-[#0F172A]/15 bg-white"
+                      style={{ minHeight: "200px" }}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-['Nunito'] font-semibold text-[13px] uppercase text-[#0F172A]/35" style={{ letterSpacing: "0.05em" }}>
+                          P{slot.period} · Break
+                        </span>
+                        <span className="font-mono text-[13px] font-semibold text-[#0F172A]/35">{slot.time}</span>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center justify-center gap-1">
+                        <p className="font-['Nunito'] font-bold text-[17px] text-[#0F172A]/40">Recess</p>
+                        <p className="font-['Nunito'] text-[13px] text-[#0F172A]/25">No class</p>
+                      </div>
+                    </div>
+                  );
+
+                  /* ── FREE ── */
+                  if (slot.kind === "free") return (
+                    <div key={slot.period}
+                      className="flex flex-col rounded-[16px] p-4 border-[2px] border-dashed border-[#0F172A]/12 bg-white"
+                      style={{
+                        minHeight: "200px",
+                        background: "repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(15,23,42,0.035) 6px,rgba(15,23,42,0.035) 7px)",
+                      }}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-['Nunito'] font-semibold text-[13px] uppercase text-[#0F172A]/30" style={{ letterSpacing: "0.05em" }}>
+                          P{slot.period}
+                        </span>
+                        <span className="font-mono text-[13px] font-semibold text-[#0F172A]/25">{slot.time}</span>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center justify-center gap-1">
+                        <p className="font-['Nunito'] font-bold text-[17px] text-[#0F172A]/30">Free</p>
+                        <p className="font-['Nunito'] text-[14px] text-[#0F172A]/20">—</p>
+                      </div>
+                    </div>
+                  );
+
+                  /* ── SESSION CARDS (DONE / LIVE / UP NEXT) ── */
+                  const s = slot.session;
+                  const report    = s.conclusion_reports?.[0] ?? null;
+                  const hasReport = s.status === "completed" && report?.coverage_score != null;
+                  const tes       = hasReport ? Math.round((report!.teaching_effectiveness_score ?? report!.coverage_score)!) : null;
+                  const tesColor  = tes == null ? "#0F172A" : tes >= 80 ? "#16A56B" : tes >= 60 ? "#C77800" : "#DC2626";
+
+                  const topics = hasReport
+                    ? [
+                        ...report!.concepts_covered.slice(0, 2).map(c => ({ label: c, dot: "#16A56B", bg: "#ECFAF3", text: "#16A56B" })),
+                        ...report!.concepts_missed.slice(0, 1).map(c  => ({ label: c, dot: "#DC2626", bg: "#FEEFEC", text: "#DC2626" })),
+                      ]
+                    : s.key_concepts.slice(0, 3).map(c => ({ label: c, dot: "#2F7CFF", bg: "#DDF3FF", text: "#2F7CFF" }));
+
+                  const cfg = {
+                    done:   { bg: "#e6f9f0", border: "rgba(22,165,107,0.5)", shadow: "none",                                                      labelColor: "#16A56B", badgeText: `P${slot.period} · DONE`,    nameColor: "#0F172A", emoji: "📊" },
+                    live:   { bg: "#fde8e8", border: "#DC2626",               shadow: "0 0 0 3px rgba(220,38,38,0.12),0 0 20px rgba(220,38,38,0.1)", labelColor: "#DC2626", badgeText: "● LIVE",              nameColor: "#0F172A", emoji: "🎙️" },
+                    upnext: { bg: "#eeeaff", border: "#2E2BE5",               shadow: "none",                                                      labelColor: "#2E2BE5", badgeText: `P${slot.period} · UP NEXT`, nameColor: "#2E2BE5", emoji: "▶️" },
+                  }[slot.kind];
+
+                  const shortObj = s.objective_text.length > 40 ? s.objective_text.slice(0, 40) + "…" : s.objective_text;
+
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`)}
+                      className="flex flex-col justify-between rounded-[16px] p-4 cursor-pointer transition-all hover:-translate-y-0.5"
+                      style={{ minHeight: "200px", background: cfg.bg, border: `2px solid ${cfg.border}`, boxShadow: cfg.shadow }}
+                    >
+                      {/* Top: badge + time */}
+                      <div className="flex items-start justify-between gap-1">
+                        <span className="font-['Nunito'] font-semibold text-[13px] uppercase leading-tight" style={{ letterSpacing: "0.05em", color: cfg.labelColor }}>
+                          {cfg.badgeText}
+                          {slot.kind === "live" && <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-[#DC2626] animate-pulse align-middle" />}
+                        </span>
+                        <span className="font-mono text-[13px] font-semibold flex-shrink-0" style={{ color: cfg.labelColor }}>{slot.time}</span>
+                      </div>
+
+                      {/* Bottom: class name + subject·topic + TES + pills + button */}
+                      <div>
+                        <p className="font-['Nunito'] font-bold text-[20px] leading-tight mb-0.5" style={{ color: cfg.nameColor }}>
+                          {s.class_name}
+                        </p>
+                        <p className="font-['Nunito'] text-[14px] text-[#0F172A]/50 mb-2 leading-snug">{s.subject} · {shortObj}</p>
+
+                        {/* TES % for done cards */}
+                        {slot.kind === "done" && tes != null && (
+                          <p className={`${DISPLAY} font-extrabold text-[18px] mb-2`} style={{ color: tesColor }}>{tes}%</p>
+                        )}
+
+                        {/* Topic pills */}
+                        {topics.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {topics.map(t => (
+                              <span key={t.label} className="font-['Nunito'] font-bold inline-flex items-center gap-1 px-2 py-0.5 rounded-full border-[1.5px]"
+                                style={{ fontSize: "11px", color: t.text, background: t.bg, borderColor: `${t.dot}40` }}>
+                                <span className="rounded-full flex-shrink-0" style={{ width: "5px", height: "5px", background: t.dot }} />
+                                {t.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Emoji button */}
+                        <div className="flex justify-end" onClick={e => e.stopPropagation()}>
+                          <button
+                            title={slot.kind === "done" ? "View Report" : slot.kind === "live" ? "Join Live" : "Start Session"}
+                            onClick={() => { if (s.status === "completed") navigate(`/report/${s.id}`); else navigate(`/session/${s.id}`); }}
+                            className="flex items-center justify-center rounded-full bg-white border-[1.5px] border-[#0F172A]/20 shadow-[1px_1px_0_0_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all"
+                            style={{ width: "32px", height: "32px", fontSize: "16px" }}
+                          >
+                            {cfg.emoji}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── Toolbar ── */}
         {!loading && sessions.length > 0 && (
@@ -644,6 +700,15 @@ export default function TeacherDashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Fixed settings button ── */}
+      <button
+        className="fixed bottom-6 right-6 z-40 flex items-center justify-center rounded-[16px] bg-white border-[2.5px] border-[#0F172A] shadow-[4px_4px_0_0_#0F172A] hover:-translate-y-0.5 hover:shadow-[5px_5px_0_0_#0F172A] transition-all"
+        style={{ width: "56px", height: "56px" }}
+        title="Settings"
+      >
+        <Settings className="w-6 h-6 text-[#0F172A]/70" />
+      </button>
 
       {/* ── New Session Modal ── */}
       {showForm && (
