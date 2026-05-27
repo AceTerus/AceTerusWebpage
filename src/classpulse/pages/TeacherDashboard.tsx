@@ -146,7 +146,7 @@ export default function TeacherDashboard() {
     setLoading(true);
     const { data } = await supabase
       .from("class_sessions")
-      .select("*, conclusion_reports(teaching_effectiveness_score, coverage_score, ai_coaching_note, concepts_covered, concepts_missed)")
+      .select("*, conclusion_reports(*)")
       .eq("teacher_id", user.id)
       .order("created_at", { ascending: false });
     setSessions((data as ClassSession[]) || []);
