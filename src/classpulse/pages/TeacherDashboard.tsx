@@ -424,7 +424,7 @@ export default function TeacherDashboard() {
                     {/* CTA button — last cell, no border-r */}
                     <div className="flex items-center justify-center px-4">
                       <button
-                        onClick={(e) => { e.stopPropagation(); s.status === "completed" ? navigate(`/report/${s.id}`) : navigate(`/session/${s.id}`); }}
+                        onClick={(e) => { e.stopPropagation(); if (s.status === "completed") navigate(`/report/${s.id}`); else navigate(`/session/${s.id}`); }}
                         className={`flex items-center gap-1 px-3 py-1.5 rounded-[9px] border-[2px] font-['Nunito'] font-extrabold transition-all hover:-translate-y-0.5 ${ctaStyle}`}
                         style={{ fontSize: "11.5px" }}
                       >
