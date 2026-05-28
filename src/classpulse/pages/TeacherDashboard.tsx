@@ -286,7 +286,7 @@ export default function TeacherDashboard() {
   // ─── Greeting ─────────────────────────────────────────────────────────────
   const now = new Date();
   const hour = now.getHours();
-  const greeting = hour < 12 ? "Selamat pagi" : hour < 17 ? "Selamat tengahari" : "Selamat petang";
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const displayName = user?.email?.split("@")[0] ?? "Cikgu";
   const dayAbbr = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][now.getDay()];
   const avgColor = avgTES == null ? "white" : avgTES >= 80 ? "#B6F7CE" : avgTES >= 60 ? "#FDE68A" : "#FCA5A5";
