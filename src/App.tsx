@@ -31,6 +31,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Chat = lazy(() => import("./pages/Chat").then(m => ({ default: m.Chat })));
+const ClassNotes = lazy(() => import("./pages/ClassNotes"));
 
 const queryClient = new QueryClient();
 
@@ -101,6 +102,7 @@ const AnimatedRoutes = () => {
             <Route path="/profile/:userId" element={<Profile />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/chat" element={<Chat />} />
+            <Route path="/class-notes" element={<ClassNotes />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="*" element={<NotFound />} />
