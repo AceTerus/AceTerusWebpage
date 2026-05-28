@@ -36,6 +36,7 @@ export default function Onboarding() {
   // Step 0 — identity
   const [username, setUsername] = useState("");
   const [bio, setBio]           = useState("");
+  const [isTeacher, setIsTeacher] = useState(false);
 
   // Step 1 — avatar
   const [avatarBlob, setAvatarBlob]       = useState<Blob | null>(null);
@@ -72,6 +73,7 @@ export default function Onboarding() {
       await (supabase as any).from("profiles").update({
         username: username.trim(),
         bio: bio.trim() || null,
+        is_teacher: isTeacher,
         ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
       }).eq("user_id", user.id);
 
@@ -210,6 +212,27 @@ export default function Onboarding() {
                     onChange={e => setBio(e.target.value)}
                     maxLength={160}
                   />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-extrabold text-sm">I am a…</label>
+                  <div className="flex gap-2 p-1 rounded-full border-[2.5px] border-[#0F172A] bg-[#F3FAFF]">
+                    {([false, true] as const).map((val) => (
+                      <button
+                        key={String(val)}
+                        type="button"
+                        onClick={() => setIsTeacher(val)}
+                        className={`${DISPLAY} flex-1 py-2.5 rounded-full font-extrabold text-sm transition-all duration-200`}
+                        style={isTeacher === val ? {
+                          background: val ? C.indigo : C.blue,
+                          color: "#fff",
+                          boxShadow: `3px 3px 0 0 ${C.ink}`,
+                          transform: "translateY(-1px)",
+                        } : {}}
+                      >
+                        {val ? "👨‍🏫 Teacher" : "🎓 Student"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </>
             )}

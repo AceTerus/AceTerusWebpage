@@ -38,3 +38,4 @@ __pycache__/
 # SQLite temp files
 *.db-shm
 *.db-wal
+.gstack/

@@ -187,6 +187,7 @@ interface Profile {
   bio: string | null;
   followers_count: number;
   following_count: number;
+  is_teacher: boolean;
 }
 
 export const Profile = () => {
@@ -205,6 +206,7 @@ export const Profile = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editUsername, setEditUsername] = useState('');
   const [editBio, setEditBio] = useState('');
+  const [editIsTeacher, setEditIsTeacher] = useState(false);
   const [avatarBlob, setAvatarBlob]       = useState<Blob | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [coverBlob, setCoverBlob]         = useState<Blob | null>(null);
@@ -269,6 +271,7 @@ export const Profile = () => {
         setProfile(data as unknown as Profile);
         setEditUsername(data.username || '');
         setEditBio(data.bio || '');
+        setEditIsTeacher(data.is_teacher ?? false);
       }
     } catch (e) { console.error(e); }
   };
@@ -291,7 +294,7 @@ export const Profile = () => {
         if (error) throw error;
         coverUrl = supabase.storage.from('profile-images').getPublicUrl(filePath).data.publicUrl;
       }
-      const { error } = await (supabase.from('profiles') as any).update({ username: editUsername, bio: editBio, avatar_url: avatarUrl, cover_url: coverUrl }).eq('user_id', user.id);
+      const { error } = await (supabase.from('profiles') as any).update({ username: editUsername, bio: editBio, avatar_url: avatarUrl, cover_url: coverUrl, is_teacher: editIsTeacher }).eq('user_id', user.id);
       if (error) throw error;
       toast({ title: 'Profile updated!' });
       setIsEditDialogOpen(false);
@@ -753,9 +756,9 @@ export const Profile = () => {
                 </Avatar>
                 <div
                   className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-0.5 rounded-full border-[2px] border-[#0F172A] text-[11px] font-extrabold font-['Baloo_2'] text-white shadow-[1px_1px_0_0_#0F172A]"
-                  style={{ background: C.indigo }}
+                  style={{ background: profile?.is_teacher ? C.indigo : C.blue }}
                 >
-                  Student
+                  {profile?.is_teacher ? "👨‍🏫 Teacher" : "🎓 Student"}
                 </div>
               </div>
             </div>
@@ -802,6 +805,28 @@ export const Profile = () => {
                               rows={3}
                               className="border-[2px] border-[#0F172A] rounded-[14px] shadow-[1px_1px_0_0_#0F172A] text-sm font-semibold focus-visible:ring-0 focus:shadow-[2px_2px_0_0_#0F172A] transition-shadow resize-none"
                             />
+                          </div>
+                          {/* Role toggle */}
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-bold uppercase tracking-wide text-slate-500">I am a…</Label>
+                            <div className="flex gap-2 p-1 rounded-full border-[2px] border-[#0F172A] bg-[#F3FAFF]">
+                              {([false, true] as const).map((val) => (
+                                <button
+                                  key={String(val)}
+                                  type="button"
+                                  onClick={() => setEditIsTeacher(val)}
+                                  className={`${DISPLAY} flex-1 py-2 rounded-full font-extrabold text-xs transition-all duration-200`}
+                                  style={editIsTeacher === val ? {
+                                    background: val ? C.indigo : C.blue,
+                                    color: '#fff',
+                                    boxShadow: `2px 2px 0 0 ${C.ink}`,
+                                    transform: 'translateY(-1px)',
+                                  } : {}}
+                                >
+                                  {val ? '👨‍🏫 Teacher' : '🎓 Student'}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                           {/* Avatar crop */}
                           <div className="space-y-1.5">
@@ -976,6 +1001,31 @@ export const Profile = () => {
               <Dialog open={isSchoolDialogOpen} onOpenChange={setIsSchoolDialogOpen}>
                 {schoolDialog}
               </Dialog>
+
+              {/* Teacher role banner */}
+              {profile?.is_teacher && (
+                <div className={`${CARD} mb-4 overflow-hidden`}>
+                  <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${C.indigo}, #7C3AED)` }} />
+                  <div className="px-5 py-4 flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-[12px] border-[2px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] flex items-center justify-center shrink-0 text-lg"
+                      style={{ background: C.indigoSoft }}
+                    >
+                      👨‍🏫
+                    </div>
+                    <div>
+                      <p className={`${DISPLAY} font-extrabold text-base leading-tight`}>Teacher</p>
+                      <p className="text-xs font-semibold text-slate-500">Educator profile</p>
+                    </div>
+                    <span
+                      className="ml-auto px-3 py-1 rounded-full border-[2px] border-[#0F172A] text-[11px] font-extrabold shadow-[2px_2px_0_0_#0F172A] text-white"
+                      style={{ background: C.indigo }}
+                    >
+                      Teacher
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className={`${CARD} mb-6 overflow-hidden`}>
                 <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${C.blue}, ${C.cyan})` }} />

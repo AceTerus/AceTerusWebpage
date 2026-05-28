@@ -366,13 +366,6 @@ const Index = () => {
               AceTerus turns studying into a game you actually want to play. Quizzes, streaks, squads, and an AI companion — all in one platform. Built for Malaysian students, powered by AI.
             </p>
             <div className="mt-8 flex flex-wrap gap-4 atl-hero-in" style={{ animationDelay: "500ms" }}>
-              <button 
-                onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })} 
-                className={`${BTN} bg-white text-[#0F172A] atl-cta-btn flex items-center justify-center gap-2`}
-              >
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" loading="lazy" />
-                Continue with Google
-              </button>
               <Link to="/auth">
                 <button className={`${BTN} text-white`} style={{ background: C.blue }}>
                   Email Sign Up <Rocket className="w-5 h-5" />
