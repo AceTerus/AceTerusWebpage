@@ -48,16 +48,23 @@ export function ClassPulseNavbar({ role }: ClassPulseNavbarProps) {
           <nav className="hidden md:flex items-center gap-1">
             {role === "teacher" && (
               <>
-                <Link
-                  to="/"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-bold font-['Nunito'] transition-all border-[2px] ${
-                    isActive("/")
-                      ? "bg-[#2E2BE5] text-white border-[#0F172A] shadow-[2px_2px_0_0_#0F172A]"
-                      : "text-[#0F172A]/60 border-transparent hover:border-[#0F172A]/20 hover:text-[#0F172A]"
-                  }`}
+                <Link to="/"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-bold font-['Nunito'] transition-all border-[2px] ${isActive("/") ? "bg-[#2E2BE5] text-white border-[#0F172A] shadow-[2px_2px_0_0_#0F172A]" : "text-[#0F172A]/60 border-transparent hover:border-[#0F172A]/20 hover:text-[#0F172A]"}`}
                 >
-                  <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
+                  <LayoutDashboard className="w-3.5 h-3.5" /> My Sessions
                 </Link>
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-bold font-['Nunito'] transition-all border-[2px] text-[#0F172A]/40 border-transparent cursor-not-allowed"
+                  title="Reports — coming soon"
+                >
+                  Reports
+                </button>
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-bold font-['Nunito'] transition-all border-[2px] text-[#0F172A]/40 border-transparent cursor-not-allowed"
+                  title="Coaching — coming soon"
+                >
+                  Coaching
+                </button>
               </>
             )}
             {role === "school_authority" && (
