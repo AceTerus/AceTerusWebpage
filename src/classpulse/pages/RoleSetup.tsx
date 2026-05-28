@@ -106,7 +106,7 @@ export default function RoleSetup({ onComplete }: RoleSetupProps) {
           </label>
           <input
             type="text"
-            placeholder="e.g. SMK Dato' Harun"
+            placeholder="e.g. Greenwood Secondary School"
             value={schoolName}
             onChange={(e) => setSchoolName(e.target.value)}
             className="w-full px-4 py-3 border-[2px] border-[#0F172A]/20 rounded-[12px] font-['Nunito'] text-[14px] outline-none focus:border-[#2E2BE5] transition-all"

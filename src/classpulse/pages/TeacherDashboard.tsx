@@ -17,9 +17,9 @@ const INPUT_CLS =
   "w-full px-3.5 py-2.5 border-[2px] border-[#0F172A]/20 rounded-[12px] font-['Nunito'] font-bold text-[14px] text-[#0F172A] outline-none focus:border-[#2E2BE5] focus:ring-4 focus:ring-[#EEEDFF] transition-all bg-white";
 
 const SUBJECTS = [
-  "Matematik","Sains","Bahasa Melayu","English","Sejarah","Geografi",
-  "Pendidikan Islam","Pendidikan Moral","Fizik","Kimia","Biologi",
-  "Ekonomi","Perniagaan","Pendidikan Jasmani","Seni Visual","Muzik","Teknologi Maklumat",
+  "Mathematics","Science","Malay Language","English","History","Geography",
+  "Islamic Studies","Moral Education","Physics","Chemistry","Biology",
+  "Economics","Business Studies","Physical Education","Visual Arts","Music","Information Technology",
 ];
 const PERIODS = ["Period 1","Period 2","Period 3","Period 4","Period 5","Period 6","Period 7","Period 8"];
 const PERIOD_TIMES = ["07:40","08:20","09:00","09:40","10:10","10:50","11:30","12:10"];
@@ -287,7 +287,7 @@ export default function TeacherDashboard() {
   const now = new Date();
   const hour = now.getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const displayName = user?.email?.split("@")[0] ?? "Cikgu";
+  const displayName = user?.email?.split("@")[0] ?? "Teacher";
   const dayAbbr = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][now.getDay()];
   const avgColor = avgTES == null ? "white" : avgTES >= 80 ? "#B6F7CE" : avgTES >= 60 ? "#FDE68A" : "#FCA5A5";
 
@@ -358,7 +358,7 @@ export default function TeacherDashboard() {
               </div>
               <div>
                 <h2 className={`${D} font-extrabold text-white m-0`} style={{ fontSize:22, letterSpacing:"-0.015em" }}>
-                  {greeting}, Cikgu {displayName} 👋
+                  {greeting}, {displayName} 👋
                 </h2>
                 <p style={{ margin:"4px 0 0", fontFamily:"'Nunito',sans-serif", fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.78)" }}>
                   {todaySessions.length > 0

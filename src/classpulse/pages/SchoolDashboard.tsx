@@ -256,7 +256,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-1", display_name: "En. Ahmad Faizi Razali",
     avg_coverage: 83, total_sessions: 16, goals_achieved: 13,
     trend: 4, trend_data: [62, 71, 68, 75, 78, 80, 83],
-    sessions_this_week: 3, department: "Sains & Matematik", flagged: false,
+    sessions_this_week: 3, department: "Science & Mathematics", flagged: false,
     sessions: [
       { id: "d1a", teacher_id: "demo-1", class_name: "4 Amanah", subject: "Physics",
         objective_text: "Newton's Laws of Motion and real-world applications.",
@@ -300,7 +300,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-2", display_name: "Cik Nurul Huda Azman",
     avg_coverage: 79, total_sessions: 18, goals_achieved: 14,
     trend: 1, trend_data: [70, 74, 72, 78, 76, 79, 79],
-    sessions_this_week: 4, department: "Sains & Matematik", flagged: false,
+    sessions_this_week: 4, department: "Science & Mathematics", flagged: false,
     sessions: [
       { id: "d2a", teacher_id: "demo-2", class_name: "4 Bestari", subject: "Biology",
         objective_text: "Cell division — mitosis and meiosis.",
@@ -337,14 +337,14 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-3", display_name: "En. Radzuan Ismail",
     avg_coverage: 82, total_sessions: 14, goals_achieved: 14,
     trend: 2, trend_data: [75, 78, 76, 80, 81, 82, 82],
-    sessions_this_week: 3, department: "Bahasa & Kemanusiaan", flagged: false,
+    sessions_this_week: 3, department: "Languages & Humanities", flagged: false,
     sessions: [
       { id: "d3a", teacher_id: "demo-3", class_name: "5 Dinamik", subject: "BM",
-        objective_text: "Penulisan karangan jenis perbincangan.",
-        key_concepts: ["Struktur Karangan", "Hujah Utama", "Hujah Sokongan", "Penutup"],
-        ...sess(1, 43), transcript_text: "Selamat pagi. Hari ini kita belajar cara menulis karangan perbincangan dengan berkesan.",
+        objective_text: "Writing a discussion essay — structure, arguments, and conclusion.",
+        key_concepts: ["Essay Structure", "Main Arguments", "Supporting Arguments", "Conclusion"],
+        ...sess(1, 43), transcript_text: "Good morning. Today we learn how to write an effective discussion essay.",
         coverage_score: 88, teacher_talk_ratio: 50, student_participation_count: 27,
-        concepts_covered: ["Struktur Karangan", "Hujah Utama", "Hujah Sokongan", "Penutup"], concepts_missed: [],
+        concepts_covered: ["Essay Structure", "Main Arguments", "Supporting Arguments", "Conclusion"], concepts_missed: [],
         ai_coaching_note: "Students produced strong draft paragraphs during class time." },
       { id: "d3b", teacher_id: "demo-3", class_name: "4 Cemerlang", subject: "History",
         objective_text: "The formation of Malaysia — key events and figures.",
@@ -374,7 +374,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-4", display_name: "Pn. Salmah Mohamad",
     avg_coverage: 51, total_sessions: 9, goals_achieved: 1,
     trend: -8, trend_data: [70, 66, 60, 58, 55, 53, 51],
-    sessions_this_week: 2, department: "Sains & Matematik", flagged: true,
+    sessions_this_week: 2, department: "Science & Mathematics", flagged: true,
     sessions: [
       { id: "d4a", teacher_id: "demo-4", class_name: "4 Dinamik", subject: "Mathematics",
         objective_text: "Trigonometry — sine, cosine, tangent rules.",
@@ -404,7 +404,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-5", display_name: "Cik Lee Mei Ling",
     avg_coverage: 88, total_sessions: 12, goals_achieved: 11,
     trend: 6, trend_data: [76, 80, 82, 84, 85, 87, 88],
-    sessions_this_week: 3, department: "Sains & Matematik", flagged: false,
+    sessions_this_week: 3, department: "Science & Mathematics", flagged: false,
     sessions: [
       { id: "d5a", teacher_id: "demo-5", class_name: "5 Pintar", subject: "Add. Math",
         objective_text: "Progressions — arithmetic and geometric.",
@@ -441,7 +441,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-6", display_name: "En. Hafiz Tan",
     avg_coverage: 71, total_sessions: 11, goals_achieved: 7,
     trend: -2, trend_data: [76, 75, 72, 74, 73, 72, 71],
-    sessions_this_week: 2, department: "Bahasa & Kemanusiaan", flagged: false,
+    sessions_this_week: 2, department: "Languages & Humanities", flagged: false,
     sessions: [
       { id: "d6a", teacher_id: "demo-6", class_name: "4 Bestari", subject: "Geography",
         objective_text: "Tropical climate and monsoon patterns.",
@@ -471,7 +471,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-7", display_name: "Pn. Rozita Ahmad",
     avg_coverage: 85, total_sessions: 13, goals_achieved: 11,
     trend: 3, trend_data: [78, 80, 81, 82, 83, 84, 85],
-    sessions_this_week: 3, department: "Sains & Matematik", flagged: false,
+    sessions_this_week: 3, department: "Science & Mathematics", flagged: false,
     sessions: [
       { id: "d7a", teacher_id: "demo-7", class_name: "5 Amanah", subject: "Chemistry",
         objective_text: "Electrochemistry — electrolysis and electroplating.",
@@ -501,7 +501,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-8", display_name: "En. Sivakumar Pillai",
     avg_coverage: 76, total_sessions: 14, goals_achieved: 10,
     trend: -1, trend_data: [78, 79, 77, 76, 77, 76, 76],
-    sessions_this_week: 3, department: "Sains & Matematik", flagged: false,
+    sessions_this_week: 3, department: "Science & Mathematics", flagged: false,
     sessions: [
       { id: "d8a", teacher_id: "demo-8", class_name: "5 Dinamik", subject: "Add. Math",
         objective_text: "Linear programming — feasible region and optimal solutions.",
@@ -531,7 +531,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-9", display_name: "Cik Wong Mei Fong",
     avg_coverage: 90, total_sessions: 11, goals_achieved: 10,
     trend: 5, trend_data: [82, 84, 85, 87, 88, 89, 90],
-    sessions_this_week: 2, department: "Sains & Matematik", flagged: false,
+    sessions_this_week: 2, department: "Science & Mathematics", flagged: false,
     sessions: [
       { id: "d9a", teacher_id: "demo-9", class_name: "5 Pintar", subject: "Biology",
         objective_text: "Ecology — food chains, energy flow and nutrient cycles.",
@@ -561,7 +561,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-10", display_name: "Pn. Norashikin Wahab",
     avg_coverage: 78, total_sessions: 15, goals_achieved: 12,
     trend: 2, trend_data: [72, 74, 75, 76, 77, 78, 78],
-    sessions_this_week: 3, department: "Bahasa & Kemanusiaan", flagged: false,
+    sessions_this_week: 3, department: "Languages & Humanities", flagged: false,
     sessions: [
       { id: "d10a", teacher_id: "demo-10", class_name: "4 Dinamik", subject: "BM",
         objective_text: "Pemahaman teks — teknik menjawab soalan KBAT.",
@@ -591,7 +591,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-11", display_name: "En. Mohd Faizal Ibrahim",
     avg_coverage: 74, total_sessions: 12, goals_achieved: 8,
     trend: 0, trend_data: [74, 73, 75, 74, 74, 75, 74],
-    sessions_this_week: 2, department: "Bahasa & Kemanusiaan", flagged: false,
+    sessions_this_week: 2, department: "Languages & Humanities", flagged: false,
     sessions: [
       { id: "d11a", teacher_id: "demo-11", class_name: "4 Cemerlang", subject: "English",
         objective_text: "Essay writing — descriptive and narrative techniques.",
@@ -621,7 +621,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-12", display_name: "Pn. Lim Siew Bee",
     avg_coverage: 86, total_sessions: 10, goals_achieved: 9,
     trend: 4, trend_data: [79, 81, 82, 83, 84, 85, 86],
-    sessions_this_week: 2, department: "Bahasa & Kemanusiaan", flagged: false,
+    sessions_this_week: 2, department: "Languages & Humanities", flagged: false,
     sessions: [
       { id: "d12a", teacher_id: "demo-12", class_name: "4 Pintar", subject: "Mandarin",
         objective_text: "汉字书写与语段理解 — Writing characters and passage comprehension.",
@@ -651,7 +651,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-13", display_name: "En. Ramasamy Gopal",
     avg_coverage: 58, total_sessions: 10, goals_achieved: 2,
     trend: -6, trend_data: [72, 68, 64, 62, 60, 59, 58],
-    sessions_this_week: 2, department: "Sains & Matematik", flagged: true,
+    sessions_this_week: 2, department: "Science & Mathematics", flagged: true,
     sessions: [
       { id: "d13a", teacher_id: "demo-13", class_name: "5 Amanah", subject: "Add. Math",
         objective_text: "Differentiation — second derivatives and curve sketching.",
@@ -681,7 +681,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-14", display_name: "Cik Nurhafiza Zainudin",
     avg_coverage: 80, total_sessions: 12, goals_achieved: 9,
     trend: 2, trend_data: [74, 76, 77, 78, 79, 80, 80],
-    sessions_this_week: 3, department: "Sains & Matematik", flagged: false,
+    sessions_this_week: 3, department: "Science & Mathematics", flagged: false,
     sessions: [
       { id: "d14a", teacher_id: "demo-14", class_name: "4 Bestari", subject: "Physics",
         objective_text: "Waves — transverse and longitudinal, reflection and refraction.",
@@ -711,7 +711,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-15", display_name: "En. Chong Kok Keong",
     avg_coverage: 77, total_sessions: 13, goals_achieved: 9,
     trend: 1, trend_data: [73, 74, 75, 75, 76, 77, 77],
-    sessions_this_week: 3, department: "Teknologi & ICT", flagged: false,
+    sessions_this_week: 3, department: "Technology & ICT", flagged: false,
     sessions: [
       { id: "d15a", teacher_id: "demo-15", class_name: "4 Dinamik", subject: "ICT",
         objective_text: "Database management — tables, queries and relationships.",
@@ -741,7 +741,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-16", display_name: "Pn. Salwani Hashim",
     avg_coverage: 69, total_sessions: 11, goals_achieved: 6,
     trend: -1, trend_data: [72, 71, 70, 70, 69, 69, 69],
-    sessions_this_week: 2, department: "Bahasa & Kemanusiaan", flagged: false,
+    sessions_this_week: 2, department: "Languages & Humanities", flagged: false,
     sessions: [
       { id: "d16a", teacher_id: "demo-16", class_name: "4 Bestari", subject: "Moral",
         objective_text: "Nilai murni — tanggungjawab terhadap keluarga dan masyarakat.",
@@ -801,7 +801,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-18", display_name: "Pn. Haslinda Yusof",
     avg_coverage: 73, total_sessions: 12, goals_achieved: 8,
     trend: -3, trend_data: [80, 78, 76, 75, 74, 73, 73],
-    sessions_this_week: 2, department: "Sains Sosial", flagged: false,
+    sessions_this_week: 2, department: "Social Sciences", flagged: false,
     sessions: [
       { id: "d18a", teacher_id: "demo-18", class_name: "5 Amanah", subject: "Geography",
         objective_text: "Development geography — measuring economic development.",
@@ -831,7 +831,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-19", display_name: "En. Krishnamurthy Selvaraj",
     avg_coverage: 55, total_sessions: 9, goals_achieved: 1,
     trend: -5, trend_data: [68, 65, 62, 60, 57, 56, 55],
-    sessions_this_week: 2, department: "Sains & Matematik", flagged: true,
+    sessions_this_week: 2, department: "Science & Mathematics", flagged: true,
     sessions: [
       { id: "d19a", teacher_id: "demo-19", class_name: "5 Dinamik", subject: "Mathematics",
         objective_text: "Probability — simple and compound events.",
@@ -861,7 +861,7 @@ const DEMO_TEACHER_GROUPS: TeacherGroup[] = [
     user_id: "demo-20", display_name: "Cik Tan Ai Ling",
     avg_coverage: 91, total_sessions: 11, goals_achieved: 11,
     trend: 7, trend_data: [80, 83, 85, 87, 88, 90, 91],
-    sessions_this_week: 3, department: "Sains & Matematik", flagged: false,
+    sessions_this_week: 3, department: "Science & Mathematics", flagged: false,
     sessions: [
       { id: "d20a", teacher_id: "demo-20", class_name: "5 Cemerlang", subject: "Add. Math",
         objective_text: "Functions — composite and inverse functions.",
@@ -1566,7 +1566,7 @@ export default function SchoolDashboard() {
   const handleExport = () => {
     const lines = [
       "ClassPulse School Analytics Report",
-      schoolName ? `School: ${schoolName}` : "School: SMK Tinggi Bukit Mertajam",
+      schoolName ? `School: ${schoolName}` : "School: Greenwood Secondary School",
       `Generated: ${format(new Date(), "d MMM yyyy")}`,
       "",
       "Overall Performance",
@@ -1607,7 +1607,7 @@ export default function SchoolDashboard() {
               <div>
                 <div className="cpa-crumbs">
                   <span>School</span><span className="sep">›</span>
-                  <span>{schoolName || "SMK Tinggi Bukit Mertajam"}</span><span className="sep">›</span>
+                  <span>{schoolName || "Greenwood Secondary School"}</span><span className="sep">›</span>
                   <span style={{ color: "#0F172A" }}>Analytics</span>
                 </div>
                 <h1 className="cpa-ph-title">School Analytics Overview</h1>
