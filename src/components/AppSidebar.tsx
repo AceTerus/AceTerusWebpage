@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, Search, LogOut, Compass, School, MessageCircle, ShieldCheck, ScanLine, ChevronLeft, ChevronRight, User, CalendarDays, ClipboardList } from "lucide-react";
+import { BookOpen, Search, LogOut, Compass, School, MessageCircle, ShieldCheck, ScanLine, ChevronLeft, ChevronRight, User, CalendarDays } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -53,9 +53,8 @@ export const AppSidebar = ({ collapsed, onCollapseToggle }: AppSidebarProps) => 
       icon: MessageCircle,
       badge: totalSenders > 0 ? Math.min(totalSenders, 99) : undefined,
     },
-    { href: "/quiz",         label: "Quiz",        icon: BookOpen },
-    { href: "/materials",    label: "Classroom",   icon: School },
-    { href: "/class-notes",  label: "Class Notes", icon: ClipboardList },
+    { href: "/quiz",       label: "Quiz",      icon: BookOpen },
+    { href: "/materials",  label: "Classroom",  icon: School },
     { href: "/ar-scanner", label: "AR Scanner", icon: ScanLine },
   ];
 

@@ -262,118 +262,215 @@ interface FlaggedConcept {
   created_at: string;
 }
 
-const ClassPulseSummaryCard = ({ summary, flagged }: { summary: StudentSummary; flagged: FlaggedConcept[] }) => {
+interface SessionConclusionReport {
+  id: string;
+  session_id: string;
+  coverage_score: number | null;
+  concepts_covered: string[];
+  concepts_missed: string[];
+  ai_coaching_note: string | null;
+}
+
+interface SessionWithGap {
+  id: string;
+  class_name: string;
+  subject: string;
+  objective_text: string;
+  ended_at: string | null;
+  created_at: string;
+  conclusion_reports: SessionConclusionReport[];
+  student_session_summaries: StudentSummary[];
+}
+
+// ── Card: one session with coverage breakdown ─────────────────────────────────
+const ClassPulseSummaryCard = ({ session, flagged }: { session: SessionWithGap; flagged: FlaggedConcept[] }) => {
   const navigate = useNavigate();
-  const [expanded, setExpanded] = useState(false);
-  const sessionFlagged = flagged.filter((f) => f.session_id === summary.session_id && !f.resolved);
-  const bullets = summary.covered_notes
-    ? summary.covered_notes.split("\n").filter(Boolean)
-    : [];
+  const [covExpanded, setCovExpanded] = useState(false);
+  const [gapExpanded, setGapExpanded] = useState(false);
+
+  const report = session.conclusion_reports[0] ?? null;
+  const summary = session.student_session_summaries[0] ?? null;
+  const sessionFlagged = flagged.filter(f => f.session_id === session.id && !f.resolved);
+
+  const sessionDate = session.ended_at ?? session.created_at;
+  const coverage = report?.coverage_score ?? null;
+  const coverageColor = coverage == null ? C.blue
+    : coverage >= 80 ? '#16A56B' : coverage >= 60 ? C.blue : coverage >= 40 ? '#C77800' : '#DC2626';
+
+  const missedConcepts = report?.concepts_missed ?? [];
+  const coveredConcepts = report?.concepts_covered ?? [];
+  const bullets = summary?.covered_notes ? summary.covered_notes.split('\n').filter(Boolean) : [];
+
+  // Build a map: concept name → AI explanation from student_session_summaries
+  const gapNoteMap = new Map<string, { explanation: string; example?: string }>(
+    (summary?.gap_notes ?? []).map(g => [g.concept.toLowerCase(), { explanation: g.explanation, example: g.example }])
+  );
+
+  const getStudyTip = (concept: string) => {
+    const found = gapNoteMap.get(concept.toLowerCase());
+    return found?.explanation ?? `Review "${concept}" — this topic was not fully covered in class. Check your textbook or ask your teacher for notes.`;
+  };
+  const getExample = (concept: string) => gapNoteMap.get(concept.toLowerCase())?.example;
 
   return (
     <div className={`${CARD} overflow-hidden`} style={{ borderColor: C.blue, boxShadow: `3px 3px 0 0 ${C.blue}` }}>
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div className="px-5 py-4 flex items-start justify-between gap-3" style={{ background: '#DDF3FF' }}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <BookOpenCheck className="w-4 h-4" style={{ color: C.blue }} />
+            <BookOpenCheck className="w-4 h-4 shrink-0" style={{ color: C.blue }} />
             <span className="text-[11px] font-bold font-['Nunito'] px-2 py-0.5 rounded-full border border-[#2F7CFF]/30 text-[#2F7CFF] bg-white">
-              {summary.subject}
+              {session.subject}
             </span>
             <span className="text-[11px] font-bold font-['Nunito'] text-[#0F172A]/50 border border-[#0F172A]/15 rounded-full px-2 py-0.5 bg-white">
-              {summary.class_name}
+              {session.class_name}
             </span>
+            {coverage != null && (
+              <span className="text-[11px] font-extrabold font-['Nunito'] px-2 py-0.5 rounded-full bg-white border"
+                style={{ color: coverageColor, borderColor: `${coverageColor}30` }}>
+                {coverage}% covered
+              </span>
+            )}
           </div>
-          <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A]`}>
-            Class Notes · {format(new Date(summary.date), 'd MMM yyyy')}
+          <p className={`${DISPLAY} font-extrabold text-[15px] text-[#0F172A] leading-snug`}>
+            {session.objective_text}
+          </p>
+          <p className="font-['Nunito'] text-[11px] text-[#0F172A]/45 mt-0.5">
+            {format(new Date(sessionDate), 'd MMM yyyy')} · {formatDistanceToNow(new Date(sessionDate), { addSuffix: true })}
           </p>
         </div>
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 text-[12px] font-bold font-['Nunito'] text-[#2F7CFF] hover:text-[#2E2BE5] transition-colors shrink-0"
-        >
-          {expanded ? <><ChevronUp className="w-3.5 h-3.5" /> Less</> : <><ChevronDown className="w-3.5 h-3.5" /> More</>}
-        </button>
       </div>
 
-      <div className="p-5 space-y-4">
-        {/* Section A — What We Covered */}
-        <div>
-          <p className="font-['Nunito'] text-[11px] font-bold text-[#0F172A]/50 uppercase tracking-wider mb-2">
-            What We Covered Today
-          </p>
-          <ul className="space-y-1">
-            {bullets.slice(0, expanded ? undefined : 3).map((b, i) => (
-              <li key={i} className="flex items-start gap-2 font-['Nunito'] text-[13px] text-[#0F172A]/80">
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: C.blue }} />
-                {b}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="divide-y-[2px] divide-[#0F172A]/08">
 
-        {expanded && summary.key_terms.length > 0 && (
-          <div>
-            <p className="font-['Nunito'] text-[11px] font-bold text-[#0F172A]/50 uppercase tracking-wider mb-2">Key Terms</p>
-            <div className="space-y-1.5">
-              {summary.key_terms.map((kt) => (
-                <div key={kt.term} className="flex gap-2 font-['Nunito'] text-[13px]">
-                  <span className="font-bold text-[#0F172A] shrink-0">{kt.term}:</span>
-                  <span className="text-[#0F172A]/70">{kt.definition}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Section B — Gap Notes */}
-        {summary.gap_notes.length > 0 && (
-          <div className="pt-3 border-t-[2px] border-[#0F172A]/10">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertCircle className="w-4 h-4 text-amber-500" />
-              <p className="font-['Nunito'] text-[11px] font-bold text-amber-600 uppercase tracking-wider">
-                Your teacher may not have had time to cover these — here's what you need to know
+        {/* ── A: Missed concepts (always visible) ── */}
+        {missedConcepts.length > 0 && (
+          <div className="p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-[#DC2626] shrink-0" />
+              <p className="font-['Nunito'] text-[11px] font-extrabold text-[#DC2626] uppercase tracking-wider">
+                {missedConcepts.length} topic{missedConcepts.length !== 1 ? 's' : ''} not covered — study these
               </p>
             </div>
-            <div className="space-y-3">
-              {summary.gap_notes.slice(0, expanded ? undefined : 1).map((gn) => (
-                <div key={gn.concept} className="rounded-[14px] border-[2px] border-amber-200 bg-amber-50 p-3 space-y-1">
-                  <p className={`${DISPLAY} font-extrabold text-[13px] text-amber-700`}>{gn.concept}</p>
-                  <p className="font-['Nunito'] text-[12px] text-amber-700/80">{gn.explanation}</p>
-                  {expanded && gn.example && (
-                    <p className="font-['Nunito'] text-[11px] text-amber-600/70 italic">Example: {gn.example}</p>
-                  )}
-                  <button
-                    onClick={() => navigate('/quiz')}
-                    className="mt-1 flex items-center gap-1 text-[11px] font-bold font-['Nunito'] text-[#2E2BE5] hover:underline"
-                  >
-                    <Sparkles className="w-3 h-3" /> Practice this →
-                  </button>
-                </div>
-              ))}
-              {!expanded && summary.gap_notes.length > 1 && (
-                <button onClick={() => setExpanded(true)} className="text-[12px] font-bold font-['Nunito'] text-amber-600 hover:underline">
-                  +{summary.gap_notes.length - 1} more gap notes
-                </button>
-              )}
+
+            <div className="space-y-2.5">
+              {(gapExpanded ? missedConcepts : missedConcepts.slice(0, 2)).map(concept => {
+                const tip = getStudyTip(concept);
+                const example = getExample(concept);
+                const isFlagged = sessionFlagged.some(f => f.concept_name.toLowerCase() === concept.toLowerCase());
+                return (
+                  <div key={concept} className="rounded-[14px] border-[2px] border-[#DC2626]/20 bg-[#FEEFEC] overflow-hidden">
+                    <div className="flex items-center gap-2.5 px-4 pt-3 pb-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#DC2626] shrink-0" />
+                      <span className={`${DISPLAY} font-extrabold text-[14px] text-[#0F172A] flex-1`}>{concept}</span>
+                      {isFlagged && (
+                        <span className="text-[10px] font-extrabold font-['Nunito'] px-2 py-0.5 rounded-full bg-[#FFF6E2] text-[#C77800] border border-[#C77800]/25 uppercase tracking-wider shrink-0">
+                          ⚑ Priority
+                        </span>
+                      )}
+                    </div>
+                    <div className="px-4 pb-3 flex flex-col gap-1">
+                      <div className="flex items-start gap-1.5">
+                        <Sparkles className="w-3 h-3 text-[#2E2BE5] shrink-0 mt-0.5" />
+                        <p className="font-['Nunito'] text-[12px] text-[#0F172A]/70 leading-relaxed">{tip}</p>
+                      </div>
+                      {example && (
+                        <p className="font-['Nunito'] text-[11px] text-[#0F172A]/50 italic pl-4.5">Example: {example}</p>
+                      )}
+                      <button onClick={() => navigate('/quiz')}
+                        className="mt-0.5 self-start flex items-center gap-1 text-[11px] font-bold font-['Nunito'] text-[#2E2BE5] hover:underline">
+                        <Sparkles className="w-2.5 h-2.5" /> Practice this →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+
+            {missedConcepts.length > 2 && (
+              <button onClick={() => setGapExpanded(v => !v)}
+                className="flex items-center gap-1 text-[12px] font-bold font-['Nunito'] text-[#DC2626] hover:underline">
+                {gapExpanded
+                  ? <><ChevronUp className="w-3.5 h-3.5" /> Show less</>
+                  : <><ChevronDown className="w-3.5 h-3.5" /> +{missedConcepts.length - 2} more missed topics</>}
+              </button>
+            )}
+
+            {/* AI coaching note */}
+            {report?.ai_coaching_note && (
+              <div className="rounded-[12px] bg-[#EEEDFF] border border-[#2E2BE5]/20 px-4 py-3 flex items-start gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-[#2E2BE5] shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-['Nunito'] font-extrabold text-[10.5px] text-[#2E2BE5] uppercase tracking-wider mb-0.5">Teacher's note</p>
+                  <p className="font-['Nunito'] text-[12px] text-[#2E2BE5]/80 leading-relaxed">{report.ai_coaching_note}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Flagged concept banners */}
+        {/* ── B: What was covered ── */}
+        {(coveredConcepts.length > 0 || bullets.length > 0) && (
+          <div className="p-5 space-y-2">
+            <button onClick={() => setCovExpanded(v => !v)}
+              className="flex items-center gap-1.5 text-[11px] font-extrabold font-['Nunito'] text-[#0F172A]/50 uppercase tracking-wider hover:text-[#0F172A] transition-colors">
+              {covExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              Topics covered ({coveredConcepts.length || bullets.length})
+            </button>
+
+            {covExpanded && (
+              <>
+                {coveredConcepts.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {coveredConcepts.map(c => (
+                      <span key={c} className="inline-flex items-center gap-1 font-['Nunito'] font-extrabold text-[11px] px-2.5 py-1 rounded-full border border-[#16A56B]/25 text-[#16A56B] bg-[#ECFAF3]">
+                        ✓ {c}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {bullets.length > 0 && (
+                  <ul className="space-y-1 pt-1">
+                    {bullets.map((b, i) => (
+                      <li key={i} className="flex items-start gap-2 font-['Nunito'] text-[13px] text-[#0F172A]/70">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: C.blue }} />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {/* Key terms */}
+                {(summary?.key_terms ?? []).length > 0 && (
+                  <div className="pt-2">
+                    <p className="font-['Nunito'] text-[10.5px] font-bold text-[#0F172A]/40 uppercase tracking-wider mb-1.5">Key terms</p>
+                    <div className="space-y-1">
+                      {summary!.key_terms.map(kt => (
+                        <div key={kt.term} className="flex gap-2 font-['Nunito'] text-[12.5px]">
+                          <span className="font-bold text-[#0F172A] shrink-0">{kt.term}:</span>
+                          <span className="text-[#0F172A]/65">{kt.definition}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── C: Teacher-flagged concept banners ── */}
         {sessionFlagged.length > 0 && (
-          <div className="pt-3 border-t-[2px] border-[#0F172A]/10 space-y-2">
-            {sessionFlagged.map((fc) => (
+          <div className="px-5 py-4 space-y-2">
+            {sessionFlagged.map(fc => (
               <div key={fc.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#D6D4FF] border border-[#2E2BE5]/30">
                 <Sparkles className="w-3.5 h-3.5 text-[#2E2BE5] shrink-0" />
                 <p className="font-['Nunito'] text-[12px] font-bold text-[#2E2BE5] flex-1">
-                  Your teacher flagged <strong>{fc.concept_name}</strong> from today's class.
+                  Your teacher flagged <strong>{fc.concept_name}</strong> as a priority concept.
                 </p>
-                <button
-                  onClick={() => navigate('/quiz')}
-                  className="text-[11px] font-bold font-['Nunito'] text-[#2E2BE5] underline hover:no-underline shrink-0"
-                >
-                  Try questions →
+                <button onClick={() => navigate('/quiz')}
+                  className="text-[11px] font-bold font-['Nunito'] text-[#2E2BE5] underline hover:no-underline shrink-0">
+                  Practice →
                 </button>
               </div>
             ))}
@@ -384,38 +481,37 @@ const ClassPulseSummaryCard = ({ summary, flagged }: { summary: StudentSummary; 
   );
 };
 
+// ── Data loader ───────────────────────────────────────────────────────────────
 const ClassPulseSection = ({ userId }: { userId: string }) => {
-  const [summaries, setSummaries] = useState<StudentSummary[]>([]);
+  const [sessions, setSessions] = useState<SessionWithGap[]>([]);
   const [flagged, setFlagged] = useState<FlaggedConcept[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadClassPulseData();
-  }, [userId]);
+  useEffect(() => { loadClassPulseData(); }, [userId]);
 
   const loadClassPulseData = async () => {
     setLoading(true);
 
+    // Resolve student's class names from their school profile
     const { data: schoolsData } = await supabase
       .from('student_schools')
       .select('class_name')
       .eq('user_id', userId);
 
-    const classNames = (schoolsData || [])
-      .map((s: any) => s.class_name)
+    const classNames = ((schoolsData ?? []) as any[])
+      .map(s => s.class_name)
       .filter(Boolean) as string[];
 
-    if (classNames.length === 0) {
-      setLoading(false);
-      return;
-    }
+    if (classNames.length === 0) { setLoading(false); return; }
 
-    const [{ data: summaryData }, { data: flaggedData }] = await Promise.all([
+    // Fetch completed sessions with conclusion reports AND student summaries
+    const [{ data: sessionData }, { data: flaggedData }] = await Promise.all([
       supabase
-        .from('student_session_summaries')
-        .select('*')
+        .from('class_sessions')
+        .select('id, class_name, subject, objective_text, ended_at, created_at, conclusion_reports(*), student_session_summaries(*)')
         .in('class_name', classNames)
-        .order('date', { ascending: false })
+        .eq('status', 'completed')
+        .order('ended_at', { ascending: false })
         .limit(20),
       supabase
         .from('flagged_concepts')
@@ -425,8 +521,14 @@ const ClassPulseSection = ({ userId }: { userId: string }) => {
         .order('created_at', { ascending: false }),
     ]);
 
-    setSummaries((summaryData as StudentSummary[]) || []);
-    setFlagged((flaggedData as FlaggedConcept[]) || []);
+    // Only show sessions that have at least one missed concept OR AI-generated gap notes
+    const withGaps = ((sessionData ?? []) as SessionWithGap[]).filter(s =>
+      (s.conclusion_reports?.[0]?.concepts_missed?.length ?? 0) > 0 ||
+      (s.student_session_summaries?.[0]?.gap_notes?.length ?? 0) > 0
+    );
+
+    setSessions(withGaps);
+    setFlagged((flaggedData as FlaggedConcept[]) ?? []);
     setLoading(false);
   };
 
@@ -444,7 +546,7 @@ const ClassPulseSection = ({ userId }: { userId: string }) => {
     </div>
   );
 
-  if (summaries.length === 0) return (
+  if (sessions.length === 0) return (
     <div className={`${CARD} py-10 flex flex-col items-center gap-3 text-center px-6`}
       style={{ borderColor: C.blue, boxShadow: `3px 3px 0 0 ${C.blue}` }}>
       <div className="w-12 h-12 rounded-[16px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] flex items-center justify-center" style={{ background: '#DDF3FF' }}>
@@ -452,15 +554,15 @@ const ClassPulseSection = ({ userId }: { userId: string }) => {
       </div>
       <p className={`${DISPLAY} font-extrabold text-[17px] text-[#0F172A]`}>No class notes yet</p>
       <p className="font-['Nunito'] text-[13px] text-[#0F172A]/50 max-w-xs">
-        Your AI-generated class summaries and gap notes will appear here once your teacher uses ClassPulse.
+        Your gap notes will appear here once your teacher records a session in ClassPulse.
       </p>
     </div>
   );
 
   return (
     <div className="space-y-4">
-      {summaries.map((s) => (
-        <ClassPulseSummaryCard key={s.id} summary={s} flagged={flagged} />
+      {sessions.map(s => (
+        <ClassPulseSummaryCard key={s.id} session={s} flagged={flagged} />
       ))}
     </div>
   );
