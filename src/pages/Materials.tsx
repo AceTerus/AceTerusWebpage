@@ -481,6 +481,98 @@ const ClassPulseSummaryCard = ({ session, flagged }: { session: SessionWithGap; 
   );
 };
 
+// ── Mock data shown when no real sessions exist yet ───────────────────────────
+const MOCK_SESSIONS: SessionWithGap[] = [
+  {
+    id: 'mock-1',
+    class_name: '4 Amanah',
+    subject: 'Mathematics',
+    objective_text: 'Students will understand differentiation rules and their real-world applications.',
+    ended_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    conclusion_reports: [{
+      id: 'mock-cr-1',
+      session_id: 'mock-1',
+      coverage_score: 62,
+      concepts_covered: ['Basic Differentiation', 'Power Rule', 'Constant Rule'],
+      concepts_missed: ['Chain Rule', 'Product Rule', 'Quotient Rule'],
+      ai_coaching_note: 'Chain Rule and Product Rule are high-frequency SPM topics. Schedule a focused 20-minute revision before the next class.',
+    }],
+    student_session_summaries: [{
+      id: 'mock-ss-1',
+      session_id: 'mock-1',
+      class_name: '4 Amanah',
+      subject: 'Mathematics',
+      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      covered_notes: 'Reviewed basic differentiation of polynomial functions.\nApplied the Power Rule to simple expressions.\nIntroduced the Constant Rule with worked examples.',
+      key_terms: [
+        { term: 'Derivative', definition: 'The rate of change of a function at any given point.' },
+        { term: 'Power Rule', definition: 'd/dx[xⁿ] = nxⁿ⁻¹ — multiply by the exponent, reduce the power by 1.' },
+      ],
+      gap_notes: [
+        { concept: 'Chain Rule', explanation: 'Used to differentiate composite functions. If y = f(g(x)), then dy/dx = f\'(g(x)) · g\'(x). This often appears in SPM questions involving trigonometric or logarithmic compositions.', example: 'Differentiate y = (3x² + 1)⁵ → dy/dx = 5(3x²+1)⁴ · 6x = 30x(3x²+1)⁴' },
+        { concept: 'Product Rule', explanation: 'For y = u·v, the derivative is dy/dx = u\'v + uv\'. Remember the phrase "first times derivative of second, plus second times derivative of first".', example: 'y = x² · sin(x) → dy/dx = 2x·sin(x) + x²·cos(x)' },
+        { concept: 'Quotient Rule', explanation: 'For y = u/v, use dy/dx = (u\'v − uv\')/v². A common SPM trap is forgetting to subtract — not add — in the numerator.', example: 'y = x/eˣ → dy/dx = (eˣ − xeˣ)/e²ˣ = (1−x)/eˣ' },
+      ],
+      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    }],
+  },
+  {
+    id: 'mock-2',
+    class_name: '4 Amanah',
+    subject: 'Physics',
+    objective_text: 'Understand Newton\'s Laws of Motion and apply them to real-world force problems.',
+    ended_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    conclusion_reports: [{
+      id: 'mock-cr-2',
+      session_id: 'mock-2',
+      coverage_score: 75,
+      concepts_covered: ['Newton\'s 1st Law', 'Newton\'s 2nd Law (F=ma)', 'Free Body Diagrams'],
+      concepts_missed: ['Newton\'s 3rd Law', 'Friction Forces'],
+      ai_coaching_note: 'Newton\'s 3rd Law and friction were skipped due to time. These appear together in almost every SPM mechanics question.',
+    }],
+    student_session_summaries: [{
+      id: 'mock-ss-2',
+      session_id: 'mock-2',
+      class_name: '4 Amanah',
+      subject: 'Physics',
+      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      covered_notes: 'Discussed inertia and the concept of equilibrium (1st Law).\nWorked through F=ma with pulley and incline examples.\nDrawing and interpreting free body diagrams.',
+      key_terms: [
+        { term: 'Inertia', definition: 'The tendency of an object to resist changes to its state of motion.' },
+        { term: 'Net Force', definition: 'The vector sum of all forces acting on an object.' },
+      ],
+      gap_notes: [
+        { concept: 'Newton\'s 3rd Law', explanation: 'Every action has an equal and opposite reaction. The two forces act on DIFFERENT objects — a common exam mistake is applying both forces to the same object.', example: 'When you push a wall with 10 N, the wall pushes back on you with 10 N in the opposite direction.' },
+        { concept: 'Friction Forces', explanation: 'Friction = μ × Normal Force. Static friction prevents motion from starting; kinetic friction slows moving objects. Always check whether the surface is rough or smooth in SPM questions.', example: 'A 5 kg block on a surface with μ = 0.3: friction = 0.3 × 5 × 10 = 15 N' },
+      ],
+      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    }],
+  },
+  {
+    id: 'mock-3',
+    class_name: '4 Amanah',
+    subject: 'Biology',
+    objective_text: 'Cell division — understand the stages of mitosis and meiosis and their biological significance.',
+    ended_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    conclusion_reports: [{
+      id: 'mock-cr-3',
+      session_id: 'mock-3',
+      coverage_score: 55,
+      concepts_covered: ['Mitosis Stages (PMAT)', 'Cell Cycle Overview', 'Chromosomes & DNA'],
+      concepts_missed: ['Meiosis I & II', 'Crossing Over (Genetic Recombination)', 'Significance of Meiosis'],
+      ai_coaching_note: 'Meiosis and crossing over are core SPM Biology topics that were not reached. Students should self-study these sections from Chapter 5.',
+    }],
+    student_session_summaries: [],
+  },
+];
+
+const MOCK_FLAGGED: FlaggedConcept[] = [
+  { id: 'mock-f-1', session_id: 'mock-1', class_name: '4 Amanah', concept_name: 'Chain Rule', resolved: false, created_at: new Date().toISOString() },
+];
+
 // ── Data loader ───────────────────────────────────────────────────────────────
 const ClassPulseSection = ({ userId }: { userId: string }) => {
   const [sessions, setSessions] = useState<SessionWithGap[]>([]);
@@ -546,23 +638,22 @@ const ClassPulseSection = ({ userId }: { userId: string }) => {
     </div>
   );
 
-  if (sessions.length === 0) return (
-    <div className={`${CARD} py-10 flex flex-col items-center gap-3 text-center px-6`}
-      style={{ borderColor: C.blue, boxShadow: `3px 3px 0 0 ${C.blue}` }}>
-      <div className="w-12 h-12 rounded-[16px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] flex items-center justify-center" style={{ background: '#DDF3FF' }}>
-        <BookOpenCheck className="w-5 h-5" style={{ color: C.blue }} />
-      </div>
-      <p className={`${DISPLAY} font-extrabold text-[17px] text-[#0F172A]`}>No class notes yet</p>
-      <p className="font-['Nunito'] text-[13px] text-[#0F172A]/50 max-w-xs">
-        Your gap notes will appear here once your teacher records a session in ClassPulse.
-      </p>
-    </div>
-  );
+  const displaySessions = sessions.length > 0 ? sessions : MOCK_SESSIONS;
+  const displayFlagged  = sessions.length > 0 ? flagged  : MOCK_FLAGGED;
+  const isMock = sessions.length === 0;
 
   return (
     <div className="space-y-4">
-      {sessions.map(s => (
-        <ClassPulseSummaryCard key={s.id} session={s} flagged={flagged} />
+      {isMock && (
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-[14px] border-[2px] border-[#2F7CFF]/25 bg-[#DDF3FF]">
+          <BookOpenCheck className="w-4 h-4 shrink-0" style={{ color: C.blue }} />
+          <p className="font-['Nunito'] font-bold text-[12.5px] text-[#2F7CFF] leading-snug">
+            <strong className="font-extrabold">Sample notes</strong> — your real class gap notes will appear here once your teacher records a session in ClassPulse.
+          </p>
+        </div>
+      )}
+      {displaySessions.map(s => (
+        <ClassPulseSummaryCard key={s.id} session={s} flagged={displayFlagged} />
       ))}
     </div>
   );
