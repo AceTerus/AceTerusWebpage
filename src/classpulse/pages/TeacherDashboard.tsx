@@ -142,6 +142,23 @@ export default function TeacherDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchSessions(); }, [user]);
 
+  // Real-time: keep session statuses in sync so live callout appears/disappears instantly
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("teacher-sessions-status")
+      .on("postgres_changes", {
+        event: "UPDATE", schema: "public", table: "class_sessions",
+        filter: `teacher_id=eq.${user.id}`,
+      }, (payload) => {
+        setSessions(prev =>
+          prev.map(s => s.id === payload.new.id ? { ...s, ...(payload.new as ClassSession) } : s)
+        );
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
   const activeSession = sessions.find(s => s.status === "active") ?? null;
 
   useEffect(() => {
@@ -376,8 +393,8 @@ export default function TeacherDashboard() {
           </div>
         </section>
 
-        {/* ── Live callout ── */}
-        {activeSession && (
+        {/* ── Live callout — only renders while a session is actively recording ── */}
+        {!loading && activeSession && (
           <div className="flex mb-4 rounded-[20px] overflow-hidden border-[2.5px] border-[#0F172A] bg-white shadow-[4px_4px_0_0_#DC2626]">
             <div className="w-2 flex-shrink-0" style={{ background:"repeating-linear-gradient(45deg,#DC2626,#DC2626 8px,#fff 8px,#fff 16px)" }} />
             <div className="flex flex-1 items-center justify-between gap-4 p-4 flex-wrap">
