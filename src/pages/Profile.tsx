@@ -704,7 +704,7 @@ export const Profile = () => {
 
   return (
     <div className="min-h-screen bg-transparent overflow-x-hidden">
-      <div className="container mx-auto px-4 pt-8 pb-20 lg:pb-8 max-w-4xl">
+      <div className="container mx-auto px-4 pt-8 pb-24 lg:pb-8 max-w-4xl">
 
         {/* Mobile notifications bell */}
         <div className="flex justify-end mb-4 lg:hidden">

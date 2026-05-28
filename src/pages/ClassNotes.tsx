@@ -317,7 +317,7 @@ export default function ClassNotes() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FF]">
-      <div className="max-w-[860px] mx-auto px-5 pt-7 pb-20">
+      <div className="max-w-[860px] mx-auto px-5 pt-7 pb-24">
 
         {/* ── Hero header ── */}
         <div

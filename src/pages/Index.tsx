@@ -319,7 +319,7 @@ const Index = () => {
               <a href="#rewards" className="atl-nav-link hover:text-[#2F7CFF]">Rewards</a>
             </nav>
             <div className="flex items-center gap-2">
-              <a href="https://classpulse.aceterus.com" target="_blank" rel="noopener noreferrer">
+              <a href="https://classpulse.aceterus.com" target="_blank" rel="noopener noreferrer" className="hidden sm:block">
                 <button
                   className={`${BTN} !py-2 !px-5 !text-sm text-white gap-1.5`}
                   style={{ background: `linear-gradient(135deg, ${C.indigo} 0%, #7C3AED 100%)` }}
@@ -330,7 +330,9 @@ const Index = () => {
               </a>
               <Link to="/auth">
                 <button className={`${BTN} !py-2 !px-4 !text-sm text-white`} style={{ background: C.blue }}>
-                  Jump in <ArrowRight className="w-4 h-4" />
+                  <span className="hidden sm:inline">Jump in</span>
+                  <span className="sm:hidden">Sign in</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </Link>
             </div>
@@ -632,7 +634,7 @@ const Index = () => {
       <section className="px-5 py-24">
         <Reveal from="bottom">
         <div
-          className={`${STICKER} max-w-4xl mx-auto p-12 text-center relative overflow-hidden text-white`}
+          className={`${STICKER} max-w-4xl mx-auto p-6 sm:p-12 text-center relative overflow-hidden text-white`}
           style={{ background: `linear-gradient(135deg, ${C.cyan} 0%, ${C.blue} 55%, ${C.indigo} 100%)` }}
         >
           <Star     className="absolute atl-float"  style={{ top: 20,    left:  30,  color: C.sun, fill: C.sun, width: 36, height: 36 }} />

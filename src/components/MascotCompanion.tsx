@@ -44,7 +44,7 @@ const MascotCompanion = () => {
       <button
         onClick={toggleMinimized}
         aria-label="Expand Ace"
-        className="fixed bottom-20 right-4 z-50 lg:bottom-6 lg:right-6 mascot-float flex items-center justify-center focus:outline-none"
+        className="fixed bottom-24 right-4 z-50 lg:bottom-6 lg:right-6 mascot-float flex items-center justify-center focus:outline-none"
         style={{ pointerEvents: 'auto' }}
       >
         <span className="text-5xl drop-shadow-lg select-none">⭐</span>
@@ -60,7 +60,7 @@ const MascotCompanion = () => {
   // ── Full mascot ──────────────────────────────────────────────────────────
   return (
     <div
-      className={`fixed bottom-20 right-3 z-50 flex flex-col items-center gap-2 lg:bottom-6 lg:right-5 ${entered ? 'mascot-entrance' : 'opacity-0'}`}
+      className={`fixed bottom-24 right-3 z-50 flex flex-col items-center gap-2 lg:bottom-6 lg:right-5 ${entered ? 'mascot-entrance' : 'opacity-0'}`}
       style={{ pointerEvents: 'none' }}
     >
       {/* Speech bubble */}

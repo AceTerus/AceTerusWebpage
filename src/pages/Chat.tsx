@@ -415,7 +415,7 @@ export const Chat = () => {
 
   return (
     <div
-      className="flex h-[calc(100vh-4rem)] lg:h-screen w-full overflow-hidden bg-transparent"
+      className="flex h-[calc(100dvh-60px)] lg:h-screen w-full overflow-hidden bg-transparent"
       onClick={() => setActiveMessageMenu(null)}
     >
       {/* ── Forward modal ── */}

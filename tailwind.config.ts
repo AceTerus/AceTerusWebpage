@@ -105,5 +105,17 @@ export default {
 		}
 	},
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	plugins: [require("tailwindcss-animate")],
+	plugins: [
+		require("tailwindcss-animate"),
+		// Safe-area utilities for iOS notch / home-indicator support
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		require("tailwindcss/plugin")(({ addUtilities }: { addUtilities: (u: Record<string, Record<string, string>>) => void }) => {
+			addUtilities({
+				".pb-safe": { paddingBottom: "env(safe-area-inset-bottom, 0px)" },
+				".pt-safe": { paddingTop: "env(safe-area-inset-top, 0px)" },
+				".pl-safe": { paddingLeft: "env(safe-area-inset-left, 0px)" },
+				".pr-safe": { paddingRight: "env(safe-area-inset-right, 0px)" },
+			});
+		}),
+	],
 } satisfies Config;

@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Mobile / responsive globals ─────────────────────────────────────── */
+html, body {
+  overflow-x: hidden;
+  /* Support iOS safe-area env() variables */
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  padding: 0; /* reset — pages apply their own padding */
+}
+
+/* Prevent background scroll when any modal/overlay is open */
+body.overflow-hidden {
+  overflow: hidden;
+}
+
+/* Smooth scrolling on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
 @keyframes page-enter {
   0%   { opacity: 0; transform: translateY(14px) scale(0.99); }
   60%  { opacity: 1; }
