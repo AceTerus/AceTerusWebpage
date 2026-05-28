@@ -483,6 +483,12 @@ export default function TeacherDashboard() {
                   upnext: { bg:"#EEEDFF", border:"#2E2BE5",                shadow:"2px 2px 0 0 #2E2BE5",        labelColor:"#2E2BE5", topLabel:`P${slot.period} · Up next` },
                 }[slot.kind];
 
+                const report = s.conclusion_reports?.[0] ?? null;
+                const slotTes = slot.kind === "done" && report != null
+                  ? Math.round((report.teaching_effectiveness_score ?? report.coverage_score) ?? 0)
+                  : null;
+                const slotTesColor = slotTes != null ? scoreColor(slotTes) : "#16A56B";
+
                 return (
                   <div
                     key={s.id} className={`${base} cursor-pointer hover:-translate-y-px`}
@@ -497,8 +503,18 @@ export default function TeacherDashboard() {
                       <span style={timeSt}>{slot.time}</span>
                     </div>
                     <div>
-                      <div className={`${D} font-extrabold text-[14px] text-[#0F172A] leading-tight`} style={{ letterSpacing:"-0.01em" }}>{s.class_name}</div>
-                      <div style={{ fontFamily:"'Nunito',sans-serif", fontSize:10.5, fontWeight:700, color:"rgba(15,23,42,0.50)", marginTop:2 }}>{s.subject}</div>
+                      <div className="flex items-end justify-between gap-1">
+                        <div>
+                          <div className={`${D} font-extrabold text-[14px] text-[#0F172A] leading-tight`} style={{ letterSpacing:"-0.01em" }}>{s.class_name}</div>
+                          <div style={{ fontFamily:"'Nunito',sans-serif", fontSize:10.5, fontWeight:700, color:"rgba(15,23,42,0.50)", marginTop:2 }}>{s.subject}</div>
+                        </div>
+                        {slotTes != null && (
+                          <div className="flex flex-col items-end flex-shrink-0">
+                            <span className={`${D} font-extrabold leading-none`} style={{ fontSize:15, color: slotTesColor }}>{slotTes}%</span>
+                            <span style={{ fontFamily:"'Nunito',sans-serif", fontSize:8.5, fontWeight:800, color: slotTesColor, opacity:0.7, textTransform:"uppercase", letterSpacing:"0.05em" }}>TES</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
