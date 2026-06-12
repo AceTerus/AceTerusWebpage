@@ -22,6 +22,18 @@ export const FileUpload = ({ onUploadCreated }: FileUploadProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
 
+  const ALLOWED_FILE_TYPES = [
+    'application/pdf',
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain', 'text/csv',
+  ];
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -29,6 +41,14 @@ export const FileUpload = ({ onUploadCreated }: FileUploadProps) => {
         toast({
           title: "File too large",
           description: "Please select a file under 50MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+        toast({
+          title: "File type not allowed",
+          description: "Please upload a PDF, image, or document file",
           variant: "destructive",
         });
         return;

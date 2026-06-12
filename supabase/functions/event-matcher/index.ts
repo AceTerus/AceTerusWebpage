@@ -1,19 +1,18 @@
 // Supabase Edge Function: AI-powered event recommendations via Gemini
 import { serve } from "https://deno.land/std@0.213.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GEMINI_API_KEY_MASCOT") ?? "";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return handleCorsOptions(req);
   }
 
   try {
@@ -101,7 +100,8 @@ Return ONLY a valid JSON object (no markdown) with:
 
     if (!geminiRes.ok) {
       const txt = await geminiRes.text();
-      return jsonError(500, `Gemini error: ${txt}`);
+      console.error("Gemini error:", txt);
+      return jsonError(500, "AI recommendations temporarily unavailable.");
     }
 
     const geminiData = await geminiRes.json();

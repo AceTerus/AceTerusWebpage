@@ -375,11 +375,7 @@ const Quiz = () => {
       if (correctSubjCount > 0 && session) {
          const coinsEarned = correctSubjCount * 5;
          try {
-            const { data: profile, error: selectError } = await (supabase as any).from('profiles').select('*').eq('user_id', session.user.id).single();
-            if (selectError) throw selectError;
-            const currentCoins = (profile as any)?.ace_coins || 0;
-            const { error: updateError } = await (supabase as any).from('profiles').update({ ace_coins: currentCoins + coinsEarned }).eq('user_id', session.user.id);
-            if (updateError) throw updateError;
+            await (supabase as any).rpc('add_ace_coins', { p_amount: coinsEarned });
             setAceCoins(prev => prev + coinsEarned);
             pushMessage(`You earned ${coinsEarned} ACE Coins for your correct answers! 💰`, 'normal', 'happy');
          } catch (e) { console.error("Coin error", e); }
@@ -412,11 +408,7 @@ const Quiz = () => {
       if (snapshotCorrect > 0) {
          const coinsEarned = snapshotCorrect * 5;
          try {
-            const { data: profile, error: selectError } = await (supabase as any).from('profiles').select('*').eq('user_id', authSession2.user.id).single();
-            if (selectError) throw selectError;
-            const currentCoins = (profile as any)?.ace_coins || 0;
-            const { error: updateError } = await (supabase as any).from('profiles').update({ ace_coins: currentCoins + coinsEarned }).eq('user_id', authSession2.user.id);
-            if (updateError) throw updateError;
+            await (supabase as any).rpc('add_ace_coins', { p_amount: coinsEarned });
             setAceCoins(prev => prev + coinsEarned);
             pushMessage(`You earned ${coinsEarned} ACE Coins for your correct answers! 💰`, 'normal', 'happy');
          } catch (e) { console.error("Coin error", e); }

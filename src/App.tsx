@@ -75,7 +75,9 @@ const OnboardingGuard = () => {
   const { user, isNewUser, isLoading } = useAuth();
   const location = useLocation();
   if (isLoading) return null;
-  if (user && isNewUser && location.pathname !== "/onboarding") {
+  // Don't redirect if user already completed or skipped onboarding
+  const onboardingDone = localStorage.getItem('ace_onboarding_done') === '1';
+  if (user && isNewUser && !onboardingDone && location.pathname !== "/onboarding") {
     return <Navigate to="/onboarding" replace />;
   }
   return null;

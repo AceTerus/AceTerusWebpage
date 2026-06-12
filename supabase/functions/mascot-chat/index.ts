@@ -1,12 +1,8 @@
 // Supabase Edge Function: Ace mascot chat powered by Gemini
 import { serve } from "https://deno.land/std@0.213.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -22,8 +18,10 @@ const ACE_SYSTEM_PROMPT = `You are Ace, a friendly and energetic star-shaped stu
 - If asked something outside studying/learning, gently steer back to academics`;
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return handleCorsOptions(req);
   }
 
   try {
@@ -80,7 +78,7 @@ serve(async (req) => {
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
       console.error("Gemini error:", geminiRes.status, errText);
-      return jsonError(502, `Gemini API error ${geminiRes.status}`);
+      return jsonError(502, "AI service temporarily unavailable. Please try again.");
     }
 
     const geminiData = await geminiRes.json();

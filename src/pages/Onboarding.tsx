@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -70,12 +70,22 @@ export default function Onboarding() {
       }
 
       // Update profile
-      await (supabase as any).from("profiles").update({
+      const { error: profileErr } = await (supabase as any).from("profiles").update({
         username: username.trim(),
         bio: bio.trim() || null,
-        is_teacher: isTeacher,
         ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
       }).eq("user_id", user.id);
+      if (profileErr) throw profileErr;
+
+      // Verify the write actually persisted before navigating
+      const { data: verify } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("user_id", user.id)
+        .single();
+      if (!(verify as any)?.username) {
+        throw new Error("Profile update did not persist — please try again.");
+      }
 
       // Save school if chosen
       if (school) {
@@ -91,10 +101,13 @@ export default function Onboarding() {
       }
 
       setIsNewUser(false);
+      // Persist so syncProfile doesn't flip isNewUser back before DB is consistent
+      localStorage.setItem('ace_onboarding_done', '1');
       toast({ title: "Welcome to AceTerus! 🎉", description: "Your profile is all set." });
       navigate("/");
-    } catch {
-      toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
+    } catch (e: any) {
+      console.error("Onboarding error:", e);
+      toast({ title: "Something went wrong", description: e?.message || "Please try again.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -106,8 +119,13 @@ export default function Onboarding() {
   };
 
   // Don't show for existing users who navigated here directly
+  useEffect(() => {
+    if (!isNewUser && !saving) {
+      navigate("/", { replace: true });
+    }
+  }, [isNewUser, saving, navigate]);
+
   if (!isNewUser && !saving) {
-    navigate("/");
     return null;
   }
 
@@ -338,7 +356,11 @@ export default function Onboarding() {
           {/* Skip */}
           <button
             type="button"
-            onClick={() => { setIsNewUser(false); navigate("/"); }}
+            onClick={() => {
+              localStorage.setItem('ace_onboarding_done', '1');
+              setIsNewUser(false);
+              navigate("/", { replace: true });
+            }}
             className="text-center text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors"
           >
             Skip for now →
