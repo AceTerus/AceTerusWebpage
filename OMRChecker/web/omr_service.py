@@ -12,8 +12,10 @@ Public surface:
     grade(file_bytes, filename)        -> result dict (score, per_question, annotated image)
 """
 import base64
+import json
 import os
 import sys
+import tempfile
 import threading
 from copy import deepcopy
 from pathlib import Path
@@ -332,9 +334,57 @@ def _encode_annotated(final_marked):
     return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode("ascii")
 
 
+def _grade_with_config(file_bytes, filename, evaluation_config):
+    """
+    Run the full read+grade pipeline against an already-built EvaluationConfig.
+
+    MUST be called while holding _LOCK (the engine objects carry mutable per-run
+    state). Returns the standard result dict (see grade()).
+    """
+    template = _require_template()
+    ops = template.image_instance_ops
+
+    in_omr = _bytes_to_grayscale(file_bytes, filename)
+
+    # Perspective-correct via the corner markers (no-op fallback if not found).
+    in_omr, _markers_found = _perspective_correct(in_omr)
+
+    ops.reset_all_save_img()
+    ops.append_save_img(1, in_omr)
+
+    in_omr = ops.apply_preprocessors(filename or "upload", in_omr, template)
+    if in_omr is None:
+        raise ScanError(
+            "Could not detect the OMR sheet in this image. Retake the photo with "
+            "the whole sheet flat, well-lit and in frame."
+        )
+
+    response_dict, final_marked, multi_marked, _ = ops.read_omr_response(
+        template, image=in_omr, name=str(filename or "upload"), save_dir=None
+    )
+    omr_response = get_concatenated_response(response_dict, template)
+
+    score = evaluate_concatenated_response(
+        omr_response, evaluation_config, Path(str(filename or "upload")), None
+    )
+
+    per_question = _explanation_rows(evaluation_config)
+    max_score = _compute_max_score(evaluation_config)
+    annotated = _encode_annotated(final_marked)
+
+    return {
+        "score": round(float(score), 2),
+        "max_score": round(float(max_score), 2),
+        "multi_marked": bool(multi_marked),
+        "per_question": per_question,
+        "responses": omr_response,
+        "annotated_image": annotated,
+    }
+
+
 def grade(file_bytes, filename):
     """
-    Grade a single uploaded sheet against the current answer key.
+    Grade a single uploaded sheet against the current (stored) answer key.
 
     Returns a dict:
       {
@@ -345,47 +395,56 @@ def grade(file_bytes, filename):
       }
     """
     with _LOCK:
-        template = _require_template()
         evaluation_config = _state["evaluation_config"]
         if evaluation_config is None:
             raise ScanError(
                 "No answer key set yet. Add an answer key before scanning a sheet."
             )
+        return _grade_with_config(file_bytes, filename, evaluation_config)
 
-        ops = template.image_instance_ops
-        in_omr = _bytes_to_grayscale(file_bytes, filename)
 
-        # Perspective-correct via the corner markers (no-op fallback if not found).
-        in_omr, _markers_found = _perspective_correct(in_omr)
+def grade_with_key(file_bytes, filename, answers_in_order, marking):
+    """
+    Grade a single uploaded sheet against an answer key supplied per-request
+    (e.g. the selected exam's key from the app), without touching the stored key.
 
-        ops.reset_all_save_img()
-        ops.append_save_img(1, in_omr)
+    answers_in_order grades the first N questions of the fixed sheet layout
+    (N = len(answers_in_order)); any remaining bubbles are ignored. Returns the
+    same dict shape as grade().
+    """
+    n = len(answers_in_order)
+    if n == 0:
+        raise ScanError("Answer key is empty.")
 
-        in_omr = ops.apply_preprocessors(filename or "upload", in_omr, template)
-        if in_omr is None:
+    with _LOCK:
+        template = _require_template()
+        tuning_config = _state["tuning_config"]
+        all_questions = list(template.output_columns)
+        if n > len(all_questions):
             raise ScanError(
-                "Could not detect the OMR sheet in this image. Retake the photo with "
-                "the whole sheet flat, well-lit and in frame."
+                f"Answer key has {n} answers but the sheet supports only "
+                f"{len(all_questions)} questions."
             )
+        questions = all_questions[:n]
 
-        response_dict, final_marked, multi_marked, _ = ops.read_omr_response(
-            template, image=in_omr, name=str(filename or "upload"), save_dir=None
+        payload = build_answer_key_payload(answers_in_order, marking or {}, questions)
+        jsonschema_validate(instance=payload, schema=EVALUATION_SCHEMA)
+
+        # EvaluationConfig reads its key from a file path; write a throwaway one.
+        tmp = tempfile.NamedTemporaryFile(
+            "w", suffix=".json", delete=False, encoding="utf-8"
         )
-        omr_response = get_concatenated_response(response_dict, template)
-
-        score = evaluate_concatenated_response(
-            omr_response, evaluation_config, Path(str(filename or "upload")), None
-        )
-
-        per_question = _explanation_rows(evaluation_config)
-        max_score = _compute_max_score(evaluation_config)
-        annotated = _encode_annotated(final_marked)
-
-    return {
-        "score": round(float(score), 2),
-        "max_score": round(float(max_score), 2),
-        "multi_marked": bool(multi_marked),
-        "per_question": per_question,
-        "responses": omr_response,
-        "annotated_image": annotated,
-    }
+        try:
+            json.dump(payload, tmp)
+            tmp.flush()
+            tmp.close()
+            evaluation_config = EvaluationConfig(
+                LAYOUT_DIR, Path(tmp.name), template, tuning_config
+            )
+            evaluation_config.should_explain_scoring = True
+            return _grade_with_config(file_bytes, filename, evaluation_config)
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except OSError:
+                pass

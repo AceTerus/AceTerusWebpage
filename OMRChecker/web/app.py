@@ -6,10 +6,11 @@ Run from the repo root:
 
 Then open http://localhost:8000 (or http://<your-LAN-ip>:8000 from a phone).
 """
+import json
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -95,19 +96,40 @@ def api_save_answer_key(payload: AnswerKeyPayload):
 
 
 @app.post("/api/scan")
-async def api_scan(file: UploadFile = File(...)):
-    if not omr_service.has_answer_key():
-        raise HTTPException(
-            status_code=400,
-            detail="No answer key set. Save an answer key before scanning.",
-        )
+async def api_scan(file: UploadFile = File(...), answer_key: str = Form(None)):
+    """
+    Grade an uploaded sheet. If `answer_key` (JSON: {answers_in_order, marking})
+    is provided, grade against it (the app sends the chosen exam's key). Otherwise
+    fall back to the stored global key.
+    """
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="Empty upload.")
     try:
-        result = omr_service.grade(data, file.filename)
+        if answer_key:
+            try:
+                key = json.loads(answer_key)
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="answer_key must be valid JSON.")
+            answers = key.get("answers_in_order")
+            marking = key.get("marking") or {}
+            if not isinstance(answers, list) or not answers:
+                raise HTTPException(
+                    status_code=400,
+                    detail="answer_key.answers_in_order must be a non-empty list.",
+                )
+            result = omr_service.grade_with_key(data, file.filename, answers, marking)
+        else:
+            if not omr_service.has_answer_key():
+                raise HTTPException(
+                    status_code=400,
+                    detail="No answer key provided and none stored.",
+                )
+            result = omr_service.grade(data, file.filename)
     except omr_service.ScanError as e:
         raise HTTPException(status_code=422, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
     return JSONResponse(result)

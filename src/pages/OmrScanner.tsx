@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  AlertCircle, Camera, CheckCircle2, ChevronLeft,
-  Loader2, RefreshCw, ScanLine, Upload, X, XCircle,
+  AlertCircle, Camera, CheckCircle2, ChevronLeft, Eye, EyeOff, ListChecks,
+  Loader2, Plus, RefreshCw, ScanLine, Trash2, Upload, X, XCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  createOmrExam, deleteOmrExam, fetchOmrExams, fetchOmrScanResults,
+  saveOmrScanResult, toggleOmrExamPublished,
+  type OmrExam, type OmrPerQuestion, type OmrScanRow,
+} from "@/lib/omr-client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OMR Scanner — wired to the OMRChecker FastAPI service (OMRChecker/web).
-// Stateless backend: one global answer key + instant per-scan grading.
-//   GET  /api/questions    → ordered question labels
-//   GET  /api/answer-key   → { has_key }
-//   POST /api/answer-key   → { answers_in_order, marking }
-//   POST /api/scan (file)  → { score, max_score, multi_marked, per_question, ... }
-// Styled to match the Quiz Arena (Quiz.tsx) "sticker" design system.
+// OMR Scanner — exam-based grading.
+//   • Admins author exams (title + answer key + marking) stored in Supabase.
+//   • Users pick a published exam, scan their sheet, and instantly see the score;
+//     each scan is saved (omr_scan_results) for the admin Review screen.
+// The OMR service (OMRChecker/web) grades a sheet against the exam's key passed
+// per-request to POST /api/scan. Styled to match the Quiz Arena (Quiz.tsx).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const OMR_API = import.meta.env.VITE_OMR_API ?? "http://localhost:8080";
@@ -35,33 +39,57 @@ const BTN_SM = "inline-flex items-center justify-center gap-2 font-bold font-['B
 const TAG = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-[2.5px] border-[#0F172A] font-extrabold text-xs";
 const FIELD = "w-full px-4 py-2.5 text-sm font-semibold border-[2.5px] border-[#0F172A] rounded-[14px] shadow-[2px_2px_0_0_#0F172A] bg-white outline-none focus:shadow-[3px_3px_0_0_#0F172A] transition-shadow placeholder:text-slate-400";
 
-interface PerQuestion {
-  question: string;
-  marked: string;
-  answer: string;
-  verdict: string;
-  delta: string;
-}
-
 interface ScanResult {
   score: number;
   max_score: number;
   multi_marked: boolean;
-  per_question: PerQuestion[];
+  per_question: OmrPerQuestion[];
   responses: Record<string, string>;
   annotated_image: string | null;
 }
 
 type Msg = { text: string; type: "error" | "success" | "info" } | null;
 
+const isCorrect = (verdict: string) => verdict.trim().toLowerCase() === "correct";
+
+/** Parse the answer-key textarea ("1,A" lines or bare letters) into N A–D answers. */
+function parseAnswerKey(text: string, count: number): { answers?: string[]; error?: string } {
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return { error: "Enter the answer key." };
+
+  let answers: string[];
+  if (lines.every(l => l.includes(","))) {
+    const map = new Map<number, string>();
+    for (const line of lines) {
+      const [numStr, ans] = line.split(",").map(s => s.trim());
+      const num = parseInt(numStr, 10);
+      if (!num || !ans) return { error: `Bad line: "${line}". Use "1,A" per line.` };
+      map.set(num, ans.toUpperCase());
+    }
+    answers = Array.from({ length: count }, (_, i) => map.get(i + 1) ?? "");
+  } else {
+    answers = lines.map(l => l.toUpperCase());
+  }
+
+  if (answers.length !== count || answers.some(a => !a)) {
+    return { error: `Expected ${count} answers, got ${answers.filter(Boolean).length}.` };
+  }
+  if (answers.some(a => !/^[A-D]$/.test(a))) {
+    return { error: "Answers must be single letters A–D (the sheet is 4-option)." };
+  }
+  return { answers };
+}
+
 export default function OmrScanner() {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
 
-  // ── API state ──────────────────────────────────────────────────────────────
-  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
-  const [hasKey, setHasKey]       = useState(false);
-  const [questions, setQuestions] = useState<string[]>([]);
+  // ── API + exams ──────────────────────────────────────────────────────────
+  const [apiOnline, setApiOnline]   = useState<boolean | null>(null);
+  const [sheetSize, setSheetSize]   = useState(20);
+  const [exams, setExams]           = useState<OmrExam[]>([]);
+  const [examsLoading, setExamsLoading] = useState(true);
+  const [selectedExamId, setSelectedExamId] = useState("");
 
   // ── Camera / file ────────────────────────────────────────────────────────
   const videoRef            = useRef<HTMLVideoElement>(null);
@@ -70,8 +98,7 @@ export default function OmrScanner() {
   const overlayRef          = useRef<HTMLCanvasElement>(null);
   const rafRef              = useRef<number | null>(null);
   const cornerStableRef     = useRef<number | null>(null);
-  const offscreenRef        = useRef<HTMLCanvasElement | null>(null); // reused across frames
-  const userClosedCameraRef = useRef(false);                          // true when user taps X
+  const offscreenRef        = useRef<HTMLCanvasElement | null>(null);
   const nativeCameraRef     = useRef<HTMLInputElement>(null);
   const [cameraOpen,      setCameraOpen]      = useState(false);
   const [cameraError,     setCameraError]     = useState<string | null>(null);
@@ -87,27 +114,42 @@ export default function OmrScanner() {
   const [result, setResult]         = useState<ScanResult | null>(null);
   const [scanMsg, setScanMsg]       = useState<Msg>(null);
 
-  // ── Admin: setup ─────────────────────────────────────────────────────────
-  const [adminTab, setAdminTab]         = useState<"setup" | "scan">("setup");
-  const [answerKeyText, setAnswerKeyText] = useState("");
-  const [marking, setMarking]           = useState({ correct: "1", incorrect: "0", unmarked: "0" });
-  const [savingKey, setSavingKey]       = useState(false);
-  const [answerKeyMsg, setAnswerKeyMsg] = useState<Msg>(null);
+  // ── Admin ────────────────────────────────────────────────────────────────
+  const [adminTab, setAdminTab] = useState<"manage" | "scan" | "review">("manage");
+  // create-exam form
+  const [newTitle, setNewTitle]         = useState("");
+  const [newCount, setNewCount]         = useState("20");
+  const [newAnswers, setNewAnswers]     = useState("");
+  const [newMarking, setNewMarking]     = useState({ correct: "1", incorrect: "0", unmarked: "0" });
+  const [creating, setCreating]         = useState(false);
+  const [manageMsg, setManageMsg]       = useState<Msg>(null);
+  // review
+  const [reviewExamId, setReviewExamId] = useState("");
+  const [reviewRows, setReviewRows]     = useState<OmrScanRow[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
-  // ── Initialise: probe API, learn whether a key exists, fetch question count ──
+  const selectedExam = exams.find(e => e.id === selectedExamId) ?? null;
+
+  const loadExams = useCallback(async () => {
+    setExamsLoading(true);
+    try {
+      setExams(await fetchOmrExams(isAdmin ? false : true));
+    } catch {
+      setExams([]);
+    } finally {
+      setExamsLoading(false);
+    }
+  }, [isAdmin]);
+
+  // ── Initialise: probe service + load exams ───────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [keyRes, qRes] = await Promise.all([
-          fetch(`${OMR_API}/api/answer-key`, { signal: AbortSignal.timeout(8000) }),
-          fetch(`${OMR_API}/api/questions`,  { signal: AbortSignal.timeout(8000) }),
-        ]);
-        const keyData = await keyRes.json();
-        const qData   = await qRes.json();
+        const res = await fetch(`${OMR_API}/api/questions`, { signal: AbortSignal.timeout(8000) });
+        const data = await res.json();
         if (cancelled) return;
-        setHasKey(Boolean(keyData.has_key));
-        setQuestions(Array.isArray(qData.questions) ? qData.questions : []);
+        if (Array.isArray(data.questions) && data.questions.length) setSheetSize(data.questions.length);
         setApiOnline(true);
       } catch {
         if (!cancelled) setApiOnline(false);
@@ -116,19 +158,24 @@ export default function OmrScanner() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => { loadExams(); }, [loadExams]);
+
+  // Auto-select when a single exam is available
+  useEffect(() => {
+    if (exams.length === 1 && !selectedExamId) setSelectedExamId(exams[0].id);
+  }, [exams, selectedExamId]);
+
   // ── Camera ───────────────────────────────────────────────────────────────
   const DARK_THR   = 70;
   const DARK_RATIO = 0.03;
-  const STABLE_MS  = 2000; // 2s hold — reduces false-positive auto-captures
+  const STABLE_MS  = 2000;
 
-  // 1) capture — no deps on other useCallbacks
   const triggerCapture = useCallback(() => {
     const video  = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     cornerStableRef.current = null;
-    // Cap at 2000px max dimension to reduce upload size
     const MAX = 2000;
     const scale = Math.min(1, MAX / Math.max(video.videoWidth, video.videoHeight));
     canvas.width  = Math.round(video.videoWidth  * scale);
@@ -143,7 +190,6 @@ export default function OmrScanner() {
     }, "image/jpeg", 0.92);
   }, []);
 
-  // 2) detection loop — depends on triggerCapture
   const startCornerDetection = useCallback(() => {
     const loop = () => {
       const vid = videoRef.current;
@@ -159,7 +205,6 @@ export default function OmrScanner() {
       const vw = vid.videoWidth, vh = vid.videoHeight;
       const dw = cvs.width,      dh = cvs.height;
 
-      // object-contain letterbox: compute visible video rect in display space
       const vidAR = vw / vh, dispAR = dw / dh;
       let vidLeft = 0, vidTop = 0, vidRight = dw, vidBottom = dh;
       if (vidAR > dispAR) {
@@ -171,7 +216,6 @@ export default function OmrScanner() {
       }
       const contentW = vidRight - vidLeft, contentH = vidBottom - vidTop;
 
-      // Offscreen canvas samples only the content area (excludes letterbox bars)
       const SW = 320, SH = Math.round(contentH / contentW * SW);
       if (!offscreenRef.current) offscreenRef.current = document.createElement("canvas");
       const off = offscreenRef.current;
@@ -180,13 +224,11 @@ export default function OmrScanner() {
       offCtx.drawImage(vid, vidLeft, vidTop, contentW, contentH, 0, 0, SW, SH);
       const { data } = offCtx.getImageData(0, 0, SW, SH);
 
-      // Guide frame in offscreen coords — mirrors the visual guide drawn on the overlay
       const gxL = Math.round(SW * 0.07),  gxR = Math.round(SW * 0.93);
       const gyT = Math.round(SH * 0.04);
       const gyB = Math.min(SH - 1, Math.round(gyT + SW * 0.86 * (297 / 210)));
       const bx  = Math.floor(SW * 0.08),  by = Math.floor(SH * 0.08);
 
-      // Detection regions at the 4 guide-frame corners (where markers should appear)
       const regions = [
         { x1: Math.max(0, gxL-bx), y1: Math.max(0, gyT-by), x2: Math.min(SW, gxL+bx), y2: Math.min(SH, gyT+by) },
         { x1: Math.max(0, gxR-bx), y1: Math.max(0, gyT-by), x2: Math.min(SW, gxR+bx), y2: Math.min(SH, gyT+by) },
@@ -224,14 +266,12 @@ export default function OmrScanner() {
       const ctx = cvs.getContext("2d")!;
       ctx.clearRect(0, 0, dw, dh);
 
-      // Guide frame (A4 ratio centred in content area)
       const GX = vidLeft  + contentW * 0.07;
       const GY = vidTop   + contentH * 0.04;
       const GW = contentW * 0.86;
       const GH = GW * (297 / 210);
       const borderCol = allFound ? "#22c55e" : "rgba(255,255,255,0.85)";
 
-      // Dark vignette outside the guide frame (path-with-hole)
       ctx.save();
       ctx.fillStyle = "rgba(0,0,0,0.52)";
       ctx.beginPath();
@@ -240,12 +280,10 @@ export default function OmrScanner() {
       ctx.fill("evenodd");
       ctx.restore();
 
-      // Guide border + progress glow when all corners detected
       ctx.strokeStyle = borderCol;
       ctx.lineWidth   = allFound ? 3 + progress / 100 * 2 : 2.5;
       ctx.strokeRect(GX, GY, GW, GH);
 
-      // Corner brackets on guide frame
       const B = 22;
       ctx.lineWidth = 4; ctx.lineCap = "round";
       ctx.strokeStyle = borderCol;
@@ -262,13 +300,11 @@ export default function OmrScanner() {
         ctx.stroke();
       }
 
-      // Instruction label
       ctx.fillStyle  = "rgba(255,255,255,0.88)";
       ctx.font       = `bold ${Math.round(dw * 0.036)}px system-ui, sans-serif`;
       ctx.textAlign  = "center";
       ctx.fillText("Fit the answer sheet within the frame", dw / 2, Math.max(GY - 10, 16));
 
-      // Detected marker dots (yellow when partial, green when all found)
       const defaultPts = [
         { x: GX / dw,        y: GY / dh },
         { x: (GX + GW) / dw, y: GY / dh },
@@ -293,7 +329,6 @@ export default function OmrScanner() {
     rafRef.current = requestAnimationFrame(loop);
   }, [triggerCapture]);
 
-  // 3) open — depends on startCornerDetection
   const openCamera = useCallback(async () => {
     setCameraError(null);
     try {
@@ -323,7 +358,6 @@ export default function OmrScanner() {
     }
   }, [startCornerDetection]);
 
-  // 4) close
   const closeCamera = useCallback((intentional = false) => {
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     cornerStableRef.current = null;
@@ -332,23 +366,10 @@ export default function OmrScanner() {
     setCameraOpen(false);
     setCornersDetected(false);
     setCaptureProgress(0);
-    if (intentional) userClosedCameraRef.current = true;
+    void intentional;
   }, []);
 
-  // Stop the camera if the component unmounts
   useEffect(() => () => closeCamera(), [closeCamera]);
-
-  // Auto-open camera for non-admins once API + answer key are ready
-  useEffect(() => {
-    if (isAdmin === false && apiOnline === true && hasKey) {
-      navigator.permissions?.query({ name: "camera" as PermissionName })
-        .then(perm => {
-          if (perm.state !== "denied") openCamera();
-          else setCameraError("Camera permission is blocked. Enable it in your browser's site settings, then refresh.");
-        })
-        .catch(() => openCamera());
-    }
-  }, [isAdmin, apiOnline, hasKey]); // eslint-disable-line
 
   const pickFile = (f: File) => {
     setFile(f);
@@ -358,8 +379,9 @@ export default function OmrScanner() {
   };
   const clearFile = () => { setFile(null); setPreview(null); };
 
-  // ── Submit scan (synchronous grading) ───────────────────────────────────────
+  // ── Submit scan against the selected exam ────────────────────────────────────
   const submitScan = async () => {
+    if (!selectedExam) { setScanMsg({ text: "Choose an exam first.", type: "error" }); return; }
     if (!file) { setScanMsg({ text: "No file selected.", type: "error" }); return; }
     if (file.size > 10 * 1024 * 1024) {
       setScanMsg({ text: "File is too large (max 10 MB). Try a lower-resolution photo.", type: "error" });
@@ -370,6 +392,7 @@ export default function OmrScanner() {
     setScanMsg({ text: "Scanning…", type: "info" });
     const fd = new FormData();
     fd.append("file", file, file.name || "scan.jpg");
+    fd.append("answer_key", JSON.stringify({ answers_in_order: selectedExam.answers, marking: selectedExam.marking }));
     try {
       const res = await fetch(`${OMR_API}/api/scan`, { method: "POST", body: fd });
       if (!res.ok) {
@@ -381,6 +404,19 @@ export default function OmrScanner() {
       setResult(data);
       setScanMsg(null);
       clearFile();
+      // Save the attempt (non-fatal if it fails)
+      const correct = data.per_question.filter(q => isCorrect(q.verdict)).length;
+      try {
+        await saveOmrScanResult({
+          exam_id: selectedExam.id,
+          score: data.score,
+          max_score: data.max_score,
+          correct_count: correct,
+          total_count: data.per_question.length,
+          responses: data.responses,
+          per_question: data.per_question,
+        });
+      } catch { /* result already shown; saving is best-effort */ }
     } catch (e: any) {
       setScanMsg({ text: e.message, type: "error" });
     } finally {
@@ -388,64 +424,69 @@ export default function OmrScanner() {
     }
   };
 
-  // ── Admin: save the (single, global) answer key ─────────────────────────────
-  const saveAnswerKey = async () => {
-    const lines = answerKeyText.split("\n").map(l => l.trim()).filter(Boolean);
-    if (!lines.length) { setAnswerKeyMsg({ text: "Enter the answer key.", type: "error" }); return; }
-    if (!questions.length) { setAnswerKeyMsg({ text: "Couldn't load the question list from the server.", type: "error" }); return; }
-
-    // Accept either "1,A" numbered lines or one bare answer per line in order.
-    let answers: string[];
-    if (lines.every(l => l.includes(","))) {
-      const map = new Map<number, string>();
-      for (const line of lines) {
-        const [numStr, ans] = line.split(",").map(s => s.trim());
-        const num = parseInt(numStr, 10);
-        if (!num || !ans) {
-          setAnswerKeyMsg({ text: `Bad line: "${line}". Use "1,A" per line.`, type: "error" });
-          return;
-        }
-        map.set(num, ans.toUpperCase());
-      }
-      answers = questions.map((_, i) => map.get(i + 1) ?? "");
-    } else {
-      answers = lines.map(l => l.toUpperCase());
-    }
-
-    if (answers.length !== questions.length || answers.some(a => !a)) {
-      setAnswerKeyMsg({
-        text: `Expected ${questions.length} answers (one per question), got ${answers.filter(Boolean).length}.`,
-        type: "error",
-      });
+  // ── Admin: create exam ───────────────────────────────────────────────────────
+  const createExam = async () => {
+    const title = newTitle.trim();
+    if (!title) { setManageMsg({ text: "Enter an exam title.", type: "error" }); return; }
+    const count = parseInt(newCount, 10);
+    if (!count || count < 1 || count > sheetSize) {
+      setManageMsg({ text: `Question count must be between 1 and ${sheetSize}.`, type: "error" });
       return;
     }
+    const { answers, error } = parseAnswerKey(newAnswers, count);
+    if (error || !answers) { setManageMsg({ text: error ?? "Invalid answer key.", type: "error" }); return; }
 
-    setSavingKey(true);
-    setAnswerKeyMsg(null);
+    setCreating(true);
+    setManageMsg(null);
     try {
-      const res = await fetch(`${OMR_API}/api/answer-key`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers_in_order: answers, marking }),
-      });
-      if (!res.ok) {
-        let detail = `Server error ${res.status}`;
-        try { const e = await res.json(); detail = e.detail ?? detail; } catch { /* non-JSON */ }
-        throw new Error(detail);
-      }
-      setHasKey(true);
-      setAnswerKeyMsg({ text: "Answer key saved.", type: "success" });
+      await createOmrExam({ title, question_count: count, answers, marking: newMarking });
+      setManageMsg({ text: `Exam "${title}" created.`, type: "success" });
+      setNewTitle(""); setNewAnswers(""); setNewCount("20");
+      setNewMarking({ correct: "1", incorrect: "0", unmarked: "0" });
+      await loadExams();
     } catch (e: any) {
-      setAnswerKeyMsg({ text: e.message, type: "error" });
+      setManageMsg({ text: e.message, type: "error" });
     } finally {
-      setSavingKey(false);
+      setCreating(false);
     }
   };
 
-  // ── Sticker notice helper ────────────────────────────────────────────────────
-  const notice = (text: string, color: string, key?: string) => (
+  const handleTogglePublish = async (exam: OmrExam) => {
+    try {
+      await toggleOmrExamPublished(exam.id, !exam.is_published);
+      await loadExams();
+    } catch (e: any) {
+      setManageMsg({ text: e.message, type: "error" });
+    }
+  };
+
+  const handleDeleteExam = async (exam: OmrExam) => {
+    if (!window.confirm(`Delete "${exam.title}" and all its scan results? This can't be undone.`)) return;
+    try {
+      await deleteOmrExam(exam.id);
+      if (selectedExamId === exam.id) setSelectedExamId("");
+      if (reviewExamId === exam.id) { setReviewExamId(""); setReviewRows([]); }
+      await loadExams();
+    } catch (e: any) {
+      setManageMsg({ text: e.message, type: "error" });
+    }
+  };
+
+  // ── Admin: review ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!reviewExamId) { setReviewRows([]); return; }
+    let cancelled = false;
+    setReviewLoading(true);
+    fetchOmrScanResults(reviewExamId)
+      .then(rows => { if (!cancelled) setReviewRows(rows); })
+      .catch(() => { if (!cancelled) setReviewRows([]); })
+      .finally(() => { if (!cancelled) setReviewLoading(false); });
+    return () => { cancelled = true; };
+  }, [reviewExamId]);
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const notice = (text: string, color: string) => (
     <div
-      key={key}
       className="flex items-start gap-2.5 p-3.5 bg-white border-[2.5px] border-l-[6px] border-[#0F172A] rounded-[16px] shadow-[3px_3px_0_0_#0F172A]"
       style={{ borderLeftColor: color }}
     >
@@ -456,6 +497,17 @@ export default function OmrScanner() {
 
   const msgColor = (t: NonNullable<Msg>["type"]) =>
     t === "error" ? C.pop : t === "success" ? C.good : C.blue;
+
+  const examPicker = (value: string, onChange: (v: string) => void, placeholder: string) => (
+    <select value={value} onChange={e => onChange(e.target.value)} className={FIELD} disabled={examsLoading || !exams.length}>
+      <option value="">{examsLoading ? "Loading exams…" : exams.length ? placeholder : "No exams available"}</option>
+      {exams.map(e => (
+        <option key={e.id} value={e.id}>
+          {e.title} · {e.question_count} Qs{!e.is_published ? " (unpublished)" : ""}
+        </option>
+      ))}
+    </select>
+  );
 
   // ── Results panel ──────────────────────────────────────────────────────────
   const resultPanel = result && (
@@ -497,15 +549,15 @@ export default function OmrScanner() {
             </thead>
             <tbody>
               {result.per_question.map((q, i) => {
-                const correct = /correct/i.test(q.verdict);
+                const ok = isCorrect(q.verdict);
                 return (
                   <tr key={i} className="border-t-[2px] border-[#0F172A]/15">
                     <td className="px-3 py-2 font-mono font-bold">{q.question}</td>
                     <td className="px-3 py-2 font-semibold">{q.marked || "—"}</td>
                     <td className="px-3 py-2 font-semibold">{q.answer}</td>
                     <td className="px-3 py-2">
-                      <span className="inline-flex items-center gap-1 font-bold" style={{ color: correct ? C.good : C.pop }}>
-                        {correct ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                      <span className="inline-flex items-center gap-1 font-bold" style={{ color: ok ? C.good : C.pop }}>
+                        {ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
                         {q.verdict}
                       </span>
                     </td>
@@ -524,19 +576,25 @@ export default function OmrScanner() {
     </div>
   );
 
-  // ── Scan interface ──────────────────────────────────────────────────────────
+  // ── Scan interface (shared, exam-gated) ──────────────────────────────────────
   const scanInterface = (
     <div className="space-y-4">
       {apiOnline === false &&
         notice("Can't reach the OMR service. Make sure it's running and VITE_OMR_API is set.", C.pop)}
 
-      {apiOnline === true && !hasKey &&
+      {!examsLoading && exams.length === 0 &&
         notice(
-          isAdmin
-            ? "No answer key set yet. Add one in the Setup tab before scanning."
-            : "No answer key set yet. Ask an admin to set the answer key.",
+          isAdmin ? "No exams yet. Create one in the Manage tab." : "No exams available yet. Ask an admin to create one.",
           C.sun,
         )}
+
+      {/* Exam picker */}
+      {exams.length > 0 && (
+        <div className="space-y-1.5">
+          <label className="text-sm font-bold text-slate-600">Exam</label>
+          {examPicker(selectedExamId, (v) => { setSelectedExamId(v); setResult(null); setScanMsg(null); clearFile(); }, "Choose an exam…")}
+        </div>
+      )}
 
       {result ? resultPanel : (
         <>
@@ -548,22 +606,22 @@ export default function OmrScanner() {
                   className={`${BTN} flex-1 text-white`}
                   style={{ background: C.indigo }}
                   onClick={openCamera}
-                  disabled={!apiOnline || !hasKey}
+                  disabled={!apiOnline || !selectedExam}
                 >
                   <Camera className="w-4 h-4" /> Use Camera
                 </button>
-                <label className={`${BTN} flex-1 bg-white ${!apiOnline || !hasKey ? "opacity-40 pointer-events-none" : ""}`}>
+                <label className={`${BTN} flex-1 bg-white ${!apiOnline || !selectedExam ? "opacity-40 pointer-events-none" : ""}`}>
                   <Upload className="w-4 h-4" /> Upload File
                   <input
                     type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden"
-                    disabled={!apiOnline || !hasKey}
+                    disabled={!apiOnline || !selectedExam}
                     onChange={e => e.target.files?.[0] && pickFile(e.target.files[0])}
                   />
                 </label>
               </div>
               <button
                 className="w-full text-xs font-bold text-slate-500 underline underline-offset-2 hover:opacity-80 transition-opacity disabled:opacity-40"
-                disabled={!apiOnline || !hasKey}
+                disabled={!apiOnline || !selectedExam}
                 onClick={() => nativeCameraRef.current?.click()}
               >
                 Use phone camera app instead
@@ -612,7 +670,6 @@ export default function OmrScanner() {
                   className="absolute inset-0 w-full h-full pointer-events-none" />
               </div>
 
-              {/* Confirmation overlay — after auto/manual capture */}
               {pendingPreview && (
                 <div className="absolute inset-0 z-20 flex flex-col bg-black">
                   <img src={pendingPreview} alt="Captured" className="flex-1 w-full object-contain" />
@@ -644,7 +701,6 @@ export default function OmrScanner() {
                 </div>
               )}
 
-              {/* Shutter button with progress ring */}
               {!pendingPreview && (
                 <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center pb-10 pt-4
                                 bg-gradient-to-t from-black/70 to-transparent">
@@ -686,9 +742,8 @@ export default function OmrScanner() {
             </div>
           )}
 
-          {/* Submit */}
           {file && (
-            <button className={`${BTN} w-full text-white`} style={{ background: C.blue }} onClick={submitScan} disabled={submitting || !apiOnline || !hasKey}>
+            <button className={`${BTN} w-full text-white`} style={{ background: C.blue }} onClick={submitScan} disabled={submitting || !apiOnline || !selectedExam}>
               {submitting
                 ? <><Loader2 className="w-4 h-4 animate-spin" /> Scanning…</>
                 : <><ScanLine className="w-4 h-4" /> Submit Scan</>}
@@ -699,12 +754,11 @@ export default function OmrScanner() {
         </>
       )}
 
-      {/* Hidden capture canvas (used by the camera) */}
       <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 
-  // ── Shared header ───────────────────────────────────────────────────────────
+  // ── Header + shell ───────────────────────────────────────────────────────────
   const pageHeader = (
     <div className="flex items-center gap-3 mb-6">
       <button onClick={() => navigate("/quiz")} className={`${BTN_SM} bg-white`}>
@@ -716,14 +770,13 @@ export default function OmrScanner() {
         </div>
         <div className="min-w-0">
           <h1 className={`${DISPLAY} font-extrabold text-2xl leading-none`}>OMR Scanner</h1>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5 hidden sm:block">Grade answer sheets instantly</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5 hidden sm:block">Pick an exam and scan to check your answers</p>
         </div>
       </div>
       {isAdmin && <span className={`${TAG} ml-auto`} style={{ background: C.sun }}>Admin</span>}
     </div>
   );
 
-  // ── Page shell with the Quiz Arena gradient backdrop ─────────────────────────
   const shell = (children: React.ReactNode, maxW: string) => (
     <div
       className="font-['Nunito'] relative text-[#0F172A] min-h-screen pb-24"
@@ -744,7 +797,7 @@ export default function OmrScanner() {
   );
 
   // ════════════════════════════════════════════════════════════════════════
-  // NON-ADMIN VIEW — scan card only
+  // NON-ADMIN VIEW — pick exam + scan
   // ════════════════════════════════════════════════════════════════════════
   if (!isAdmin) {
     return shell(
@@ -757,75 +810,111 @@ export default function OmrScanner() {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // ADMIN VIEW — setup / scan tabs
+  // ADMIN VIEW — manage / scan / review
   // ════════════════════════════════════════════════════════════════════════
+  const tabs = [
+    { id: "manage" as const, label: "Manage", Icon: ListChecks },
+    { id: "scan"   as const, label: "Scan",   Icon: ScanLine },
+    { id: "review" as const, label: "Review", Icon: Eye },
+  ];
+
   return shell(
     <>
-      {/* Tab bar — sticker pills */}
-      <div className="flex gap-2 mb-6">
-        {(["setup", "scan"] as const).map(t => {
-          const active = adminTab === t;
+      {/* Tab bar */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {tabs.map(({ id, label, Icon }) => {
+          const active = adminTab === id;
           return (
             <button
-              key={t}
-              onClick={() => setAdminTab(t)}
-              className="px-6 py-2.5 rounded-full border-[2.5px] border-[#0F172A] font-extrabold font-['Baloo_2'] text-sm capitalize transition-all hover:-translate-y-0.5"
+              key={id}
+              onClick={() => setAdminTab(id)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border-[2.5px] border-[#0F172A] font-extrabold font-['Baloo_2'] text-sm transition-all hover:-translate-y-0.5"
               style={{
                 background: active ? C.blue : "white",
                 color: active ? "white" : C.ink,
                 boxShadow: active ? "3px 3px 0 0 #0F172A" : "2px 2px 0 0 #0F172A",
               }}
             >
-              {t}
+              <Icon className="w-4 h-4" /> {label}
             </button>
           );
         })}
       </div>
 
-      {/* ── Setup tab ── */}
-      {adminTab === "setup" && (
-        <div className={`${STICKER} p-5 sm:p-6`}>
-          <div className="flex items-center gap-2 flex-wrap mb-4">
-            <h2 className={`${DISPLAY} font-extrabold text-lg`}>Answer Key</h2>
-            {hasKey && <span className={TAG} style={{ background: C.skySoft }}>key set</span>}
-            {questions.length > 0 && (
-              <span className="text-xs font-bold text-slate-400 ml-auto">{questions.length} questions</span>
-            )}
+      {/* ── Manage tab ── */}
+      {adminTab === "manage" && (
+        <div className="space-y-6">
+          {/* Create exam */}
+          <div className={`${STICKER} p-5 sm:p-6`}>
+            <h2 className={`${DISPLAY} font-extrabold text-lg mb-4`}>Create Exam</h2>
+            <div className="space-y-4">
+              <div className="grid sm:grid-cols-[1fr_auto] gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-slate-600">Title</label>
+                  <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. Biology Midterm" className={FIELD} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-slate-600">Questions (1–{sheetSize})</label>
+                  <input type="number" min={1} max={sheetSize} value={newCount} onChange={e => setNewCount(e.target.value)} className={`${FIELD} sm:w-32`} />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-slate-600">
+                  Answer key — one per line: <code className="text-xs px-1 rounded bg-slate-100">1,A</code> (or one bare letter per line, in order)
+                </label>
+                <textarea
+                  value={newAnswers}
+                  onChange={e => setNewAnswers(e.target.value)}
+                  placeholder={"1,A\n2,C\n3,B\n4,D"}
+                  className={`${FIELD} font-mono min-h-[160px] resize-y`}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {(["correct", "incorrect", "unmarked"] as const).map(k => (
+                  <div key={k} className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600 capitalize">{k}</label>
+                    <input value={newMarking[k]} onChange={e => setNewMarking(m => ({ ...m, [k]: e.target.value }))} className={FIELD} />
+                  </div>
+                ))}
+              </div>
+
+              <button className={`${BTN} w-full text-white`} style={{ background: C.blue }} onClick={createExam} disabled={creating || !apiOnline}>
+                {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating…</> : <><Plus className="w-4 h-4" /> Create Exam</>}
+              </button>
+
+              {manageMsg && notice(manageMsg.text, msgColor(manageMsg.type))}
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-bold text-slate-600">
-                Answers — one per line: <code className="text-xs px-1 rounded bg-slate-100">1,A</code> (or one bare letter per line, in order)
-              </label>
-              <textarea
-                value={answerKeyText}
-                onChange={e => setAnswerKeyText(e.target.value)}
-                placeholder={"1,A\n2,C\n3,B\n4,D"}
-                className={`${FIELD} font-mono min-h-[180px] resize-y`}
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              {(["correct", "incorrect", "unmarked"] as const).map(k => (
-                <div key={k} className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-600 capitalize">{k}</label>
-                  <input
-                    value={marking[k]}
-                    onChange={e => setMarking(m => ({ ...m, [k]: e.target.value }))}
-                    className={FIELD}
-                  />
-                </div>
-              ))}
-            </div>
-
-            <button className={`${BTN} w-full text-white`} style={{ background: C.blue }} onClick={saveAnswerKey} disabled={savingKey || !apiOnline}>
-              {savingKey ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><CheckCircle2 className="w-4 h-4" /> Save Answer Key</>}
-            </button>
-
-            {answerKeyMsg && notice(answerKeyMsg.text, msgColor(answerKeyMsg.type))}
-            {apiOnline === false &&
-              notice("Can't reach the OMR service. Check it's running and VITE_OMR_API is set.", C.pop)}
+          {/* Existing exams */}
+          <div className={`${STICKER} p-5 sm:p-6`}>
+            <h2 className={`${DISPLAY} font-extrabold text-lg mb-4`}>Exams</h2>
+            {examsLoading ? (
+              <div className="flex items-center gap-2 text-slate-500 text-sm font-semibold"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
+            ) : exams.length === 0 ? (
+              <p className="text-sm font-semibold text-slate-500">No exams yet — create your first one above.</p>
+            ) : (
+              <div className="space-y-3">
+                {exams.map(exam => (
+                  <div key={exam.id} className={`${STICKER_SM} p-3.5 flex items-center gap-3 flex-wrap`}>
+                    <div className="min-w-0 flex-1">
+                      <p className={`${DISPLAY} font-extrabold text-base leading-tight truncate`}>{exam.title}</p>
+                      <p className="text-xs font-semibold text-slate-400">
+                        {exam.question_count} questions · {exam.is_published ? "published" : "hidden"}
+                      </p>
+                    </div>
+                    <button className={`${BTN_SM} bg-white`} onClick={() => handleTogglePublish(exam)}>
+                      {exam.is_published ? <><EyeOff className="w-3.5 h-3.5" /> Unpublish</> : <><Eye className="w-3.5 h-3.5" /> Publish</>}
+                    </button>
+                    <button className={`${BTN_SM} text-white`} style={{ background: C.pop }} onClick={() => handleDeleteExam(exam)}>
+                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -835,6 +924,51 @@ export default function OmrScanner() {
         <div className={`${STICKER} p-5 sm:p-6`}>
           <h2 className={`${DISPLAY} font-extrabold text-lg mb-4`}>Scan Answer Sheet</h2>
           {scanInterface}
+        </div>
+      )}
+
+      {/* ── Review tab ── */}
+      {adminTab === "review" && (
+        <div className={`${STICKER} p-5 sm:p-6`}>
+          <h2 className={`${DISPLAY} font-extrabold text-lg mb-4`}>Results</h2>
+          <div className="space-y-1.5 mb-4">
+            <label className="text-sm font-bold text-slate-600">Exam</label>
+            {examPicker(reviewExamId, setReviewExamId, "Choose an exam to review…")}
+          </div>
+
+          {!reviewExamId ? (
+            <p className="text-sm font-semibold text-slate-500">Choose an exam to see its scan results.</p>
+          ) : reviewLoading ? (
+            <div className="flex items-center gap-2 text-slate-500 text-sm font-semibold"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
+          ) : reviewRows.length === 0 ? (
+            <p className="text-sm font-semibold text-slate-500">No scans yet for this exam.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-[18px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] bg-white">
+              <table className="w-full text-sm">
+                <thead className="text-left" style={{ background: C.skySoft }}>
+                  <tr className={`${DISPLAY} font-extrabold`}>
+                    <th className="px-3 py-2.5">Student</th>
+                    <th className="px-3 py-2.5">Score</th>
+                    <th className="px-3 py-2.5">%</th>
+                    <th className="px-3 py-2.5">When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviewRows.map(row => {
+                    const pct = row.max_score ? Math.round((Number(row.score) / Number(row.max_score)) * 100) : 0;
+                    return (
+                      <tr key={row.id} className="border-t-[2px] border-[#0F172A]/15">
+                        <td className="px-3 py-2 font-semibold">{row.username ?? row.user_id.slice(0, 8)}</td>
+                        <td className="px-3 py-2 font-mono font-bold">{row.score} / {row.max_score}</td>
+                        <td className="px-3 py-2 font-bold">{pct}%</td>
+                        <td className="px-3 py-2 text-slate-500 text-xs">{new Date(row.created_at).toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </>,
