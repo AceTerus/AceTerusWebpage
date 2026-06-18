@@ -1,0 +1,6 @@
+# Web layer dependencies (engine deps: opencv-python, numpy, pandas, rich, jsonschema,
+# dotmap, etc. are required by the existing OMRChecker `src/` package).
+fastapi
+uvicorn[standard]
+python-multipart
+pymupdf

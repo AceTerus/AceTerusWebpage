@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OMR Scanner</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>📝 OMR Scanner</h1>
+    <p class="subtitle">Scan a filled answer sheet — grade it instantly.</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="scan">Scan &amp; Grade</button>
+    <button class="tab" data-tab="key">Answer Key</button>
+  </nav>
+
+  <!-- ===================== SCAN TAB ===================== -->
+  <section id="tab-scan" class="tab-panel active">
+    <div id="no-key-banner" class="banner warn hidden">
+      ⚠️ No answer key set yet. Go to <strong>Answer Key</strong> and save one first.
+    </div>
+
+    <div class="card">
+      <h2>1. Add the sheet</h2>
+      <div class="capture-row">
+        <label class="btn primary">
+          📷 Take photo
+          <input id="camera-input" type="file" accept="image/*" capture="environment" hidden />
+        </label>
+        <label class="btn">
+          📁 Choose file (PDF / PNG / JPG)
+          <input id="file-input" type="file" accept="image/*,application/pdf" hidden />
+        </label>
+      </div>
+      <div id="dropzone" class="dropzone">Drag &amp; drop a PDF or image here</div>
+      <p id="file-name" class="muted"></p>
+    </div>
+
+    <div class="card">
+      <h2>2. Grade</h2>
+      <button id="scan-btn" class="btn primary wide" disabled>Scan &amp; Grade</button>
+      <p id="scan-status" class="muted"></p>
+    </div>
+
+    <div id="results" class="card hidden">
+      <h2>Result</h2>
+      <div id="score-box" class="score-box"></div>
+      <div class="results-grid">
+        <div>
+          <table id="results-table">
+            <thead>
+              <tr><th>Q</th><th>Marked</th><th>Answer</th><th>Verdict</th><th>±</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div>
+          <h3>Detected marks</h3>
+          <img id="annotated" alt="annotated sheet" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== KEY TAB ===================== -->
+  <section id="tab-key" class="tab-panel">
+    <div class="card">
+      <h2>Answer key</h2>
+      <p class="muted">One correct option per question. Then set the marking scheme and save.</p>
+      <div id="key-grid" class="key-grid"></div>
+
+      <h3>Marking scheme</h3>
+      <div class="marking-row">
+        <label>Correct <input id="mark-correct" type="text" value="3" /></label>
+        <label>Incorrect <input id="mark-incorrect" type="text" value="-1" /></label>
+        <label>Unmarked <input id="mark-unmarked" type="text" value="0" /></label>
+      </div>
+
+      <button id="save-key-btn" class="btn primary wide">Save answer key</button>
+      <p id="key-status" class="muted"></p>
+    </div>
+  </section>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

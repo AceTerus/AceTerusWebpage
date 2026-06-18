@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AceTerus Answer Sheet</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* The OMR template is defined on a 794 x 1123 canvas = A4 at 96 DPI. We lay the page
+       out in those exact pixels so every bubble CENTER and marker CENTER land on the grid
+       the scanner expects. Marker centers: (56,56) (738,56) (738,1067) (56,1067). */
+    @page { size: A4; margin: 0; }
+
+    @media screen {
+      body {
+        background: #c8c8c8;
+        display: flex; flex-direction: column; align-items: center;
+        padding: 24px; font-family: Arial, Helvetica, sans-serif;
+      }
+      .page { box-shadow: 0 6px 32px rgba(0,0,0,0.35); }
+    }
+    @media print {
+      body { background: #fff; }
+      .print-btn { display: none; }
+      .page { box-shadow: none; }
+    }
+
+    .print-btn {
+      margin-bottom: 16px; padding: 10px 28px; background: #1a1a1a; color: #fff;
+      border: none; border-radius: 6px; font-size: 14px; font-weight: bold;
+      cursor: pointer; letter-spacing: 0.5px;
+    }
+    .print-btn:hover { background: #333; }
+
+    .page {
+      position: relative; width: 794px; height: 1123px; background: #fff;
+      overflow: hidden; font-family: Arial, Helvetica, sans-serif; color: #111;
+    }
+
+    /* Bullseye fiducials, 56px, inset 28px -> centers 56px from each edge. */
+    .marker {
+      position: absolute; width: 56px; height: 56px; image-rendering: pixelated;
+    }
+    .marker.tl { top: 28px;    left: 28px; }
+    .marker.tr { top: 28px;    right: 28px; }
+    .marker.bl { bottom: 28px; left: 28px; }
+    .marker.br { bottom: 28px; right: 28px; }
+
+    .title {
+      position: absolute; top: 22px; left: 0; right: 0; text-align: center;
+      font-size: 28px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+    }
+    .subtitle {
+      position: absolute; top: 60px; left: 0; right: 0; text-align: center;
+      font-size: 12px; font-style: italic; color: #666;
+    }
+    .fields {
+      position: absolute; top: 90px; left: 96px; right: 96px;
+      display: flex; gap: 28px; font-size: 13px;
+    }
+    .fields .f { flex: 1; }
+    .fields .f .lbl { font-weight: 700; margin-bottom: 6px; }
+    .fields .f .line { border-bottom: 1.5px solid #222; height: 22px; }
+
+    /* Bubbles positioned by CENTER. Faint guide letter so it never reads as a mark. */
+    .bubble {
+      position: absolute; width: 28px; height: 28px; border: 1.5px solid #222;
+      border-radius: 50%; transform: translate(-50%, -50%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: #d4d4d4; font-weight: 600;
+    }
+    .qnum {
+      position: absolute; transform: translate(-50%, -50%);
+      font-size: 13px; font-weight: 700; white-space: nowrap;
+    }
+    .ohdr {
+      position: absolute; transform: translate(-50%, -50%);
+      font-size: 12px; font-weight: 700; color: #333;
+    }
+    .col-divider {
+      position: absolute; top: 150px; left: 397px; width: 1px; height: 700px; background: #e2e2e2;
+    }
+    .footer {
+      position: absolute; left: 96px; right: 96px; top: 880px; text-align: center;
+      font-size: 10px; color: #999; font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+
+  <div class="page" id="page">
+    <img class="marker tl" src="omr_marker.jpg" alt="">
+    <img class="marker tr" src="omr_marker.jpg" alt="">
+    <img class="marker bl" src="omr_marker.jpg" alt="">
+    <img class="marker br" src="omr_marker.jpg" alt="">
+
+    <div class="title">AceTerus Answer Sheet</div>
+    <div class="subtitle">Fill ONE bubble per question · use a dark pen/pencil · mark fully inside the circle</div>
+
+    <div class="fields">
+      <div class="f"><div class="lbl">Name</div><div class="line"></div></div>
+      <div class="f"><div class="lbl">Roll No.</div><div class="line"></div></div>
+      <div class="f"><div class="lbl">Date</div><div class="line"></div></div>
+    </div>
+
+    <div class="col-divider"></div>
+    <div class="footer">Keep the sheet flat and all four corner targets fully visible when scanning.</div>
+  </div>
+
+  <script>
+    // MUST mirror web/layout/template.json. Values are bubble CENTERS in 794x1123 px.
+    const OPTIONS = ["A", "B", "C", "D"];
+    const COLUMNS = [
+      { questionRange: [1, 10],  bubbleStartX: 153, bubbleSpacingX: 45, rowStartY: 190, rowSpacingY: 68 },
+      { questionRange: [11, 20], bubbleStartX: 505, bubbleSpacingX: 45, rowStartY: 190, rowSpacingY: 68 },
+    ];
+    const page = document.getElementById("page");
+    const place = (el, x, y) => { el.style.left = x + "px"; el.style.top = y + "px"; page.appendChild(el); };
+
+    COLUMNS.forEach((col) => {
+      const [qStart, qEnd] = col.questionRange;
+      OPTIONS.forEach((opt, i) => {
+        const h = document.createElement("div");
+        h.className = "ohdr"; h.textContent = opt;
+        place(h, col.bubbleStartX + i * col.bubbleSpacingX, col.rowStartY - 32);
+      });
+      for (let q = qStart; q <= qEnd; q++) {
+        const y = col.rowStartY + (q - qStart) * col.rowSpacingY;
+        const num = document.createElement("div");
+        num.className = "qnum"; num.textContent = q + ".";
+        place(num, col.bubbleStartX - 40, y);
+        OPTIONS.forEach((opt, i) => {
+          const b = document.createElement("div");
+          b.className = "bubble"; b.textContent = opt;
+          place(b, col.bubbleStartX + i * col.bubbleSpacingX, y);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

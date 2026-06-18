@@ -1,0 +1,48 @@
+{
+  "pageDimensions": [
+    794,
+    1123
+  ],
+  "bubbleDimensions": [
+    28,
+    28
+  ],
+  "preProcessors": [
+    {
+      "name": "GaussianBlur",
+      "options": {
+        "kSize": [
+          3,
+          3
+        ],
+        "sigmaX": 0
+      }
+    }
+  ],
+  "fieldBlocks": {
+    "MCQBlock_Col1": {
+      "fieldType": "QTYPE_MCQ4",
+      "origin": [
+        139,
+        176
+      ],
+      "fieldLabels": [
+        "q1..10"
+      ],
+      "bubblesGap": 45,
+      "labelsGap": 68
+    },
+    "MCQBlock_Col2": {
+      "fieldType": "QTYPE_MCQ4",
+      "origin": [
+        491,
+        176
+      ],
+      "fieldLabels": [
+        "q11..20"
+      ],
+      "bubblesGap": 45,
+      "labelsGap": 68
+    }
+  }
+}
