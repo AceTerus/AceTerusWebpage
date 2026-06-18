@@ -4,13 +4,6 @@ import {
   AlertCircle, Camera, CheckCircle2, ChevronLeft,
   Loader2, RefreshCw, ScanLine, Upload, X, XCircle,
 } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,9 +13,27 @@ import { useAuth } from "@/hooks/useAuth";
 //   GET  /api/answer-key   → { has_key }
 //   POST /api/answer-key   → { answers_in_order, marking }
 //   POST /api/scan (file)  → { score, max_score, multi_marked, per_question, ... }
+// Styled to match the Quiz Arena (Quiz.tsx) "sticker" design system.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const OMR_API = import.meta.env.VITE_OMR_API ?? "http://localhost:8080";
+
+/* ── brand colours (shared with Quiz.tsx) ───────────────────────────────────── */
+const C = {
+  cyan: "#3BD6F5", blue: "#2F7CFF", indigo: "#2E2BE5",
+  ink: "#0F172A", skySoft: "#DDF3FF", blueSoft: "#C8DEFF",
+  indigoSoft: "#D6D4FF", cloud: "#F3FAFF", sun: "#FFD65C", pop: "#FF7A59",
+  good: "#22c55e",
+};
+
+/* ── shared sticker styles ──────────────────────────────────────────────────── */
+const DISPLAY = "font-['Baloo_2'] tracking-tight";
+const STICKER = "border-[3px] border-[#0F172A] rounded-[28px] shadow-[4px_4px_0_0_#0F172A] bg-white";
+const STICKER_SM = "border-[2.5px] border-[#0F172A] rounded-[18px] shadow-[4px_4px_0_0_#0F172A] bg-white";
+const BTN = "inline-flex items-center justify-center gap-2.5 font-extrabold font-['Baloo_2'] border-[3px] border-[#0F172A] rounded-full px-6 py-3.5 shadow-[4px_4px_0_0_#0F172A] transition-all duration-150 cursor-pointer hover:-translate-y-1 hover:shadow-[6px_7px_0_0_#0F172A] active:translate-y-0.5 active:shadow-[2px_2px_0_0_#0F172A] disabled:opacity-40 disabled:pointer-events-none";
+const BTN_SM = "inline-flex items-center justify-center gap-2 font-bold font-['Baloo_2'] text-sm border-[2.5px] border-[#0F172A] rounded-full px-4 py-2 shadow-[4px_4px_0_0_#0F172A] transition-all duration-150 cursor-pointer hover:-translate-y-0.5 hover:shadow-[5px_6px_0_0_#0F172A] active:translate-y-0.5 active:shadow-[2px_2px_0_0_#0F172A] disabled:opacity-40 disabled:pointer-events-none";
+const TAG = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-[2.5px] border-[#0F172A] font-extrabold text-xs";
+const FIELD = "w-full px-4 py-2.5 text-sm font-semibold border-[2.5px] border-[#0F172A] rounded-[14px] shadow-[2px_2px_0_0_#0F172A] bg-white outline-none focus:shadow-[3px_3px_0_0_#0F172A] transition-shadow placeholder:text-slate-400";
 
 interface PerQuestion {
   question: string;
@@ -431,21 +442,36 @@ export default function OmrScanner() {
     }
   };
 
+  // ── Sticker notice helper ────────────────────────────────────────────────────
+  const notice = (text: string, color: string, key?: string) => (
+    <div
+      key={key}
+      className="flex items-start gap-2.5 p-3.5 bg-white border-[2.5px] border-l-[6px] border-[#0F172A] rounded-[16px] shadow-[3px_3px_0_0_#0F172A]"
+      style={{ borderLeftColor: color }}
+    >
+      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color }} />
+      <p className="text-sm font-semibold text-slate-700 leading-snug">{text}</p>
+    </div>
+  );
+
+  const msgColor = (t: NonNullable<Msg>["type"]) =>
+    t === "error" ? C.pop : t === "success" ? C.good : C.blue;
+
   // ── Results panel ──────────────────────────────────────────────────────────
   const resultPanel = result && (
     <div className="space-y-4">
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="text-3xl font-bold font-['Baloo_2']">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className={`${DISPLAY} font-extrabold text-4xl leading-none`}>
           {result.score}
-          <span className="text-lg text-muted-foreground"> / {result.max_score}</span>
+          <span className="text-xl text-slate-400 font-bold"> / {result.max_score}</span>
         </div>
         {result.max_score > 0 && (
-          <Badge variant="secondary" className="text-sm">
+          <span className={TAG} style={{ background: C.skySoft }}>
             {Math.round((result.score / result.max_score) * 100)}%
-          </Badge>
+          </span>
         )}
         {result.multi_marked && (
-          <Badge variant="destructive" className="text-xs">multiple bubbles detected</Badge>
+          <span className={`${TAG} text-white`} style={{ background: C.pop }}>multiple bubbles</span>
         )}
       </div>
 
@@ -453,37 +479,37 @@ export default function OmrScanner() {
         <img
           src={result.annotated_image}
           alt="Annotated scan"
-          className="w-full max-h-80 object-contain rounded-xl border"
+          className="w-full max-h-80 object-contain rounded-[18px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] bg-white"
         />
       )}
 
       {result.per_question.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border">
+        <div className="overflow-x-auto rounded-[18px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] bg-white">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left">
-              <tr>
-                <th className="px-3 py-2 font-medium">Q</th>
-                <th className="px-3 py-2 font-medium">Marked</th>
-                <th className="px-3 py-2 font-medium">Answer</th>
-                <th className="px-3 py-2 font-medium">Verdict</th>
-                <th className="px-3 py-2 font-medium text-right">Δ</th>
+            <thead className="text-left" style={{ background: C.skySoft }}>
+              <tr className={`${DISPLAY} font-extrabold`}>
+                <th className="px-3 py-2.5">Q</th>
+                <th className="px-3 py-2.5">Marked</th>
+                <th className="px-3 py-2.5">Answer</th>
+                <th className="px-3 py-2.5">Verdict</th>
+                <th className="px-3 py-2.5 text-right">Δ</th>
               </tr>
             </thead>
             <tbody>
               {result.per_question.map((q, i) => {
                 const correct = /correct/i.test(q.verdict);
                 return (
-                  <tr key={i} className="border-t">
-                    <td className="px-3 py-1.5 font-mono">{q.question}</td>
-                    <td className="px-3 py-1.5">{q.marked || "—"}</td>
-                    <td className="px-3 py-1.5">{q.answer}</td>
-                    <td className="px-3 py-1.5">
-                      <span className={`inline-flex items-center gap-1 ${correct ? "text-green-600" : "text-red-600"}`}>
+                  <tr key={i} className="border-t-[2px] border-[#0F172A]/15">
+                    <td className="px-3 py-2 font-mono font-bold">{q.question}</td>
+                    <td className="px-3 py-2 font-semibold">{q.marked || "—"}</td>
+                    <td className="px-3 py-2 font-semibold">{q.answer}</td>
+                    <td className="px-3 py-2">
+                      <span className="inline-flex items-center gap-1 font-bold" style={{ color: correct ? C.good : C.pop }}>
                         {correct ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
                         {q.verdict}
                       </span>
                     </td>
-                    <td className="px-3 py-1.5 text-right font-mono">{q.delta}</td>
+                    <td className="px-3 py-2 text-right font-mono font-bold">{q.delta}</td>
                   </tr>
                 );
               })}
@@ -492,46 +518,42 @@ export default function OmrScanner() {
         </div>
       )}
 
-      <Button variant="outline" className="w-full" onClick={() => setResult(null)}>
-        Scan another sheet
-      </Button>
+      <button className={`${BTN} w-full bg-white`} onClick={() => setResult(null)}>
+        <ScanLine className="w-4 h-4" /> Scan another sheet
+      </button>
     </div>
   );
 
   // ── Scan interface ──────────────────────────────────────────────────────────
   const scanInterface = (
     <div className="space-y-4">
-      {apiOnline === false && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Can't reach the OMR service. Make sure it's running and <code className="text-xs">VITE_OMR_API</code> is set.
-          </AlertDescription>
-        </Alert>
-      )}
+      {apiOnline === false &&
+        notice("Can't reach the OMR service. Make sure it's running and VITE_OMR_API is set.", C.pop)}
 
-      {apiOnline === true && !hasKey && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            No answer key set yet.{isAdmin ? " Add one in the Setup tab before scanning." : " Ask an admin to set the answer key."}
-          </AlertDescription>
-        </Alert>
-      )}
+      {apiOnline === true && !hasKey &&
+        notice(
+          isAdmin
+            ? "No answer key set yet. Add one in the Setup tab before scanning."
+            : "No answer key set yet. Ask an admin to set the answer key.",
+          C.sun,
+        )}
 
       {result ? resultPanel : (
         <>
           {/* Camera / upload buttons */}
           {!cameraOpen && !file && (
-            <div className="space-y-2">
-              <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={openCamera} disabled={!apiOnline || !hasKey}>
-                  <Camera className="w-4 h-4 mr-2" /> Use Camera
-                </Button>
-                <label className={`flex-1 ${!apiOnline || !hasKey ? "pointer-events-none opacity-50" : "cursor-pointer"}`}>
-                  <div className="flex items-center justify-center gap-2 border rounded-md px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
-                    <Upload className="w-4 h-4" /> Upload File
-                  </div>
+            <div className="space-y-2.5">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  className={`${BTN} flex-1 text-white`}
+                  style={{ background: C.indigo }}
+                  onClick={openCamera}
+                  disabled={!apiOnline || !hasKey}
+                >
+                  <Camera className="w-4 h-4" /> Use Camera
+                </button>
+                <label className={`${BTN} flex-1 bg-white ${!apiOnline || !hasKey ? "opacity-40 pointer-events-none" : ""}`}>
+                  <Upload className="w-4 h-4" /> Upload File
                   <input
                     type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden"
                     disabled={!apiOnline || !hasKey}
@@ -540,7 +562,7 @@ export default function OmrScanner() {
                 </label>
               </div>
               <button
-                className="w-full text-xs text-muted-foreground underline underline-offset-2 hover:opacity-80 transition-opacity disabled:opacity-40"
+                className="w-full text-xs font-bold text-slate-500 underline underline-offset-2 hover:opacity-80 transition-opacity disabled:opacity-40"
                 disabled={!apiOnline || !hasKey}
                 onClick={() => nativeCameraRef.current?.click()}
               >
@@ -559,34 +581,28 @@ export default function OmrScanner() {
           )}
 
           {cameraError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <p>{cameraError}</p>
-                <p className="text-xs mt-1 opacity-80">
-                  To fix: click the camera/lock icon in your browser's address bar → allow camera → refresh.
-                </p>
-                <Button size="sm" variant="outline" className="mt-2 h-7 text-xs"
-                  onClick={() => { setCameraError(null); openCamera(); }}>
-                  <RefreshCw className="w-3 h-3 mr-1" /> Try Again
-                </Button>
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-2">
+              {notice(cameraError, C.pop)}
+              <button className={`${BTN_SM} bg-white`} onClick={() => { setCameraError(null); openCamera(); }}>
+                <RefreshCw className="w-3.5 h-3.5" /> Try Again
+              </button>
+            </div>
           )}
 
           {/* Full-screen camera */}
           {cameraOpen && (
             <div className="fixed inset-0 z-50 bg-black flex flex-col">
               <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 py-3
-                              bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
-                <span className={`text-sm font-semibold transition-colors ${cornersDetected ? "text-green-400" : "text-white/80"}`}>
+                              bg-gradient-to-b from-black/70 to-transparent">
+                <span className={`${DISPLAY} text-sm font-extrabold transition-colors ${cornersDetected ? "text-green-400" : "text-white/85"}`}>
                   {cornersDetected ? "✓ Paper detected — hold still" : "Align all 4 corners in frame"}
                 </span>
-                <Button variant="ghost" size="icon"
-                  className="text-white hover:bg-white/20 rounded-full pointer-events-auto"
-                  onClick={() => closeCamera(true)}>
+                <button
+                  className="text-white p-2 rounded-full hover:bg-white/20 transition-colors"
+                  onClick={() => closeCamera(true)}
+                >
                   <X className="w-5 h-5" />
-                </Button>
+                </button>
               </div>
 
               <div className="relative flex-1 overflow-hidden">
@@ -601,11 +617,15 @@ export default function OmrScanner() {
                 <div className="absolute inset-0 z-20 flex flex-col bg-black">
                   <img src={pendingPreview} alt="Captured" className="flex-1 w-full object-contain" />
                   <div className="flex gap-3 p-4 pb-8 bg-black/80">
-                    <Button variant="outline" className="flex-1 border-white/30 text-white hover:bg-white/10"
-                      onClick={() => { setPendingBlob(null); setPendingPreview(null); startCornerDetection(); }}>
+                    <button
+                      className="flex-1 inline-flex items-center justify-center gap-2 font-extrabold font-['Baloo_2'] text-white border-[2.5px] border-white/40 rounded-full py-3 hover:bg-white/10 transition-colors"
+                      onClick={() => { setPendingBlob(null); setPendingPreview(null); startCornerDetection(); }}
+                    >
                       Retake
-                    </Button>
-                    <Button className="flex-1 bg-green-600 hover:bg-green-700"
+                    </button>
+                    <button
+                      className="flex-1 inline-flex items-center justify-center gap-2 font-extrabold font-['Baloo_2'] text-white rounded-full py-3 transition-transform active:scale-95"
+                      style={{ background: C.good }}
                       onClick={() => {
                         setFile(new File([pendingBlob!], "capture.jpg", { type: "image/jpeg" }));
                         setPreview(pendingPreview!);
@@ -616,9 +636,10 @@ export default function OmrScanner() {
                         streamRef.current?.getTracks().forEach(t => t.stop());
                         streamRef.current = null;
                         setCameraOpen(false);
-                      }}>
+                      }}
+                    >
                       Use this photo
-                    </Button>
+                    </button>
                   </div>
                 </div>
               )}
@@ -628,7 +649,7 @@ export default function OmrScanner() {
                 <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center pb-10 pt-4
                                 bg-gradient-to-t from-black/70 to-transparent">
                   <button onClick={triggerCapture} aria-label="Capture photo"
-                    className="relative w-20 h-20 rounded-full bg-white shadow-xl active:scale-95 transition-transform">
+                    className="relative w-20 h-20 rounded-full bg-white border-[3px] border-[#0F172A] shadow-xl active:scale-95 transition-transform">
                     {captureProgress > 0 && (
                       <svg className="absolute inset-0 -rotate-90 w-full h-full" viewBox="0 0 80 80">
                         <circle cx="40" cy="40" r="34" fill="none" stroke="#00ff88" strokeWidth="5"
@@ -646,34 +667,35 @@ export default function OmrScanner() {
           {/* Preview */}
           {preview && (
             <div className="relative">
-              <img src={preview} alt="Preview" className="w-full max-h-64 object-contain rounded-xl border" />
-              <Button size="icon" variant="secondary" className="absolute top-2 right-2 h-7 w-7" onClick={clearFile}>
-                <X className="w-3.5 h-3.5" />
-              </Button>
+              <img src={preview} alt="Preview" className="w-full max-h-64 object-contain rounded-[18px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] bg-white" />
+              <button
+                className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-white border-[2.5px] border-[#0F172A] shadow-[2px_2px_0_0_#0F172A] hover:-translate-y-0.5 transition-transform"
+                onClick={clearFile}
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
           {file && !preview && (
-            <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
-              <ScanLine className="w-4 h-4 text-primary shrink-0" />
-              <span className="text-sm flex-1 truncate">{file.name}</span>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={clearFile}><X className="w-3.5 h-3.5" /></Button>
+            <div className={`${STICKER_SM} flex items-center gap-2.5 p-3.5`}>
+              <ScanLine className="w-4 h-4 shrink-0" style={{ color: C.indigo }} />
+              <span className="text-sm font-semibold flex-1 truncate">{file.name}</span>
+              <button className="p-1.5 rounded-full hover:bg-slate-100 transition-colors" onClick={clearFile}>
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
           {/* Submit */}
           {file && (
-            <Button className="w-full bg-gradient-primary shadow-glow" onClick={submitScan} disabled={submitting || !apiOnline || !hasKey}>
+            <button className={`${BTN} w-full text-white`} style={{ background: C.blue }} onClick={submitScan} disabled={submitting || !apiOnline || !hasKey}>
               {submitting
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Scanning…</>
-                : <><ScanLine className="w-4 h-4 mr-2" /> Submit Scan</>}
-            </Button>
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Scanning…</>
+                : <><ScanLine className="w-4 h-4" /> Submit Scan</>}
+            </button>
           )}
 
-          {scanMsg && (
-            <Alert variant={scanMsg.type === "error" ? "destructive" : "default"}>
-              <AlertDescription>{scanMsg.text}</AlertDescription>
-            </Alert>
-          )}
+          {scanMsg && notice(scanMsg.text, msgColor(scanMsg.type))}
         </>
       )}
 
@@ -685,14 +707,39 @@ export default function OmrScanner() {
   // ── Shared header ───────────────────────────────────────────────────────────
   const pageHeader = (
     <div className="flex items-center gap-3 mb-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/quiz")}>
-        <ChevronLeft className="h-4 w-4 mr-1" /> Back
-      </Button>
-      <div className="flex items-center gap-2">
-        <ScanLine className="w-5 h-5 text-primary" />
-        <h1 className="font-bold text-lg">OMR Scanner</h1>
+      <button onClick={() => navigate("/quiz")} className={`${BTN_SM} bg-white`}>
+        <ChevronLeft className="w-4 h-4" /> Back
+      </button>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="w-10 h-10 rounded-[13px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] flex items-center justify-center shrink-0" style={{ background: C.indigo }}>
+          <ScanLine className="w-5 h-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <h1 className={`${DISPLAY} font-extrabold text-2xl leading-none`}>OMR Scanner</h1>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5 hidden sm:block">Grade answer sheets instantly</p>
+        </div>
       </div>
-      {isAdmin && <Badge variant="secondary" className="ml-auto">Admin</Badge>}
+      {isAdmin && <span className={`${TAG} ml-auto`} style={{ background: C.sun }}>Admin</span>}
+    </div>
+  );
+
+  // ── Page shell with the Quiz Arena gradient backdrop ─────────────────────────
+  const shell = (children: React.ReactNode, maxW: string) => (
+    <div
+      className="font-['Nunito'] relative text-[#0F172A] min-h-screen pb-24"
+      style={{
+        backgroundImage: `
+          radial-gradient(900px 500px at 90% -5%,  rgba(59,214,245,.40), transparent 60%),
+          radial-gradient(700px 400px at -5% 15%,  rgba(47,124,255,.35), transparent 60%),
+          radial-gradient(600px 500px at 50% 100%, rgba(46,43,229,.20), transparent 60%)
+        `,
+        backgroundColor: C.cloud,
+      }}
+    >
+      <div className={`relative z-[2] ${maxW} mx-auto px-4 pt-6 sm:pt-8`}>
+        {pageHeader}
+        {children}
+      </div>
     </div>
   );
 
@@ -700,113 +747,97 @@ export default function OmrScanner() {
   // NON-ADMIN VIEW — scan card only
   // ════════════════════════════════════════════════════════════════════════
   if (!isAdmin) {
-    return (
-      <div className="min-h-screen pb-24 bg-transparent">
-        <div className="container mx-auto px-4 max-w-lg pt-8">
-          {pageHeader}
-          <Card>
-            <CardHeader><CardTitle>Scan Answer Sheet</CardTitle></CardHeader>
-            <CardContent>{scanInterface}</CardContent>
-          </Card>
-        </div>
-      </div>
+    return shell(
+      <div className={`${STICKER} p-5 sm:p-6`}>
+        <h2 className={`${DISPLAY} font-extrabold text-lg mb-4`}>Scan Answer Sheet</h2>
+        {scanInterface}
+      </div>,
+      "max-w-lg",
     );
   }
 
   // ════════════════════════════════════════════════════════════════════════
   // ADMIN VIEW — setup / scan tabs
   // ════════════════════════════════════════════════════════════════════════
-  return (
-    <div className="min-h-screen pb-24 bg-transparent">
-      <div className="container mx-auto px-4 max-w-3xl pt-8">
-        {pageHeader}
-
-        {/* Tab bar */}
-        <div className="flex gap-1 mb-6 bg-muted p-1 rounded-lg w-fit">
-          {(["setup", "scan"] as const).map(t => (
+  return shell(
+    <>
+      {/* Tab bar — sticker pills */}
+      <div className="flex gap-2 mb-6">
+        {(["setup", "scan"] as const).map(t => {
+          const active = adminTab === t;
+          return (
             <button
               key={t}
               onClick={() => setAdminTab(t)}
-              className={`px-5 py-1.5 rounded-md text-sm font-medium capitalize transition-colors
-                ${adminTab === t
-                  ? "bg-background shadow text-foreground"
-                  : "text-muted-foreground hover:text-foreground"}`}
+              className="px-6 py-2.5 rounded-full border-[2.5px] border-[#0F172A] font-extrabold font-['Baloo_2'] text-sm capitalize transition-all hover:-translate-y-0.5"
+              style={{
+                background: active ? C.blue : "white",
+                color: active ? "white" : C.ink,
+                boxShadow: active ? "3px 3px 0 0 #0F172A" : "2px 2px 0 0 #0F172A",
+              }}
             >
               {t}
             </button>
-          ))}
-        </div>
-
-        {/* ── Setup tab ── */}
-        {adminTab === "setup" && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2 flex-wrap">
-                <CardTitle className="text-base">Answer Key</CardTitle>
-                {hasKey && <Badge variant="secondary" className="text-xs">key set</Badge>}
-                {questions.length > 0 && (
-                  <span className="text-xs text-muted-foreground ml-auto">{questions.length} questions</span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>
-                  Answers — one per line: <code className="text-xs">1,A</code> (or one bare letter per line, in order)
-                </Label>
-                <Textarea
-                  value={answerKeyText}
-                  onChange={e => setAnswerKeyText(e.target.value)}
-                  placeholder={"1,A\n2,C\n3,B\n4,D"}
-                  className="font-mono text-sm min-h-[180px]"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Correct</Label>
-                  <Input value={marking.correct} onChange={e => setMarking(m => ({ ...m, correct: e.target.value }))} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Incorrect</Label>
-                  <Input value={marking.incorrect} onChange={e => setMarking(m => ({ ...m, incorrect: e.target.value }))} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Unmarked</Label>
-                  <Input value={marking.unmarked} onChange={e => setMarking(m => ({ ...m, unmarked: e.target.value }))} />
-                </div>
-              </div>
-
-              <Button className="w-full" variant="outline" onClick={saveAnswerKey} disabled={savingKey || !apiOnline}>
-                {savingKey ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : "Save Answer Key"}
-              </Button>
-
-              {answerKeyMsg && (
-                <Alert variant={answerKeyMsg.type === "error" ? "destructive" : "default"}>
-                  <AlertDescription>{answerKeyMsg.text}</AlertDescription>
-                </Alert>
-              )}
-
-              {apiOnline === false && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Can't reach the OMR service. Check it's running and <code className="text-xs">VITE_OMR_API</code> is set.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── Scan tab ── */}
-        {adminTab === "scan" && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">Scan Answer Sheet</CardTitle></CardHeader>
-            <CardContent>{scanInterface}</CardContent>
-          </Card>
-        )}
+          );
+        })}
       </div>
-    </div>
+
+      {/* ── Setup tab ── */}
+      {adminTab === "setup" && (
+        <div className={`${STICKER} p-5 sm:p-6`}>
+          <div className="flex items-center gap-2 flex-wrap mb-4">
+            <h2 className={`${DISPLAY} font-extrabold text-lg`}>Answer Key</h2>
+            {hasKey && <span className={TAG} style={{ background: C.skySoft }}>key set</span>}
+            {questions.length > 0 && (
+              <span className="text-xs font-bold text-slate-400 ml-auto">{questions.length} questions</span>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-slate-600">
+                Answers — one per line: <code className="text-xs px-1 rounded bg-slate-100">1,A</code> (or one bare letter per line, in order)
+              </label>
+              <textarea
+                value={answerKeyText}
+                onChange={e => setAnswerKeyText(e.target.value)}
+                placeholder={"1,A\n2,C\n3,B\n4,D"}
+                className={`${FIELD} font-mono min-h-[180px] resize-y`}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {(["correct", "incorrect", "unmarked"] as const).map(k => (
+                <div key={k} className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 capitalize">{k}</label>
+                  <input
+                    value={marking[k]}
+                    onChange={e => setMarking(m => ({ ...m, [k]: e.target.value }))}
+                    className={FIELD}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <button className={`${BTN} w-full text-white`} style={{ background: C.blue }} onClick={saveAnswerKey} disabled={savingKey || !apiOnline}>
+              {savingKey ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><CheckCircle2 className="w-4 h-4" /> Save Answer Key</>}
+            </button>
+
+            {answerKeyMsg && notice(answerKeyMsg.text, msgColor(answerKeyMsg.type))}
+            {apiOnline === false &&
+              notice("Can't reach the OMR service. Check it's running and VITE_OMR_API is set.", C.pop)}
+          </div>
+        </div>
+      )}
+
+      {/* ── Scan tab ── */}
+      {adminTab === "scan" && (
+        <div className={`${STICKER} p-5 sm:p-6`}>
+          <h2 className={`${DISPLAY} font-extrabold text-lg mb-4`}>Scan Answer Sheet</h2>
+          {scanInterface}
+        </div>
+      )}
+    </>,
+    "max-w-2xl",
   );
 }
