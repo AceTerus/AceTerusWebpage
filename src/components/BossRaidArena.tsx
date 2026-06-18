@@ -387,15 +387,7 @@ function BossRaidDetail({ raidId, onBack, onStart }: any) {
     if (!window.confirm("Are you sure you want to stop this raid? The pot will be refunded to you.")) return;
     setStarting(true);
     try {
-      // Fetch creator's current coins
-      const { data: profile } = await supabase.from('profiles').select('ace_coins').eq('user_id', user.id).single();
-      const refundAmount = raid.initial_bounty + raid.bounty_pot;
-      const currentCoins = (profile as any)?.ace_coins ?? 0;
-      
-      // Refund coins and update raid status to cleared
-      await supabase.from('profiles').update({ ace_coins: currentCoins + refundAmount } as any).eq('user_id', user.id);
-      const { error } = await (supabase as any).from('boss_raids').update({ status: 'cleared' }).eq('id', raid.id);
-      
+      const { error } = await (supabase as any).rpc('stop_boss_raid', { p_raid_id: raid.id });
       if (error) throw error;
       onBack();
     } catch(err: any) {
@@ -515,20 +507,17 @@ function BossRaidTaking({ raidId, attemptId, onComplete }: any) {
   const handleSubmit = async () => {
      setSubmitting(true);
      try {
-        let score = 0;
-        const maxScore = questions.length;
-        
-        questions.forEach((q, idx) => {
-           const correctA = q.answers.find((a: any) => a.is_correct);
-           if (correctA && answers[idx] === correctA.id) {
-              score++;
+        // Build answer map: { question_id: selected_answer_id }
+        const answerMap: Record<string, string> = {};
+        questions.forEach((q: any, idx: number) => {
+           if (answers[idx]) {
+              answerMap[q.id] = answers[idx];
            }
         });
 
         const { data, error } = await (supabase.rpc as any)('finish_raid_attempt', {
            p_attempt_id: attemptId,
-           p_score: score,
-           p_max_score: maxScore
+           p_answers: answerMap
         });
 
         if (error) throw error;

@@ -76,12 +76,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       setIsAdmin((data as any)?.is_admin ?? false);
-      setIsNewUser(!(data as any)?.username);
+
+      // Only mark as new if they truly have no username AND haven't just finished onboarding
+      const onboardingDone = localStorage.getItem('ace_onboarding_done') === '1';
+      if ((data as any)?.username) {
+        setIsNewUser(false);
+        // Ensure flag is set once we confirm username exists in DB
+        if (!onboardingDone) localStorage.setItem('ace_onboarding_done', '1');
+      } else {
+        setIsNewUser(!onboardingDone);
+      }
 
       let coins = (data as any)?.ace_coins ?? 0;
       if (coins < 1000) {
         try {
-          await (supabase as any).from('profiles').update({ ace_coins: 1000 }).eq('user_id', userId);
+          const topUp = 1000 - coins;
+          await (supabase as any).rpc('add_ace_coins', { p_amount: topUp });
           coins = 1000;
         } catch (e) {
           console.error("Failed to airdrop default coins:", e);
@@ -159,6 +169,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return;
     }
     setIsAdmin(false);
+    localStorage.removeItem('ace_onboarding_done');
   };
 
   const value = {

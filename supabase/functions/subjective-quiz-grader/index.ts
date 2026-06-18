@@ -1,11 +1,8 @@
 // Supabase Edge Function: Grade subjective quiz answers using Gemini API
 import { serve } from "https://deno.land/std@0.213.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -19,8 +16,18 @@ function jsonError(status: number, message: string) {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
+  // Closure over corsHeaders for helpers
+  function jsonError(status: number, message: string) {
+    return new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return handleCorsOptions(req);
   }
 
   try {
@@ -81,7 +88,7 @@ Respond ONLY with a valid JSON array (no markdown, no extra text) with one objec
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
-      return jsonError(502, `Gemini API error: ${errText}`);
+      return jsonError(502, "AI grading temporarily unavailable. Please try again.");
     }
 
     const geminiData = await geminiRes.json();

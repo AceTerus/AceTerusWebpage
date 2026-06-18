@@ -1,12 +1,8 @@
 // Supabase Edge Function: PDF → Quiz generator via Gemini API
 import { serve } from "https://deno.land/std@0.213.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -24,8 +20,10 @@ interface GeneratedQuestion {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return handleCorsOptions(req);
   }
 
   try {
@@ -99,7 +97,7 @@ serve(async (req) => {
     if (!geminiResponse.ok) {
       const errorBody = await geminiResponse.text();
       console.error("Gemini API error:", geminiResponse.status, errorBody);
-      return jsonError(502, `Gemini API error: ${geminiResponse.status} - ${errorBody}`);
+      return jsonError(502, "AI quiz generation temporarily unavailable. Please try again.");
     }
 
     const geminiData = await geminiResponse.json();
