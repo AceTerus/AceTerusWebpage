@@ -870,14 +870,23 @@ export const Profile = () => {
                     {/* Admin Tools */}
                     {isAdmin && (
                       <button
-                        onClick={async () => {
-                          const { data: { session } } = await supabase.auth.getSession();
-                          const base = "https://admin.aceterus.com";
-                          if (session) {
-                            const hash = `#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer&type=magiclink`;
-                            window.open(`${base}/${hash}`, "_blank");
+                        onClick={() => {
+                          const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+                          if (isLocal) {
+                            // On local dev, navigate within the same app
+                            window.location.href = "/admin";
                           } else {
-                            window.open(base, "_blank");
+                            // On production, open the external admin site with auth tokens
+                            (async () => {
+                              const { data: { session } } = await supabase.auth.getSession();
+                              const base = "https://admin.aceterus.com";
+                              if (session) {
+                                const hash = `#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer&type=magiclink`;
+                                window.open(`${base}/${hash}`, "_blank");
+                              } else {
+                                window.open(base, "_blank");
+                              }
+                            })();
                           }
                         }}
                         className={`${BTN_OUTLINE} w-full max-w-xs flex items-center justify-center gap-2`}

@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { RichContent } from "@/components/RichContent";
 import {
   Dialog,
   DialogContent,
@@ -274,7 +276,21 @@ export const PdfQuizGenerator = ({ open, onOpenChange, onSuccess }: PdfQuizGener
                   <CardHeader className="py-3 px-4">
                     <div className="flex items-start gap-2">
                       <Badge variant="outline" className="shrink-0 mt-0.5 text-xs">Q{idx + 1}</Badge>
-                      <p className="flex-1 font-medium leading-snug">{q.text}</p>
+                      <div className="flex-1 font-medium leading-snug text-sm">
+                        {expandedIdx === idx ? (
+                          <RichTextEditor
+                            value={q.text}
+                            onChange={(html) => {
+                              setQuestions((prev) =>
+                                prev ? prev.map((item, i) => (i === idx ? { ...item, text: html } : item)) : prev
+                              );
+                            }}
+                            placeholder="Question text"
+                          />
+                        ) : (
+                          <RichContent html={q.text} />
+                        )}
+                      </div>
                       <div className="flex gap-1 shrink-0">
                         <button
                           onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
@@ -297,21 +313,65 @@ export const PdfQuizGenerator = ({ open, onOpenChange, onSuccess }: PdfQuizGener
                       {q.answers.map((a, i) => (
                         <div
                           key={i}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs ${
-                            a.is_correct
-                              ? "border-green-500 bg-green-50 dark:bg-green-500/10 text-green-800 dark:text-green-300"
-                              : "border-border text-muted-foreground"
-                          }`}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs ${a.is_correct
+                            ? "border-green-500 bg-green-50 dark:bg-green-500/10 text-green-800 dark:text-green-300"
+                            : "border-border text-muted-foreground"
+                            }`}
                         >
                           <span className="font-semibold shrink-0">{LABELS[i]}.</span>
-                          <span>{a.text}</span>
-                          {a.is_correct && <span className="ml-auto font-semibold text-green-600 dark:text-green-400">Correct</span>}
+                          <div className="flex-1">
+                            <RichTextEditor
+                              value={a.text}
+                              onChange={(html) => {
+                                setQuestions((prev) =>
+                                  prev
+                                    ? prev.map((item, qi) =>
+                                      qi === idx
+                                        ? {
+                                          ...item,
+                                          answers: item.answers.map((ans, ai) =>
+                                            ai === i ? { ...ans, text: html } : ans
+                                          ),
+                                        }
+                                        : item
+                                    )
+                                    : prev
+                                );
+                              }}
+                              minimal
+                              placeholder={`Answer ${LABELS[i]}`}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            title={a.is_correct ? "Mark as wrong" : "Mark as correct"}
+                            onClick={() => {
+                              setQuestions((prev) =>
+                                prev
+                                  ? prev.map((item, qi) =>
+                                    qi === idx
+                                      ? {
+                                        ...item,
+                                        answers: item.answers.map((ans, ai) => ({
+                                          ...ans,
+                                          is_correct: ai === i,
+                                        })),
+                                      }
+                                      : item
+                                  )
+                                  : prev
+                              );
+                            }}
+                            className={`ml-auto font-semibold text-xs shrink-0 ${a.is_correct ? "text-green-600 dark:text-green-400" : "text-muted-foreground hover:text-green-600"}`}
+                          >
+                            {a.is_correct ? "✓ Correct" : "Set correct"}
+                          </button>
                         </div>
                       ))}
                       {q.explanation && (
-                        <p className="text-xs text-muted-foreground italic mt-1">
-                          Explanation: {q.explanation}
-                        </p>
+                        <div className="text-xs text-muted-foreground italic mt-1">
+                          <span className="font-semibold not-italic">Explanation:</span> <RichContent html={q.explanation} inline className="text-xs" />
+                        </div>
                       )}
                     </CardContent>
                   )}

@@ -7,7 +7,7 @@ import AdminQuiz from "./pages/AdminQuiz";
 import Logo from "./assets/logo.webp";
 import { Loader2, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import React, { useState } from "react";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 2 } },
@@ -143,7 +143,19 @@ function AdminSignIn() {
 function AdminGuard() {
   const { user, isAdmin, isLoading } = useAuth();
 
-  if (isLoading) {
+  // Wait for syncProfile to settle isAdmin before showing Access Denied
+  const [adminSettled, setAdminSettled] = useState(false);
+  React.useEffect(() => {
+    if (isLoading) { setAdminSettled(false); return; }
+    if (isAdmin) { setAdminSettled(true); return; }
+    if (user && !isAdmin) {
+      const t = setTimeout(() => setAdminSettled(true), 2000);
+      return () => clearTimeout(t);
+    }
+    setAdminSettled(true);
+  }, [isLoading, isAdmin, user]);
+
+  if (isLoading || (user && !adminSettled)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-[#2E2BE5]" />
