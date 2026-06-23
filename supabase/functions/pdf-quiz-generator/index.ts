@@ -30,7 +30,7 @@ serve(async (req) => {
     // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return jsonError(401, "Missing Authorization header");
+      return jsonError(401, "Missing Authorization header", corsHeaders);
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -38,11 +38,11 @@ serve(async (req) => {
     });
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return jsonError(401, "Unauthorized");
+      return jsonError(401, "Unauthorized", corsHeaders);
     }
 
     if (!GEMINI_API_KEY) {
-      return jsonError(500, "GEMINI_API_KEY is not configured");
+      return jsonError(500, "GEMINI_API_KEY is not configured", corsHeaders);
     }
 
     // Parse multipart form data
@@ -52,11 +52,11 @@ serve(async (req) => {
     const numQuestions = numQuestionsRaw ? Math.min(Number(numQuestionsRaw) || 10, 40) : 10;
 
     if (!pdfFile) {
-      return jsonError(400, "No PDF file provided (field name: 'pdf')");
+      return jsonError(400, "No PDF file provided (field name: 'pdf')", corsHeaders);
     }
 
     if (pdfFile.type !== "application/pdf" && !pdfFile.name.endsWith(".pdf")) {
-      return jsonError(400, "Uploaded file must be a PDF");
+      return jsonError(400, "Uploaded file must be a PDF", corsHeaders);
     }
 
     // Convert PDF to base64 (chunked to avoid call stack overflow on large files)
@@ -97,28 +97,28 @@ serve(async (req) => {
     if (!geminiResponse.ok) {
       const errorBody = await geminiResponse.text();
       console.error("Gemini API error:", geminiResponse.status, errorBody);
-      return jsonError(502, "AI quiz generation temporarily unavailable. Please try again.");
+      return jsonError(502, "AI quiz generation temporarily unavailable. Please try again.", corsHeaders);
     }
 
     const geminiData = await geminiResponse.json();
     const rawText: string = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
     if (!rawText) {
-      return jsonError(422, "Gemini returned an empty response.");
+      return jsonError(422, "Gemini returned an empty response.", corsHeaders);
     }
 
     // Extract JSON array from Gemini's response
     const questions = parseQuestionsFromResponse(rawText);
 
     if (!questions || questions.length === 0) {
-      return jsonError(422, "Could not extract questions from this PDF. Try a different file.");
+      return jsonError(422, "Could not extract questions from this PDF. Try a different file.", corsHeaders);
     }
 
-    return jsonOk({ questions });
+    return jsonOk({ questions }, corsHeaders);
 
   } catch (err) {
     console.error("pdf-quiz-generator error:", err);
-    return jsonError(500, err instanceof Error ? err.message : "Unexpected error");
+    return jsonError(500, err instanceof Error ? err.message : "Unexpected error", corsHeaders);
   }
 });
 
@@ -183,10 +183,10 @@ function parseQuestionsFromResponse(raw: string): GeneratedQuestion[] {
   }
 
   return parsed
-    .filter((q: any) => q.text && Array.isArray(q.answers) && q.answers.length >= 2)
-    .map((q: any): GeneratedQuestion => ({
+    .filter((q: Record<string, unknown>) => q && typeof q === 'object' && q.text && Array.isArray(q.answers) && q.answers.length >= 2)
+    .map((q: Record<string, unknown>): GeneratedQuestion => ({
       text: String(q.text),
-      answers: (q.answers as any[]).slice(0, 4).map((a: any) => ({
+      answers: (q.answers as Record<string, unknown>[]).slice(0, 4).map((a: Record<string, unknown>) => ({
         text: String(a.text ?? ""),
         is_correct: Boolean(a.is_correct),
       })),
@@ -194,14 +194,14 @@ function parseQuestionsFromResponse(raw: string): GeneratedQuestion[] {
     }));
 }
 
-function jsonOk<T>(data: T): Response {
+function jsonOk<T>(data: T, corsHeaders: Record<string, string>): Response {
   return new Response(JSON.stringify(data), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
-function jsonError(status: number, message: string): Response {
+function jsonError(status: number, message: string, corsHeaders: Record<string, string>): Response {
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },

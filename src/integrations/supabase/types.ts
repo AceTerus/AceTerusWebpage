@@ -179,21 +179,7 @@ export type Database = {
         }
         Relationships: []
       }
-      authenthication: {
-        Row: {
-          email: string
-          password: string
-        }
-        Insert: {
-          email: string
-          password: string
-        }
-        Update: {
-          email?: string
-          password?: string
-        }
-        Relationships: []
-      }
+
       chat_messages: {
         Row: {
           content: string
@@ -326,7 +312,22 @@ export type Database = {
           follower_id?: string
           id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_followed_id_fkey"
+            columns: ["followed_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       likes: {
         Row: {
@@ -677,6 +678,166 @@ export type Database = {
         }
         Relationships: []
       }
+      answers: {
+        Row: {
+          id: string
+          question_id: string
+          text: string
+          is_correct: boolean
+          image_url: string | null
+        }
+        Insert: {
+          id?: string
+          question_id: string
+          text: string
+          is_correct: boolean
+          image_url?: string | null
+        }
+        Update: {
+          id?: string
+          question_id?: string
+          text?: string
+          is_correct?: boolean
+          image_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decks: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          subject: string | null
+          created_by: string | null
+          created_at: string
+          is_published: boolean
+          quiz_type: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          subject?: string | null
+          created_by?: string | null
+          created_at?: string
+          is_published?: boolean
+          quiz_type?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          subject?: string | null
+          created_by?: string | null
+          created_at?: string
+          is_published?: boolean
+          quiz_type?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          id: string
+          deck_id: string
+          text: string
+          explanation: string | null
+          image_url: string | null
+          order: number
+          marks: number | null
+        }
+        Insert: {
+          id?: string
+          deck_id: string
+          text: string
+          explanation?: string | null
+          image_url?: string | null
+          order?: number
+          marks?: number | null
+        }
+        Update: {
+          id?: string
+          deck_id?: string
+          text?: string
+          explanation?: string | null
+          image_url?: string | null
+          order?: number
+          marks?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_categories: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          created_at: string
+          is_published: boolean
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          created_at?: string
+          is_published?: boolean
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          created_at?: string
+          is_published?: boolean
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          body: string | null
+          metadata: Json | null
+          is_read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title: string
+          body?: string | null
+          metadata?: Json | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          body?: string | null
+          metadata?: Json | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -686,6 +847,14 @@ export type Database = {
         Args: {
           target_user: string
           target_sender: string
+        }
+        Returns: void
+      }
+      notify_quiz_published: {
+        Args: {
+          p_category_id: string
+          p_admin_id: string
+          p_category_name: string
         }
         Returns: void
       }

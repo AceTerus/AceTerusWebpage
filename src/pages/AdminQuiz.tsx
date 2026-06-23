@@ -6,7 +6,7 @@ import {
   Plus, Pencil, Trash2, ChevronLeft, Loader2, ShieldAlert,
   ImagePlus, X, Globe, EyeOff, Sparkles, FolderOpen, BookOpen,
   FileText, CheckSquare, Eye, BadgeCheck, Building2, MapPin,
-  Calendar, Clock, CheckCircle2, XCircle,
+  Calendar, Clock, CheckCircle2, XCircle, ClipboardPaste,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,8 @@ import type { Category, Deck, Question } from "@/types/quiz";
 import { PdfQuizGenerator } from "@/components/PdfQuizGenerator";
 import { TextQuizImporter } from "@/components/TextQuizImporter";
 import { OcrQuizGenerator } from "@/components/OcrQuizGenerator";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { RichContent } from "@/components/RichContent";
 
 // ── Blank form shapes ─────────────────────────────────────────────────────────
 
@@ -165,6 +167,48 @@ const AdminQuiz = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+
+  const handlePasteQuestionImage = async () => {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find(type => type.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const file = new File([blob], "pasted-image.png", { type: imageType });
+          setImageFile(file);
+          setImagePreview(URL.createObjectURL(file));
+          return;
+        }
+      }
+      toast({ title: "No image found in clipboard", variant: "destructive" });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Paste failed", description: "Please allow clipboard permissions.", variant: "destructive" });
+    }
+  };
+
+  const handlePasteAnswerImage = async (idx: number) => {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find(type => type.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const file = new File([blob], "pasted-image.png", { type: imageType });
+          const files = [...answerImageFiles]; files[idx] = file;
+          const previews = [...answerImagePreviews]; previews[idx] = URL.createObjectURL(file);
+          setAnswerImageFiles(files);
+          setAnswerImagePreviews(previews);
+          return;
+        }
+      }
+      toast({ title: "No image found in clipboard", variant: "destructive" });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Paste failed", description: "Please allow clipboard permissions.", variant: "destructive" });
+    }
+  };
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Answer image state (one slot per answer option A–D)
@@ -433,7 +477,7 @@ const AdminQuiz = () => {
           const newFile = answerImageFiles[idx];
           const existingUrl = existingAnswerImageUrls[idx];
           if (newFile) {
-            if (existingUrl) await deleteQuizImage(existingUrl).catch(() => {});
+            if (existingUrl) await deleteQuizImage(existingUrl).catch(() => { });
             return uploadQuizImage(newFile);
           }
           if (!answerImagePreviews[idx] && !existingUrl) return null;
@@ -475,10 +519,10 @@ const AdminQuiz = () => {
     try {
       let finalImageUrl: string | null | undefined = undefined;
       if (imageFile) {
-        if (existingImageUrl) await deleteQuizImage(existingImageUrl).catch(() => {});
+        if (existingImageUrl) await deleteQuizImage(existingImageUrl).catch(() => { });
         finalImageUrl = await uploadQuizImage(imageFile);
       } else if (existingImageUrl === null && editingQuestion?.image_url) {
-        await deleteQuizImage(editingQuestion.image_url).catch(() => {});
+        await deleteQuizImage(editingQuestion.image_url).catch(() => { });
         finalImageUrl = null;
       }
 
@@ -524,7 +568,24 @@ const AdminQuiz = () => {
   };
 
   // ── Render guards ────────────────────────────────────────────────────────────
-  if (authLoading) {
+  // Show loading while auth is initialising OR while the profile (isAdmin)
+  // hasn't had a chance to sync yet.  syncProfile runs fire-and-forget after
+  // isLoading is set to false, so we need to hold the spinner a little longer
+  // for logged-in users until isAdmin settles.
+  const [adminSettled, setAdminSettled] = useState(false);
+  useEffect(() => {
+    if (authLoading) { setAdminSettled(false); return; }
+    if (isAdmin) { setAdminSettled(true); return; }
+    // User is logged in but isAdmin is still false — give syncProfile time
+    if (user && !isAdmin) {
+      const t = setTimeout(() => setAdminSettled(true), 2000);
+      return () => clearTimeout(t);
+    }
+    // No user — nothing to wait for
+    setAdminSettled(true);
+  }, [authLoading, isAdmin, user]);
+
+  if (authLoading || (user && !adminSettled)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -538,7 +599,7 @@ const AdminQuiz = () => {
         <ShieldAlert className="h-12 w-12 text-destructive" />
         <h1 className="text-2xl font-bold">Access Denied</h1>
         <p className="text-muted-foreground">You need admin privileges to access this page.</p>
-        <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
+        <Button variant="outline" onClick={() => window.location.href = "/"}>Go Home</Button>
       </div>
     );
   }
@@ -583,7 +644,7 @@ const AdminQuiz = () => {
               <ChevronLeft className="w-4 h-4" /> Back to AceTerus Web
             </a>
           ) : (
-            <Button variant="outline" size="sm" onClick={() => navigate("/profile")} className="gap-2 mb-3">
+            <Button variant="outline" size="sm" onClick={() => window.location.href = "/profile"} className="gap-2 mb-3">
               <ChevronLeft className="w-4 h-4" /> Back to Profile
             </Button>
           )}
@@ -627,7 +688,7 @@ const AdminQuiz = () => {
               {selectedDeck && (
                 <Button
                   variant="outline"
-                  onClick={() => navigate(`/quiz?preview=${selectedDeck.id}`)}
+                  onClick={() => window.location.href = `/quiz?preview=${selectedDeck.id}`}
                   className="gap-2"
                 >
                   <Eye className="w-4 h-4" /> Preview
@@ -766,713 +827,739 @@ const AdminQuiz = () => {
       {/* ── Quiz Admin (existing content below) ── */}
       {section === "quiz" && <>
 
-      {/* ── Categories view ── */}
-      {view === "categories" && (
-        <>
-          {loadingCategories ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : categories.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <FolderOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <p className="font-medium">No categories yet</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Create a category first, then add quizzes inside it.
-                </p>
-                <Button className="mt-4 gap-2" onClick={openCreateCategory}>
-                  <Plus className="w-4 h-4" /> New Category
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {categories.map((cat) => (
-                <Card
-                  key={cat.id}
-                  className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => loadDecksForCategory(cat)}
-                >
-                  <CardContent className="p-5 flex items-center gap-4">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <FolderOpen className="w-6 h-6 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-base truncate">{cat.name}</h3>
-                        <Badge
-                          variant={cat.is_published ? "default" : "outline"}
+        {/* ── Categories view ── */}
+        {view === "categories" && (
+          <>
+            {loadingCategories ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : categories.length === 0 ? (
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <FolderOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="font-medium">No categories yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Create a category first, then add quizzes inside it.
+                  </p>
+                  <Button className="mt-4 gap-2" onClick={openCreateCategory}>
+                    <Plus className="w-4 h-4" /> New Category
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {categories.map((cat) => (
+                  <Card
+                    key={cat.id}
+                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => loadDecksForCategory(cat)}
+                  >
+                    <CardContent className="p-5 flex items-center gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <FolderOpen className="w-6 h-6 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-base truncate">{cat.name}</h3>
+                          <Badge
+                            variant={cat.is_published ? "default" : "outline"}
+                            className={cat.is_published
+                              ? "bg-green-500 hover:bg-green-500 text-white border-green-500"
+                              : "text-muted-foreground"}
+                          >
+                            {cat.is_published ? "Published" : "Draft"}
+                          </Badge>
+                        </div>
+                        {cat.description && (
+                          <p className="text-sm text-muted-foreground truncate">{cat.description}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant={cat.is_published ? "outline" : "default"}
                           className={cat.is_published
-                            ? "bg-green-500 hover:bg-green-500 text-white border-green-500"
-                            : "text-muted-foreground"}
+                            ? "gap-1.5 text-muted-foreground"
+                            : "gap-1.5 bg-green-500 hover:bg-green-600 text-white border-0"}
+                          onClick={() => handleToggleCategoryPublish(cat)}
                         >
-                          {cat.is_published ? "Published" : "Draft"}
-                        </Badge>
-                      </div>
-                      {cat.description && (
-                        <p className="text-sm text-muted-foreground truncate">{cat.description}</p>
-                      )}
-                    </div>
-                    <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        size="sm"
-                        variant={cat.is_published ? "outline" : "default"}
-                        className={cat.is_published
-                          ? "gap-1.5 text-muted-foreground"
-                          : "gap-1.5 bg-green-500 hover:bg-green-600 text-white border-0"}
-                        onClick={() => handleToggleCategoryPublish(cat)}
-                      >
-                        {cat.is_published
-                          ? <><EyeOff className="w-3.5 h-3.5" /> Unpublish</>
-                          : <><Globe className="w-3.5 h-3.5" /> Publish</>}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => openEditCategory(cat)}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteCategory(cat)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ── Decks view ── */}
-      {view === "decks" && (
-        <>
-          {loadingDecks ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : decks.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <p className="font-medium">No quizzes in this category</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Add a quiz to <span className="font-semibold">{selectedCategory?.name}</span>.
-                </p>
-                <Button className="mt-4 gap-2" onClick={openCreateDeck}>
-                  <Plus className="w-4 h-4" /> New Quiz
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {decks.map((deck) => (
-                <Card key={deck.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-5 flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-lg">{deck.name}</h3>
-                        <Badge
-                          variant={deck.is_published ? "default" : "outline"}
-                          className={deck.is_published
-                            ? "bg-green-500 hover:bg-green-500 text-white border-green-500"
-                            : "text-muted-foreground"}
-                        >
-                          {deck.is_published ? "Published" : "Draft"}
-                        </Badge>
-                        <Badge variant="outline" className={`text-xs capitalize ${deck.quiz_type === "subjective" ? "border-blue-400 text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}>
-                          {deck.quiz_type === "subjective" ? <><FileText className="w-3 h-3 inline mr-1" />Subjective</> : <><CheckSquare className="w-3 h-3 inline mr-1" />Objective</>}
-                        </Badge>
-                      </div>
-                      {deck.description && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{deck.description}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {deck.question_count} question{deck.question_count !== 1 ? "s" : ""}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      <Button size="sm" variant="outline" onClick={() => loadQuestions(deck)}>
-                        Manage Questions
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={deck.is_published ? "outline" : "default"}
-                        className={deck.is_published
-                          ? "gap-1.5 text-muted-foreground"
-                          : "gap-1.5 bg-green-500 hover:bg-green-600 text-white border-0"}
-                        onClick={() => handleTogglePublish(deck)}
-                      >
-                        {deck.is_published
-                          ? <><EyeOff className="w-3.5 h-3.5" /> Unpublish</>
-                          : <><Globe className="w-3.5 h-3.5" /> Publish</>}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => openEditDeck(deck)}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteDeck(deck)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ── Questions view ── */}
-      {view === "questions" && (
-        <>
-          {loadingQuestions ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : questions.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                No questions yet. Click "Add Question" to get started.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {questions.map((q, idx) => (
-                <Card key={q.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 flex-1">
-                        <Badge variant="outline" className="shrink-0 mt-0.5">Q{idx + 1}</Badge>
-                        <CardTitle className="text-base font-medium leading-snug">{q.text}</CardTitle>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <Button size="sm" variant="ghost" onClick={() => openEditQuestion(q)}>
+                          {cat.is_published
+                            ? <><EyeOff className="w-3.5 h-3.5" /> Unpublish</>
+                            : <><Globe className="w-3.5 h-3.5" /> Publish</>}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openEditCategory(cat)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteQuestion(q)}
+                          onClick={() => handleDeleteCategory(cat)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0 space-y-1.5">
-                    {q.image_url && (
-                      <img
-                        src={q.image_url}
-                        alt="Question image"
-                        className="w-full max-h-48 object-contain rounded-lg border bg-muted/20 mb-3"
-                      />
-                    )}
-                    {selectedDeck?.quiz_type === "subjective" ? (
-                      <div className="flex items-center gap-3 mt-1">
-                        <Badge variant="outline" className="border-blue-400 text-blue-600 dark:text-blue-400 text-sm font-semibold px-3 py-1">
-                          [ {q.marks ?? 0} mark{(q.marks ?? 0) !== 1 ? "s" : ""} ]
-                        </Badge>
-                        <span className="text-xs text-muted-foreground italic">Open-ended — student writes answer</span>
-                      </div>
-                    ) : (
-                      q.answers.map((a, i) => (
-                        <div
-                          key={a.id}
-                          className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg border ${
-                            a.is_correct
-                              ? "border-green-500 bg-green-50 dark:bg-green-500/10 text-green-800 dark:text-green-300"
-                              : "border-border text-muted-foreground"
-                          }`}
-                        >
-                          <span className="font-semibold shrink-0">{LABELS[i]}.</span>
-                          <span>{a.text}</span>
-                          {a.is_correct && (
-                            <span className="ml-auto text-xs font-semibold text-green-600 dark:text-green-400">
-                              Correct
-                            </span>
-                          )}
-                        </div>
-                      ))
-                    )}
-                    {q.explanation && (
-                      <p className="text-xs text-muted-foreground mt-2 italic">
-                        Explanation: {q.explanation}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ── PDF Quiz Generator ── */}
-      <PdfQuizGenerator
-        open={pdfGeneratorOpen}
-        onOpenChange={setPdfGeneratorOpen}
-        onSuccess={() => selectedCategory && loadDecksForCategory(selectedCategory)}
-      />
-
-      {/* ── OCR Quiz Generator ── */}
-      <OcrQuizGenerator
-        open={ocrGeneratorOpen}
-        onOpenChange={setOcrGeneratorOpen}
-        categoryName={selectedCategory?.name}
-        onSuccess={() => selectedCategory && loadDecksForCategory(selectedCategory)}
-      />
-
-      {/* ── Text Quiz Importer ── */}
-      {selectedDeck && (
-        <TextQuizImporter
-          open={textImporterOpen}
-          onOpenChange={setTextImporterOpen}
-          deck={selectedDeck}
-          existingCount={questions.length}
-          onSuccess={() => selectedDeck && loadQuestions(selectedDeck)}
-        />
-      )}
-
-      {/* ── Quiz Type Picker Dialog ── */}
-      <Dialog open={quizTypeDialogOpen} onOpenChange={setQuizTypeDialogOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Choose Quiz Type</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground -mt-2">
-            Select the type of quiz you want to create.
-          </p>
-          <div className="grid grid-cols-2 gap-3 py-2">
-            <button
-              onClick={() => { setQuizTypeDialogOpen(false); openCreateDeckWithType("objective"); }}
-              className="flex flex-col items-center gap-3 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 p-5 text-center transition-all"
-            >
-              <CheckSquare className="w-9 h-9 text-primary" />
-              <div>
-                <p className="font-semibold text-sm">Objective</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Multiple choice (MCQ)</p>
-              </div>
-            </button>
-            <button
-              onClick={() => { setQuizTypeDialogOpen(false); openCreateDeckWithType("subjective"); }}
-              className="flex flex-col items-center gap-3 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 p-5 text-center transition-all"
-            >
-              <FileText className="w-9 h-9 text-primary" />
-              <div>
-                <p className="font-semibold text-sm">Subjective</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Essay / open-ended (SPM)</p>
-              </div>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Category Dialog ── */}
-      <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingCategory ? "Edit Category" : "New Category"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Name *</Label>
-              <Input
-                placeholder="e.g. Biology, Mathematics, History"
-                value={categoryForm.name}
-                onChange={(e) => setCategoryForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Textarea
-                placeholder="Short description of this category"
-                value={categoryForm.description}
-                onChange={(e) => setCategoryForm((f) => ({ ...f, description: e.target.value }))}
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCategoryDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveCategory} disabled={savingCategory}>
-              {savingCategory && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingCategory ? "Save Changes" : "Create Category"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Deck Dialog ── */}
-      <Dialog open={deckDialogOpen} onOpenChange={setDeckDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingDeck ? "Edit Quiz" : "New Quiz"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            {!editingDeck && (
-              <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium border ${deckForm.quiz_type === "subjective" ? "bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-400" : "bg-muted/40 border-border text-muted-foreground"}`}>
-                {deckForm.quiz_type === "subjective" ? <FileText className="w-4 h-4" /> : <CheckSquare className="w-4 h-4" />}
-                {deckForm.quiz_type === "subjective" ? "Subjective quiz (SPM essay style)" : "Objective quiz (MCQ)"}
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             )}
-            <div className="space-y-1.5">
-              <Label>Quiz Name *</Label>
-              <Input
-                placeholder="e.g. Biology Paper 1 2023"
-                value={deckForm.name}
-                onChange={(e) => setDeckForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Category *</Label>
-              <Select
-                value={deckForm.subject}
-                onValueChange={(val) => setDeckForm((f) => ({ ...f, subject: val }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.name}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {categories.length === 0 && (
-                <p className="text-xs text-destructive">
-                  No categories exist. Create a category first.
-                </p>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Textarea
-                placeholder="Optional short description"
-                value={deckForm.description}
-                onChange={(e) => setDeckForm((f) => ({ ...f, description: e.target.value }))}
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeckDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveDeck} disabled={savingDeck || categories.length === 0}>
-              {savingDeck && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingDeck ? "Save Changes" : "Create Quiz"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        )}
 
-      {/* ── Question Dialog ── */}
-      <Dialog open={questionDialogOpen} onOpenChange={setQuestionDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingQuestion ? "Edit Question" : "Add Question"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Question *</Label>
-              <Textarea
-                placeholder="Enter your question here"
-                value={questionForm.text}
-                onChange={(e) => setQuestionForm((f) => ({ ...f, text: e.target.value }))}
-                rows={3}
-              />
-            </div>
-
-            {selectedDeck?.quiz_type === "subjective" ? (
-              /* ── Subjective question form ── */
-              <>
-                {/* Question image */}
-                <div className="space-y-2">
-                  <Label>Question Image (optional)</Label>
-                  {(imagePreview || existingImageUrl) && (
-                    <div className="relative w-full rounded-lg overflow-hidden border bg-muted/20">
-                      <img src={imagePreview ?? existingImageUrl!} alt="Question preview" className="w-full max-h-48 object-contain" />
-                      <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); setExistingImageUrl(null); if (imageInputRef.current) imageInputRef.current.value = ""; }} className="absolute top-2 right-2 rounded-full bg-background/80 border p-1 hover:bg-destructive hover:text-destructive-foreground transition-colors">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                  <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; setImageFile(file); setImagePreview(URL.createObjectURL(file)); }} />
-                  {!imagePreview && !existingImageUrl && (
-                    <Button type="button" variant="outline" className="w-full gap-2 border-dashed" onClick={() => imageInputRef.current?.click()}>
-                      <ImagePlus className="w-4 h-4" /> Upload image
-                    </Button>
-                  )}
-                </div>
-
-                {/* Question type selector */}
-                <div className="space-y-2">
-                  <Label>Answer Type</Label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setQuestionForm((f) => ({ ...f, questionType: "text" }))}
-                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${questionForm.questionType === "text" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}
-                    >
-                      Text Answer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuestionForm((f) => ({ ...f, questionType: "checkbox" }))}
-                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${questionForm.questionType === "checkbox" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}
-                    >
-                      Checkbox Options
-                    </button>
-                  </div>
-                </div>
-
-                {questionForm.questionType === "text" ? (
-                  /* Text answer: model answer + preview */
-                  <>
-                    <div className="space-y-1.5">
-                      <Label>Model Answer *</Label>
-                      <Textarea
-                        placeholder="Enter the expected model answer here"
-                        value={questionForm.modelAnswer}
-                        onChange={(e) => setQuestionForm((f) => ({ ...f, modelAnswer: e.target.value }))}
-                        rows={3}
-                      />
-                      <p className="text-xs text-muted-foreground">This is shown to students as a format reference and used by AI for grading.</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
-                        <BookOpen className="w-3.5 h-3.5" /> Student view (preview)
-                      </Label>
-                      <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/10 p-3">
-                        <Textarea disabled placeholder="Students will type their answer here..." rows={3} className="resize-none opacity-50 cursor-not-allowed bg-transparent" />
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  /* Checkbox options */
-                  <div className="space-y-2">
-                    <Label>Options <span className="text-muted-foreground font-normal text-xs">(check the correct ones)</span></Label>
-                    {questionForm.checkboxOptions.map((opt, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={opt.is_correct}
-                          onChange={(e) => {
-                            const opts = [...questionForm.checkboxOptions];
-                            opts[idx] = { ...opts[idx], is_correct: e.target.checked };
-                            setQuestionForm((f) => ({ ...f, checkboxOptions: opts }));
-                          }}
-                          className="accent-primary w-4 h-4 shrink-0 rounded"
-                        />
-                        <Input
-                          placeholder={`Option ${idx + 1}`}
-                          value={opt.text}
-                          onChange={(e) => {
-                            const opts = [...questionForm.checkboxOptions];
-                            opts[idx] = { ...opts[idx], text: e.target.value };
-                            setQuestionForm((f) => ({ ...f, checkboxOptions: opts }));
-                          }}
-                        />
-                        {questionForm.checkboxOptions.length > 2 && (
-                          <button
-                            type="button"
-                            onClick={() => setQuestionForm((f) => ({ ...f, checkboxOptions: f.checkboxOptions.filter((_, i) => i !== idx) }))}
-                            className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full gap-1.5 border-dashed"
-                      onClick={() => setQuestionForm((f) => ({ ...f, checkboxOptions: [...f.checkboxOptions, { text: "", is_correct: false }] }))}
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add option
-                    </Button>
-                    <p className="text-xs text-muted-foreground">Check the box next to each correct option. Students must select all correct options to earn full marks.</p>
-                  </div>
-                )}
-
-                {/* Marks */}
-                <div className="space-y-1.5">
-                  <Label>Marks for this question</Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={questionForm.marks}
-                      onChange={(e) => setQuestionForm((f) => ({ ...f, marks: Math.max(1, parseInt(e.target.value) || 1) }))}
-                      className="w-24"
-                    />
-                    <span className="text-sm text-muted-foreground">mark{questionForm.marks !== 1 ? "s" : ""}</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              /* ── Objective (MCQ) question form ── */
-              <>
-                <div className="space-y-3">
-                  <Label>Answer Choices (select the correct one)</Label>
-                  {questionForm.answers.map((answer, idx) => {
-                    const preview = answerImagePreviews[idx];
-                    const existing = existingAnswerImageUrls[idx];
-                    const hasImage = preview || existing;
-                    return (
-                      <div key={idx} className="space-y-1.5">
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="radio"
-                            name="correctAnswer"
-                            checked={questionForm.correctIndex === idx}
-                            onChange={() => setQuestionForm((f) => ({ ...f, correctIndex: idx }))}
-                            className="accent-primary w-4 h-4 shrink-0"
-                          />
-                          <span className="font-semibold text-sm w-5 shrink-0">{LABELS[idx]}.</span>
-                          <Input
-                            placeholder={`Answer ${LABELS[idx]}`}
-                            value={answer}
-                            onChange={(e) => {
-                              const answers = [...questionForm.answers];
-                              answers[idx] = e.target.value;
-                              setQuestionForm((f) => ({ ...f, answers }));
-                            }}
-                          />
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            ref={(el) => { answerImageInputRefs.current[idx] = el; }}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const files = [...answerImageFiles]; files[idx] = file;
-                              const previews = [...answerImagePreviews]; previews[idx] = URL.createObjectURL(file);
-                              setAnswerImageFiles(files);
-                              setAnswerImagePreviews(previews);
-                            }}
-                          />
-                          <button
-                            type="button"
-                            title={hasImage ? "Change image" : "Add image"}
-                            onClick={() => answerImageInputRefs.current[idx]?.click()}
-                            className={`shrink-0 rounded-md border p-1.5 transition-colors ${hasImage ? "border-primary bg-primary/10 text-primary" : "border-dashed border-muted-foreground/40 text-muted-foreground hover:border-primary hover:text-primary"}`}
-                          >
-                            <ImagePlus className="w-4 h-4" />
-                          </button>
-                        </div>
-                        {hasImage && (
-                          <div className="ml-12 relative w-full max-w-[200px] rounded-lg overflow-hidden border bg-muted/20">
-                            <img
-                              src={preview ?? existing!}
-                              alt={`Answer ${LABELS[idx]} image`}
-                              className="w-full max-h-28 object-contain"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const files = [...answerImageFiles]; files[idx] = null;
-                                const previews = [...answerImagePreviews]; previews[idx] = null;
-                                const urls = [...existingAnswerImageUrls]; urls[idx] = null;
-                                setAnswerImageFiles(files);
-                                setAnswerImagePreviews(previews);
-                                setExistingAnswerImageUrls(urls);
-                                const ref = answerImageInputRefs.current[idx];
-                                if (ref) ref.value = "";
-                              }}
-                              className="absolute top-1 right-1 rounded-full bg-background/80 border p-0.5 hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <p className="text-xs text-muted-foreground">
-                    Select the radio button next to the correct answer. Use 📷 to add an image to any option.
+        {/* ── Decks view ── */}
+        {view === "decks" && (
+          <>
+            {loadingDecks ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : decks.length === 0 ? (
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="font-medium">No quizzes in this category</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Add a quiz to <span className="font-semibold">{selectedCategory?.name}</span>.
                   </p>
+                  <Button className="mt-4 gap-2" onClick={openCreateDeck}>
+                    <Plus className="w-4 h-4" /> New Quiz
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {decks.map((deck) => (
+                  <Card key={deck.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-5 flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-lg">{deck.name}</h3>
+                          <Badge
+                            variant={deck.is_published ? "default" : "outline"}
+                            className={deck.is_published
+                              ? "bg-green-500 hover:bg-green-500 text-white border-green-500"
+                              : "text-muted-foreground"}
+                          >
+                            {deck.is_published ? "Published" : "Draft"}
+                          </Badge>
+                          <Badge variant="outline" className={`text-xs capitalize ${deck.quiz_type === "subjective" ? "border-blue-400 text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}>
+                            {deck.quiz_type === "subjective" ? <><FileText className="w-3 h-3 inline mr-1" />Subjective</> : <><CheckSquare className="w-3 h-3 inline mr-1" />Objective</>}
+                          </Badge>
+                        </div>
+                        {deck.description && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{deck.description}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {deck.question_count} question{deck.question_count !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="sm" variant="outline" onClick={() => loadQuestions(deck)}>
+                          Manage Questions
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={deck.is_published ? "outline" : "default"}
+                          className={deck.is_published
+                            ? "gap-1.5 text-muted-foreground"
+                            : "gap-1.5 bg-green-500 hover:bg-green-600 text-white border-0"}
+                          onClick={() => handleTogglePublish(deck)}
+                        >
+                          {deck.is_published
+                            ? <><EyeOff className="w-3.5 h-3.5" /> Unpublish</>
+                            : <><Globe className="w-3.5 h-3.5" /> Publish</>}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openEditDeck(deck)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteDeck(deck)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Questions view ── */}
+        {view === "questions" && (
+          <>
+            {loadingQuestions ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : questions.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  No questions yet. Click "Add Question" to get started.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {questions.map((q, idx) => (
+                  <Card key={q.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          <Badge variant="outline" className="shrink-0 mt-0.5">Q{idx + 1}</Badge>
+                          <CardTitle className="text-base font-medium leading-snug"><RichContent html={q.text} /></CardTitle>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button size="sm" variant="ghost" onClick={() => openEditQuestion(q)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteQuestion(q)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0 space-y-1.5">
+                      {q.image_url && (
+                        <img
+                          src={q.image_url}
+                          alt="Question image"
+                          className="w-full max-h-48 object-contain rounded-lg border bg-muted/20 mb-3"
+                        />
+                      )}
+                      {selectedDeck?.quiz_type === "subjective" ? (
+                        <div className="flex items-center gap-3 mt-1">
+                          <Badge variant="outline" className="border-blue-400 text-blue-600 dark:text-blue-400 text-sm font-semibold px-3 py-1">
+                            [ {q.marks ?? 0} mark{(q.marks ?? 0) !== 1 ? "s" : ""} ]
+                          </Badge>
+                          <span className="text-xs text-muted-foreground italic">Open-ended — student writes answer</span>
+                        </div>
+                      ) : (
+                        q.answers.map((a, i) => (
+                          <div
+                            key={a.id}
+                            className={`flex flex-col gap-2 text-sm px-3 py-2 rounded-lg border ${a.is_correct
+                                ? "border-green-500 bg-green-50 dark:bg-green-500/10 text-green-800 dark:text-green-300"
+                                : "border-border text-muted-foreground"
+                              }`}
+                          >
+                            {a.image_url && (
+                              <img
+                                src={a.image_url}
+                                alt={`Answer ${LABELS[i]} image`}
+                                className="w-full max-h-24 object-contain rounded border bg-muted/20"
+                              />
+                            )}
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold shrink-0">{LABELS[i]}.</span>
+                              <span><RichContent html={a.text} inline /></span>
+                              {a.is_correct && (
+                                <span className="ml-auto text-xs font-semibold text-green-600 dark:text-green-400">
+                                  Correct
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      {q.explanation && (
+                        <div className="text-xs text-muted-foreground mt-2 italic">
+                          <span className="font-semibold">Explanation:</span> <RichContent html={q.explanation} inline />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── PDF Quiz Generator ── */}
+        <PdfQuizGenerator
+          open={pdfGeneratorOpen}
+          onOpenChange={setPdfGeneratorOpen}
+          onSuccess={() => selectedCategory && loadDecksForCategory(selectedCategory)}
+        />
+
+        {/* ── OCR Quiz Generator ── */}
+        <OcrQuizGenerator
+          open={ocrGeneratorOpen}
+          onOpenChange={setOcrGeneratorOpen}
+          categoryName={selectedCategory?.name}
+          onSuccess={() => selectedCategory && loadDecksForCategory(selectedCategory)}
+        />
+
+        {/* ── Text Quiz Importer ── */}
+        {selectedDeck && (
+          <TextQuizImporter
+            open={textImporterOpen}
+            onOpenChange={setTextImporterOpen}
+            deck={selectedDeck}
+            existingCount={questions.length}
+            onSuccess={() => selectedDeck && loadQuestions(selectedDeck)}
+          />
+        )}
+
+        {/* ── Quiz Type Picker Dialog ── */}
+        <Dialog open={quizTypeDialogOpen} onOpenChange={setQuizTypeDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Choose Quiz Type</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground -mt-2">
+              Select the type of quiz you want to create.
+            </p>
+            <div className="grid grid-cols-2 gap-3 py-2">
+              <button
+                onClick={() => { setQuizTypeDialogOpen(false); openCreateDeckWithType("objective"); }}
+                className="flex flex-col items-center gap-3 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 p-5 text-center transition-all"
+              >
+                <CheckSquare className="w-9 h-9 text-primary" />
+                <div>
+                  <p className="font-semibold text-sm">Objective</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Multiple choice (MCQ)</p>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Explanation (optional)</Label>
-                  <Textarea
-                    placeholder="Explain why this answer is correct"
-                    value={questionForm.explanation}
-                    onChange={(e) => setQuestionForm((f) => ({ ...f, explanation: e.target.value }))}
-                    rows={2}
-                  />
+              </button>
+              <button
+                onClick={() => { setQuizTypeDialogOpen(false); openCreateDeckWithType("subjective"); }}
+                className="flex flex-col items-center gap-3 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 p-5 text-center transition-all"
+              >
+                <FileText className="w-9 h-9 text-primary" />
+                <div>
+                  <p className="font-semibold text-sm">Subjective</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Essay / open-ended (SPM)</p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Image (optional)</Label>
-                  {(imagePreview || existingImageUrl) && (
-                    <div className="relative w-full rounded-lg overflow-hidden border bg-muted/20">
-                      <img
-                        src={imagePreview ?? existingImageUrl!}
-                        alt="Question preview"
-                        className="w-full max-h-48 object-contain"
-                      />
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Category Dialog ── */}
+        <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingCategory ? "Edit Category" : "New Category"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label>Name *</Label>
+                <Input
+                  placeholder="e.g. Biology, Mathematics, History"
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Description</Label>
+                <Textarea
+                  placeholder="Short description of this category"
+                  value={categoryForm.description}
+                  onChange={(e) => setCategoryForm((f) => ({ ...f, description: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCategoryDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveCategory} disabled={savingCategory}>
+                {savingCategory && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {editingCategory ? "Save Changes" : "Create Category"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Deck Dialog ── */}
+        <Dialog open={deckDialogOpen} onOpenChange={setDeckDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingDeck ? "Edit Quiz" : "New Quiz"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {!editingDeck && (
+                <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium border ${deckForm.quiz_type === "subjective" ? "bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-400" : "bg-muted/40 border-border text-muted-foreground"}`}>
+                  {deckForm.quiz_type === "subjective" ? <FileText className="w-4 h-4" /> : <CheckSquare className="w-4 h-4" />}
+                  {deckForm.quiz_type === "subjective" ? "Subjective quiz (SPM essay style)" : "Objective quiz (MCQ)"}
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label>Quiz Name *</Label>
+                <Input
+                  placeholder="e.g. Biology Paper 1 2023"
+                  value={deckForm.name}
+                  onChange={(e) => setDeckForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Category *</Label>
+                <Select
+                  value={deckForm.subject}
+                  onValueChange={(val) => setDeckForm((f) => ({ ...f, subject: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {categories.length === 0 && (
+                  <p className="text-xs text-destructive">
+                    No categories exist. Create a category first.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Description</Label>
+                <Textarea
+                  placeholder="Optional short description"
+                  value={deckForm.description}
+                  onChange={(e) => setDeckForm((f) => ({ ...f, description: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeckDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveDeck} disabled={savingDeck || categories.length === 0}>
+                {savingDeck && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {editingDeck ? "Save Changes" : "Create Quiz"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Question Dialog ── */}
+        <Dialog open={questionDialogOpen} onOpenChange={setQuestionDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingQuestion ? "Edit Question" : "Add Question"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label>Question *</Label>
+                <RichTextEditor
+                  placeholder="Enter your question here (supports bold, italic, LaTeX, paste images)"
+                  value={questionForm.text}
+                  onChange={(html) => setQuestionForm((f) => ({ ...f, text: html }))}
+                />
+              </div>
+
+              {selectedDeck?.quiz_type === "subjective" ? (
+                /* ── Subjective question form ── */
+                <>
+                  {/* Question image */}
+                  <div className="space-y-2">
+                    <Label>Question Image (optional)</Label>
+                    {(imagePreview || existingImageUrl) && (
+                      <div className="relative w-full rounded-lg overflow-hidden border bg-muted/20">
+                        <img src={imagePreview ?? existingImageUrl!} alt="Question preview" className="w-full max-h-48 object-contain" />
+                        <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); setExistingImageUrl(null); if (imageInputRef.current) imageInputRef.current.value = ""; }} className="absolute top-2 right-2 rounded-full bg-background/80 border p-1 hover:bg-destructive hover:text-destructive-foreground transition-colors">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; setImageFile(file); setImagePreview(URL.createObjectURL(file)); }} />
+                    {!imagePreview && !existingImageUrl && (
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" className="flex-1 gap-2 border-dashed" onClick={() => imageInputRef.current?.click()}>
+                          <ImagePlus className="w-4 h-4" /> Upload image
+                        </Button>
+                        <Button type="button" variant="outline" className="flex-1 gap-2 border-dashed" onClick={handlePasteQuestionImage}>
+                          <ClipboardPaste className="w-4 h-4" /> Paste image
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Question type selector */}
+                  <div className="space-y-2">
+                    <Label>Answer Type</Label>
+                    <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          setImageFile(null);
-                          setImagePreview(null);
-                          setExistingImageUrl(null);
-                          if (imageInputRef.current) imageInputRef.current.value = "";
-                        }}
-                        className="absolute top-2 right-2 rounded-full bg-background/80 border p-1 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                        onClick={() => setQuestionForm((f) => ({ ...f, questionType: "text" }))}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${questionForm.questionType === "text" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}
                       >
-                        <X className="w-3.5 h-3.5" />
+                        Text Answer
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuestionForm((f) => ({ ...f, questionType: "checkbox" }))}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${questionForm.questionType === "checkbox" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}
+                      >
+                        Checkbox Options
                       </button>
                     </div>
+                  </div>
+
+                  {questionForm.questionType === "text" ? (
+                    /* Text answer: model answer + preview */
+                    <>
+                      <div className="space-y-1.5">
+                        <Label>Model Answer *</Label>
+                        <RichTextEditor
+                          placeholder="Enter the expected model answer here"
+                          value={questionForm.modelAnswer}
+                          onChange={(html) => setQuestionForm((f) => ({ ...f, modelAnswer: html }))}
+                        />
+                        <p className="text-xs text-muted-foreground">This is shown to students as a format reference and used by AI for grading.</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5" /> Student view (preview)
+                        </Label>
+                        <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/10 p-3">
+                          <Textarea disabled placeholder="Students will type their answer here..." rows={3} className="resize-none opacity-50 cursor-not-allowed bg-transparent" />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    /* Checkbox options */
+                    <div className="space-y-2">
+                      <Label>Options <span className="text-muted-foreground font-normal text-xs">(check the correct ones)</span></Label>
+                      {questionForm.checkboxOptions.map((opt, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={opt.is_correct}
+                            onChange={(e) => {
+                              const opts = [...questionForm.checkboxOptions];
+                              opts[idx] = { ...opts[idx], is_correct: e.target.checked };
+                              setQuestionForm((f) => ({ ...f, checkboxOptions: opts }));
+                            }}
+                            className="accent-primary w-4 h-4 shrink-0 rounded"
+                          />
+                          <div className="flex-1">
+                            <RichTextEditor
+                              placeholder={`Option ${idx + 1}`}
+                              value={opt.text}
+                              onChange={(html) => {
+                                const opts = [...questionForm.checkboxOptions];
+                                opts[idx] = { ...opts[idx], text: html };
+                                setQuestionForm((f) => ({ ...f, checkboxOptions: opts }));
+                              }}
+                              minimal
+                            />
+                          </div>
+                          {questionForm.checkboxOptions.length > 2 && (
+                            <button
+                              type="button"
+                              onClick={() => setQuestionForm((f) => ({ ...f, checkboxOptions: f.checkboxOptions.filter((_, i) => i !== idx) }))}
+                              className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-1.5 border-dashed"
+                        onClick={() => setQuestionForm((f) => ({ ...f, checkboxOptions: [...f.checkboxOptions, { text: "", is_correct: false }] }))}
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add option
+                      </Button>
+                      <p className="text-xs text-muted-foreground">Check the box next to each correct option. Students must select all correct options to earn full marks.</p>
+                    </div>
                   )}
-                  <input
-                    ref={imageInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setImageFile(file);
-                      setImagePreview(URL.createObjectURL(file));
-                    }}
-                  />
-                  {!imagePreview && !existingImageUrl && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full gap-2 border-dashed"
-                      onClick={() => imageInputRef.current?.click()}
-                    >
-                      <ImagePlus className="w-4 h-4" /> Upload image
-                    </Button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setQuestionDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveQuestion} disabled={savingQuestion}>
-              {savingQuestion && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingQuestion ? "Save Changes" : "Add Question"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+                  {/* Marks */}
+                  <div className="space-y-1.5">
+                    <Label>Marks for this question</Label>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={questionForm.marks}
+                        onChange={(e) => setQuestionForm((f) => ({ ...f, marks: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        className="w-24"
+                      />
+                      <span className="text-sm text-muted-foreground">mark{questionForm.marks !== 1 ? "s" : ""}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* ── Objective (MCQ) question form ── */
+                <>
+                  <div className="space-y-3">
+                    <Label>Answer Choices (select the correct one)</Label>
+                    {questionForm.answers.map((answer, idx) => {
+                      const preview = answerImagePreviews[idx];
+                      const existing = existingAnswerImageUrls[idx];
+                      const hasImage = preview || existing;
+                      return (
+                        <div key={idx} className="space-y-1.5">
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name="correctAnswer"
+                              checked={questionForm.correctIndex === idx}
+                              onChange={() => setQuestionForm((f) => ({ ...f, correctIndex: idx }))}
+                              className="accent-primary w-4 h-4 shrink-0"
+                            />
+                            <span className="font-semibold text-sm w-5 shrink-0">{LABELS[idx]}.</span>
+                            <div className="flex-1">
+                              <RichTextEditor
+                                placeholder={`Answer ${LABELS[idx]}`}
+                                value={answer}
+                                onChange={(html) => {
+                                  const answers = [...questionForm.answers];
+                                  answers[idx] = html;
+                                  setQuestionForm((f) => ({ ...f, answers }));
+                                }}
+                                minimal
+                              />
+                            </div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              ref={(el) => { answerImageInputRefs.current[idx] = el; }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const files = [...answerImageFiles]; files[idx] = file;
+                                const previews = [...answerImagePreviews]; previews[idx] = URL.createObjectURL(file);
+                                setAnswerImageFiles(files);
+                                setAnswerImagePreviews(previews);
+                              }}
+                            />
+                            <div className="flex flex-col gap-1 shrink-0">
+                              <button
+                                type="button"
+                                title={hasImage ? "Change image" : "Upload image"}
+                                onClick={() => answerImageInputRefs.current[idx]?.click()}
+                                className={`rounded-md border p-1.5 transition-colors ${hasImage ? "border-primary bg-primary/10 text-primary" : "border-dashed border-muted-foreground/40 text-muted-foreground hover:border-primary hover:text-primary"}`}
+                              >
+                                <ImagePlus className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Paste image from clipboard"
+                                onClick={() => handlePasteAnswerImage(idx)}
+                                className={`rounded-md border p-1.5 transition-colors ${hasImage ? "border-primary bg-primary/10 text-primary" : "border-dashed border-muted-foreground/40 text-muted-foreground hover:border-primary hover:text-primary"}`}
+                              >
+                                <ClipboardPaste className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          {hasImage && (
+                            <div className="ml-12 relative w-full max-w-[200px] rounded-lg overflow-hidden border bg-muted/20">
+                              <img
+                                src={preview ?? existing!}
+                                alt={`Answer ${LABELS[idx]} image`}
+                                className="w-full max-h-28 object-contain"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const files = [...answerImageFiles]; files[idx] = null;
+                                  const previews = [...answerImagePreviews]; previews[idx] = null;
+                                  const urls = [...existingAnswerImageUrls]; urls[idx] = null;
+                                  setAnswerImageFiles(files);
+                                  setAnswerImagePreviews(previews);
+                                  setExistingAnswerImageUrls(urls);
+                                  const ref = answerImageInputRefs.current[idx];
+                                  if (ref) ref.value = "";
+                                }}
+                                className="absolute top-1 right-1 rounded-full bg-background/80 border p-0.5 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <p className="text-xs text-muted-foreground">
+                      Select the radio button next to the correct answer. Use 📷 to add an image to any option.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Explanation (optional)</Label>
+                    <RichTextEditor
+                      placeholder="Explain why this answer is correct (supports LaTeX, formatting)"
+                      value={questionForm.explanation}
+                      onChange={(html) => setQuestionForm((f) => ({ ...f, explanation: html }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Image (optional)</Label>
+                    {(imagePreview || existingImageUrl) && (
+                      <div className="relative w-full rounded-lg overflow-hidden border bg-muted/20">
+                        <img
+                          src={imagePreview ?? existingImageUrl!}
+                          alt="Question preview"
+                          className="w-full max-h-48 object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImageFile(null);
+                            setImagePreview(null);
+                            setExistingImageUrl(null);
+                            if (imageInputRef.current) imageInputRef.current.value = "";
+                          }}
+                          className="absolute top-2 right-2 rounded-full bg-background/80 border p-1 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setImageFile(file);
+                        setImagePreview(URL.createObjectURL(file));
+                      }}
+                    />
+                    {!imagePreview && !existingImageUrl && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full gap-2 border-dashed"
+                        onClick={() => imageInputRef.current?.click()}
+                      >
+                        <ImagePlus className="w-4 h-4" /> Upload image
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setQuestionDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveQuestion} disabled={savingQuestion}>
+                {savingQuestion && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {editingQuestion ? "Save Changes" : "Add Question"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       </> /* end section === "quiz" */}
 
