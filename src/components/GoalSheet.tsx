@@ -614,7 +614,7 @@ export const GoalSheet = ({
     if (!user) return;
     setIsLoading(true);
     const { data, error } = await supabase
-      .from("goals" as any).select("*").eq("user_id", user.id).order("created_at", { ascending: true });
+      .from("goals" as any).select("id, user_id, text, date, deadline, reminder_at, reminder_sent, priority, completed, created_at").eq("user_id", user.id).order("created_at", { ascending: true });
     if (!error && data) setGoals(data as unknown as Goal[]);
     setIsLoading(false);
   }, [user]);

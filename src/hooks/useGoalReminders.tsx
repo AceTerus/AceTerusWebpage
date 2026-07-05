@@ -2,62 +2,64 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-/**
- * Polls every 60 s for goals whose reminder_at has passed but haven't had
- * a notification inserted yet. When found, inserts a goal_reminder notification
- * and marks reminder_sent = true on the goal.
- */
+const checkReminders = async (userId: string) => {
+  const now = new Date().toISOString();
+  const { data: dueGoals, error } = await supabase
+    .from("goals")
+    .select("id, text, date, priority")
+    .eq("user_id", userId)
+    .eq("reminder_sent", false)
+    .not("reminder_at", "is", null)
+    .lte("reminder_at", now);
+
+  if (error || !dueGoals || dueGoals.length === 0) return;
+
+  for (const goal of dueGoals) {
+    await supabase.from("notifications").insert({
+      user_id: userId,
+      actor_id: userId,
+      type: "goal_reminder",
+      goal_id: goal.id,
+      metadata: { text: goal.text, date: goal.date, priority: goal.priority },
+    });
+    await supabase.from("goals").update({ reminder_sent: true }).eq("id", goal.id);
+  }
+};
+
+// Fire any due reminders, then set a precise timeout for the next upcoming one.
+// Goes completely silent when there are no future reminders — no polling.
 export const useGoalReminders = () => {
   const { user } = useAuth();
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const checkReminders = async (userId: string) => {
-    const now = new Date().toISOString();
-
-    // Fetch due, unsent reminders
-    const { data: dueGoals, error } = await supabase
-      .from("goals")
-      .select("id, text, date, priority")
-      .eq("user_id", userId)
-      .eq("reminder_sent", false)
-      .not("reminder_at", "is", null)
-      .lte("reminder_at", now);
-
-    if (error || !dueGoals || dueGoals.length === 0) return;
-
-    for (const goal of dueGoals) {
-      // Insert notification
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        actor_id: userId,
-        type: "goal_reminder",
-        goal_id: goal.id,
-        metadata: {
-          text: goal.text,
-          date: goal.date,
-          priority: goal.priority,
-        },
-      });
-
-      // Mark reminder as sent
-      await supabase
-        .from("goals")
-        .update({ reminder_sent: true })
-        .eq("id", goal.id);
-    }
-  };
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!user) return;
+    const userId = user.id;
 
-    // Check immediately on mount
-    checkReminders(user.id);
+    const scheduleNext = async () => {
+      await checkReminders(userId);
 
-    // Then check every 60 seconds
-    timerRef.current = setInterval(() => checkReminders(user.id), 60_000);
+      const { data } = await supabase
+        .from("goals")
+        .select("reminder_at")
+        .eq("user_id", userId)
+        .eq("reminder_sent", false)
+        .not("reminder_at", "is", null)
+        .gt("reminder_at", new Date().toISOString())
+        .order("reminder_at", { ascending: true })
+        .limit(1);
+
+      const next = data?.[0]?.reminder_at;
+      if (next) {
+        const delay = Math.max(0, new Date(next).getTime() - Date.now()) + 1000;
+        timeoutRef.current = setTimeout(scheduleNext, delay);
+      }
+    };
+
+    scheduleNext();
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [user]);
 };

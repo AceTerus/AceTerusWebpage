@@ -190,7 +190,7 @@ const DealCard = ({ deal, index }: { deal: Deal; index: number }) => {
       <div className="relative" style={{ background: `linear-gradient(135deg, ${palette.from}, ${palette.to})`, padding: "20px 20px 28px" }}>
         <div className="flex items-start justify-between gap-3">
           {deal.logo_url ? (
-            <img src={deal.logo_url} alt={deal.brand_name} className="w-12 h-12 rounded-[14px] object-cover border-[2.5px] border-white shadow-[2px_2px_0_0_rgba(0,0,0,0.2)]" />
+            <img src={deal.logo_url} alt={deal.brand_name} loading="lazy" className="w-12 h-12 rounded-[14px] object-cover border-[2.5px] border-white shadow-[2px_2px_0_0_rgba(0,0,0,0.2)]" />
           ) : (
             <div className="w-12 h-12 rounded-[14px] bg-white/25 border-[2.5px] border-white/40 flex items-center justify-center shadow-[2px_2px_0_0_rgba(0,0,0,0.1)]">
               <Tag className="w-5 h-5 text-white" />
@@ -277,7 +277,7 @@ export default function DealsPage() {
     queryFn: async () => {
       let q = supabase
         .from("deals")
-        .select("*")
+        .select("id, title, description, brand_name, discount_details, logo_url, category, expiry_date, redemption_url, is_featured")
         .order("is_featured", { ascending: false })
         .order("created_at", { ascending: false });
       if (activeCategory !== "All") q = q.eq("category", activeCategory);

@@ -44,7 +44,7 @@ export const EventNotificationsProvider = ({ children }: { children: ReactNode }
     setIsLoading(true);
     const { data } = await supabase
       .from("notifications")
-      .select("*")
+      .select("id, user_id, actor_id, type, metadata, read, created_at")
       .eq("user_id", uid)
       .order("created_at", { ascending: false })
       .limit(60);

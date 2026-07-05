@@ -76,7 +76,7 @@ export const CommentSection = ({
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from("comments").select("*").eq("post_id", postId)
+        .from("comments").select("id, content, created_at, user_id").eq("post_id", postId)
         .order("created_at", { ascending: true });
       if (error) throw error;
 

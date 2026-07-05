@@ -164,7 +164,7 @@ const EventCard = ({ event, featured=false }: { event:Event; featured?:boolean }
       <div className="relative overflow-hidden" style={{ height:featured?178:140 }}>
         {event.image_url ? (
           <>
-            <img src={event.image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-105" style={{ transition:"transform 0.5s cubic-bezier(0.23,1,0.32,1)" }} />
+            <img src={event.image_url} alt={event.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105" style={{ transition:"transform 0.5s cubic-bezier(0.23,1,0.32,1)" }} />
             <div className="absolute inset-0" style={{ background:"linear-gradient(to top,rgba(0,0,0,0.55) 0%,transparent 55%)" }} />
           </>
         ) : (

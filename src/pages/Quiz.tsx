@@ -1048,7 +1048,7 @@ const Quiz = () => {
                                   {isBookmarked && <span className={`${TAG}`} style={{ background: C.sun }}><BookmarkCheck className="w-3 h-3" /> Bookmarked</span>}
                                 </div>
                                 <p className="font-semibold text-base mb-4">{q.text}</p>
-                                {q.image_url && <img src={q.image_url} alt="Question" className="w-full max-h-48 object-contain rounded-[20px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] mb-4" />}
+                                {q.image_url && <img src={q.image_url} alt="Question" loading="lazy" className="w-full max-h-48 object-contain rounded-[20px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] mb-4" />}
                                 {isCheckbox ? (
                                   <div className="space-y-2">
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Your Selections</p>
@@ -1115,7 +1115,7 @@ const Quiz = () => {
                                 {isBookmarked && <span className={`${TAG}`} style={{ background: C.sun }}><BookmarkCheck className="w-3 h-3" /> Bookmarked</span>}
                               </div>
                               <p className="font-semibold text-base mb-4">{q.text}</p>
-                              {q.image_url && <img src={q.image_url} alt="Question" className="w-full max-h-48 object-contain rounded-[20px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] mb-4" />}
+                              {q.image_url && <img src={q.image_url} alt="Question" loading="lazy" className="w-full max-h-48 object-contain rounded-[20px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] mb-4" />}
                               <div className="space-y-2">
                                 {q.answers.map((a, aIdx) => {
                                   const isThisCorrect = a.is_correct;
@@ -1125,7 +1125,7 @@ const Quiz = () => {
                                   const border = isThisCorrect ? "#22c55e" : isThisWrong ? C.pop : "#e2e8f0";
                                   return (
                                     <div key={a.id} className="rounded-[16px] border-[2.5px] px-4 py-2.5 text-sm" style={{ background: bg, borderColor: border }}>
-                                      {a.image_url && <img src={a.image_url} alt="" className="w-full max-h-36 object-contain rounded-[12px] border border-slate-200 mb-2" />}
+                                      {a.image_url && <img src={a.image_url} alt="" loading="lazy" className="w-full max-h-36 object-contain rounded-[12px] border border-slate-200 mb-2" />}
                                       <div className="flex items-center gap-3">
                                         <span className="shrink-0 w-7 h-7 rounded-[10px] border-[2px] border-current flex items-center justify-center font-['Baloo_2'] font-extrabold text-xs" style={{ background: isThisCorrect ? "#22c55e" : isThisWrong ? C.pop : "#e2e8f0", color: (isThisCorrect || isThisWrong) ? "#fff" : C.ink, borderColor: "transparent" }}>
                                           {OPTS[aIdx] ?? String(aIdx + 1)}
@@ -1256,7 +1256,7 @@ const Quiz = () => {
                       <p className={`${DISPLAY} font-bold text-xl md:text-2xl leading-snug`}>{currentQuestion.text}</p>
 
                       {currentQuestion.image_url && (
-                        <img src={currentQuestion.image_url} alt="Question" className="w-full max-h-72 object-contain rounded-[20px] border-[2.5px] border-[#0F172A] shadow-[4px_4px_0_0_#0F172A]" />
+                        <img src={currentQuestion.image_url} alt="Question" loading="lazy" className="w-full max-h-72 object-contain rounded-[20px] border-[2.5px] border-[#0F172A] shadow-[4px_4px_0_0_#0F172A]" />
                       )}
 
                       {/* Subjective: checkbox or text */}
@@ -1339,7 +1339,7 @@ const Quiz = () => {
                                   style={isSelected ? { background: C.blue } : {}}
                                 >
                                   {a.image_url && (
-                                    <img src={a.image_url} alt="" className="w-full max-h-40 object-contain rounded-[16px] border-[2px] border-current/20 mb-3" />
+                                    <img src={a.image_url} alt="" loading="lazy" className="w-full max-h-40 object-contain rounded-[16px] border-[2px] border-current/20 mb-3" />
                                   )}
                                   <div className="flex items-center gap-4">
                                     <span className={cn(

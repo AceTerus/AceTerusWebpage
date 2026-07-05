@@ -10,6 +10,7 @@ import { NotificationsProvider } from "./context/NotificationsContext";
 import { MascotProvider } from "./context/MascotContext";
 import { PomodoroProvider } from "./context/PomodoroContext";
 import { useGoalReminders } from "./hooks/useGoalReminders";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const AppSidebar = lazy(() => import("./components/AppSidebar").then(m => ({ default: m.AppSidebar })));
 const MobileNav = lazy(() => import("./components/MobileNav").then(m => ({ default: m.MobileNav })));
@@ -90,7 +91,12 @@ const AnimatedRoutes = () => {
       <PageTransitionBar />
       <OnboardingGuard />
       <div key={location.pathname} className="page-enter">
-        <Suspense fallback={null}>
+        <ErrorBoundary>
+        <Suspense fallback={
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="w-10 h-10 rounded-full border-[3px] border-[#3BD6F5] border-t-[#2F7CFF] animate-spin" />
+          </div>
+        }>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/feed" element={<Feed />} />
@@ -108,6 +114,7 @@ const AnimatedRoutes = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </div>
     </>
   );

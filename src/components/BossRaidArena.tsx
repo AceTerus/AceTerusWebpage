@@ -497,7 +497,7 @@ function BossRaidTaking({ raidId, attemptId, onComplete }: any) {
   useEffect(() => {
      const fetchQ = async () => {
         setLoading(true);
-        const { data } = await supabase.from("boss_raid_questions" as any).select("*").eq("raid_id", raidId).order("position", { ascending: true });
+        const { data } = await supabase.from("boss_raid_questions" as any).select("id, raid_id, position, question_text, answers").eq("raid_id", raidId).order("position", { ascending: true });
         if (data) setQuestions(data);
         setLoading(false);
      };

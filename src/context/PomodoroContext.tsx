@@ -58,10 +58,14 @@ export const PomodoroProvider = ({ children }: { children: React.ReactNode }) =>
   const [sessions, setSessions] = useState<number>          (saved.sessions ?? 0);
   const [visible,  setVisible]  = useState<boolean>         (saved.visible  ?? false);
 
-  // Persist to localStorage whenever state changes
+  // Persist to localStorage; debounce tick-writes (10s) but flush immediately on state changes
   useEffect(() => {
-    const p: Persisted = { mode, secs, active, done, sessions, visible, savedAt: Date.now() };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+    const delay = active ? 10000 : 0;
+    const id = setTimeout(() => {
+      const p: Persisted = { mode, secs, active, done, sessions, visible, savedAt: Date.now() };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+    }, delay);
+    return () => clearTimeout(id);
   }, [mode, secs, active, done, sessions, visible]);
 
   // Tick

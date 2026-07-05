@@ -165,7 +165,7 @@ export default function LiveSession() {
     if (!id) return;
     supabase
       .from("class_sessions")
-      .select("*")
+      .select("id, class_name, subject, objective_text, key_concepts, status")
       .eq("id", id)
       .single()
       .then(({ data }) => {

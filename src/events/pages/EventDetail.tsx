@@ -180,7 +180,7 @@ export default function EventDetail() {
       <div className={`relative rounded-[24px] overflow-hidden border-[2.5px] border-[#0F172A] shadow-[5px_5px_0_0_#0F172A] bg-gradient-to-br ${cfg.gradient}`} style={{ minHeight: 220 }}>
         {event.image_url ? (
           <>
-            <img src={event.image_url} alt={event.title} className="w-full h-56 object-cover" />
+            <img src={event.image_url} alt={event.title} loading="lazy" className="w-full h-56 object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
           </>
         ) : (

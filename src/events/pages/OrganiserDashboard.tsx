@@ -106,7 +106,7 @@ export default function OrganiserDashboard() {
     queryKey: ["my-organizer", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase.from("event_organizers").select("*").eq("owner_user_id", user!.id).maybeSingle();
+      const { data } = await supabase.from("event_organizers").select("id, name, type, logo_url, verified").eq("owner_user_id", user!.id).maybeSingle();
       return data as { id: string; name: string; type: string; logo_url: string | null; verified: boolean } | null;
     },
   });
@@ -129,7 +129,7 @@ export default function OrganiserDashboard() {
     queryKey: ["managing-event", managingEventId],
     enabled: !!managingEventId,
     queryFn: async () => {
-      const { data } = await supabase.from("events").select("*").eq("id", managingEventId!).single();
+      const { data } = await supabase.from("events").select("id, title, description, type, location, start_date, end_date, registration_url, image_url, ace_coins_reward, website_url, socmed_url, pdf_url, google_form_url").eq("id", managingEventId!).single();
       return data as any;
     },
   });

@@ -716,7 +716,7 @@ export const Profile = () => {
           {/* Cover — avatar is absolutely centred on its bottom edge */}
           <div className="relative h-32 sm:h-[200px] w-full">
             {profile?.cover_url ? (
-              <img src={profile.cover_url} alt="Cover" className="absolute inset-0 w-full h-full object-cover cursor-zoom-in" onClick={() => setLightboxImage(profile.cover_url!)} />
+              <img src={profile.cover_url} alt="Cover" loading="lazy" className="absolute inset-0 w-full h-full object-cover cursor-zoom-in" onClick={() => setLightboxImage(profile.cover_url!)} />
             ) : (
               <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${C.indigo}, ${C.blue}, ${C.cyan})` }} />
             )}
@@ -1310,7 +1310,7 @@ export const Profile = () => {
                           onClick={() => setSelectedPostId(post.id)}
                         >
                           {thumb ? (
-                            <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" />
+                            <img src={thumb} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" />
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center p-2" style={{ background: C.indigoSoft }}>
                               <p className="text-[11px] font-bold text-center text-slate-600 line-clamp-4 leading-tight">{post.content}</p>

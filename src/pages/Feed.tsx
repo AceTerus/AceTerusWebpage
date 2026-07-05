@@ -124,7 +124,7 @@ export const Feed = () => {
       const followedIds = followedUsers?.map((f) => f.followed_id) || [];
 
       const { data: postsData, error: postsError } = await supabase
-        .from("posts").select("*").in("user_id", followedIds)
+        .from("posts").select("id, user_id, content, image_url, likes_count, comments_count, created_at, tags").in("user_id", followedIds)
         .order("created_at", { ascending: false }).limit(30);
       if (postsError) throw postsError;
 
@@ -169,7 +169,7 @@ export const Feed = () => {
       const followedIds = followedUsers?.map((f) => f.followed_id) || [];
       followedIds.push(user.id);
       const { data, error } = await supabase
-        .from("profiles").select("*")
+        .from("profiles").select("id, user_id, username, avatar_url, bio, followers_count")
         .not("user_id", "in", `(${followedIds.join(",")})`)
         .order("followers_count", { ascending: false }).limit(3);
       if (error) throw error;
@@ -184,7 +184,7 @@ export const Feed = () => {
     setIsSearching(true);
     try {
       const { data, error } = await supabase
-        .from("profiles").select("*").ilike("username", `%${query}%`).limit(5);
+        .from("profiles").select("id, user_id, username, avatar_url, bio, followers_count").ilike("username", `%${query}%`).limit(5);
       if (error) throw error;
       setSearchResults(data || []);
     } catch (error) {

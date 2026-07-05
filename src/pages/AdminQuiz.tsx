@@ -73,7 +73,7 @@ const AdminQuiz = () => {
     queryKey: ["admin-unverified-orgs"],
     enabled: !!user && isAdmin,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("event_organizers").select("*").eq("verified", false).order("created_at", { ascending: true });
+      const { data, error } = await (supabase as any).from("event_organizers").select("id, name, type, created_at").eq("verified", false).order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as any[];
     },

@@ -135,7 +135,7 @@ export default function ProfilePage() {
         {/* Banner */}
         <div className="h-28 relative overflow-hidden">
           {profile?.cover_url ? (
-            <img src={profile.cover_url} alt="Cover" className="absolute inset-0 w-full h-full object-cover" />
+            <img src={profile.cover_url} alt="Cover" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-[#2F7CFF] via-[#2E2BE5] to-[#7C3AED]">
               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "40px 40px" }} />

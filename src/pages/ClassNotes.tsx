@@ -263,7 +263,7 @@ export default function ClassNotes() {
     // 3. Fetch flagged concepts for this class
     const flagQuery = supabase
       .from("flagged_concepts")
-      .select("*")
+      .select("id, session_id, class_name, concept_name, resolved")
       .eq("resolved", false);
     if (trimmed) flagQuery.ilike("class_name", `%${trimmed}%`);
     const { data: flagData } = await flagQuery;

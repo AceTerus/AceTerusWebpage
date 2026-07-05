@@ -234,7 +234,7 @@ export default function MyEvents() {
                       className="flex gap-4 p-4 border-[2.5px] border-[#0F172A] rounded-[20px] shadow-[4px_4px_0_0_#0F172A] bg-white hover:-translate-y-1 hover:shadow-[5px_5px_0_0_#0F172A] transition-all group">
                       <div className="w-20 h-20 rounded-[14px] border-[2px] border-[#0F172A]/10 overflow-hidden shrink-0 bg-gradient-to-br from-[#2F7CFF] to-[#2E2BE5] flex items-center justify-center">
                         {ev.image_url
-                          ? <img src={ev.image_url} alt={ev.title} className="w-full h-full object-cover" />
+                          ? <img src={ev.image_url} alt={ev.title} loading="lazy" className="w-full h-full object-cover" />
                           : <span className="text-2xl">🎉</span>}
                       </div>
                       <div className="flex-1 min-w-0 space-y-1.5">
