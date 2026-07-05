@@ -1,0 +1,1556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ClassPulse — Teacher Dashboard</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink:         #0F172A;
+    --ink-50:      rgba(15,23,42,0.50);
+    --ink-40:      rgba(15,23,42,0.40);
+    --ink-20:      rgba(15,23,42,0.20);
+    --ink-15:      rgba(15,23,42,0.15);
+    --ink-10:      rgba(15,23,42,0.10);
+    --ink-5:       rgba(15,23,42,0.05);
+
+    --indigo:      #2E2BE5;
+    --indigo-soft: #D6D4FF;
+    --indigo-bg:   #EEEDFF;
+    --blue:        #2F7CFF;
+    --blue-soft:   #DDF3FF;
+    --blue-bg:     #EAF4FF;
+    --cyan:        #3BD6F5;
+    --violet:      #7A4DFF;
+
+    --surface:     #FFFFFF;
+    --canvas:      #F8F9FF;
+    --canvas-2:    #EEF1F9;
+
+    --good:        #16A56B;
+    --good-bg:     #ECFAF3;
+    --warn:        #C77800;
+    --warn-bg:     #FFF6E2;
+    --bad:         #DC2626;
+    --bad-bg:      #FEEFEC;
+
+    --shadow-ink:    3px 3px 0 0 var(--ink);
+    --shadow-ink-sm: 2px 2px 0 0 var(--ink);
+    --shadow-ink-lg: 4px 4px 0 0 var(--ink);
+
+    --bw: 2.5px;
+    --bw-2: 2px;
+
+    --r-lg: 20px;
+    --r-md: 14px;
+    --r-sm: 10px;
+    --r-xs: 8px;
+
+    --display: "Baloo 2", ui-sans-serif, system-ui, sans-serif;
+    --body:    "Nunito",  ui-sans-serif, system-ui, sans-serif;
+    --mono:    "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-density="compact"]    .session-card { padding: 14px 16px; }
+  [data-density="comfortable"] .session-card { padding: 20px 22px; }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--body); font-weight: 600;
+    color: var(--ink); background: var(--canvas);
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  .display { font-family: var(--display); font-weight: 800; letter-spacing: -0.015em; }
+  .mono    { font-family: var(--mono); font-feature-settings: "tnum"; }
+  .tnum    { font-variant-numeric: tabular-nums; }
+  button { font-family: inherit; cursor: pointer; }
+  a { color: inherit; text-decoration: none; }
+  ::selection { background: var(--indigo); color: #fff; }
+
+  /* ─────────────── Top bar ─────────────── */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    height: 56px; background: #fff;
+    border-bottom: var(--bw) solid var(--ink);
+    box-shadow: 0 2px 0 0 var(--ink);
+  }
+  .topbar-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 22px;
+    height: 100%; display: flex; align-items: center; gap: 18px;
+  }
+  .brand { display:flex; align-items:center; gap: 11px; }
+  .brand-logo {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: var(--ink); display:flex; align-items:center; justify-content:center;
+    border: var(--bw-2) solid var(--ink); box-shadow: 2px 2px 0 0 var(--ink);
+  }
+  .brand-logo svg { width: 18px; height: 18px; color: #fff; }
+  .brand-text {
+    font-family: var(--display); font-weight: 800; font-size: 18px; color: var(--ink);
+    letter-spacing: -0.01em; line-height: 1;
+  }
+  .brand-text em { font-style: normal; color: var(--blue); }
+  .brand-pill {
+    font-family: var(--body); font-weight: 800; font-size: 10px;
+    color: var(--ink-50); letter-spacing: 0.04em; text-transform: uppercase;
+    border: var(--bw-2) solid var(--ink-20); border-radius: 999px;
+    padding: 3px 8px; line-height: 1;
+  }
+  .topnav { display:flex; gap: 4px; margin-left: 10px; }
+  .topnav a {
+    font-family: var(--body); font-size: 13px; font-weight: 700; color: var(--ink-50);
+    padding: 7px 12px; border-radius: 10px;
+    border: var(--bw-2) solid transparent;
+  }
+  .topnav a.active {
+    background: var(--ink); color: #fff;
+    border-color: var(--ink); box-shadow: var(--shadow-ink-sm);
+  }
+  .topnav a:hover:not(.active) { color: var(--ink); border-color: var(--ink-20); }
+  .topbar-right { margin-left: auto; display:flex; align-items:center; gap: 10px; }
+  .userchip {
+    display:flex; align-items:center; gap:10px;
+    padding: 4px 12px 4px 4px; background: #fff;
+    border: var(--bw-2) solid var(--ink); border-radius: 999px;
+    box-shadow: var(--shadow-ink-sm);
+  }
+  .userchip .avatar {
+    width: 26px; height: 26px; border-radius: 999px;
+    background: var(--indigo); color: #fff;
+    font-family: var(--display); font-weight: 800; font-size: 12px;
+    display:flex; align-items:center; justify-content:center;
+    border: 2px solid var(--ink);
+  }
+  .userchip .who { font-family: var(--body); font-size: 12.5px; font-weight: 800; color: var(--ink); line-height: 1.15; }
+  .userchip .who small { display:block; color: var(--ink-50); font-weight: 700; font-size: 10.5px; }
+
+  /* ─────────────── Page ─────────────── */
+  .page { max-width: 1200px; margin: 0 auto; padding: 26px 22px 80px; }
+
+  .ph { display:flex; align-items:flex-end; justify-content: space-between; gap: 18px; margin-bottom: 18px; flex-wrap: wrap; }
+  .ph-left { display:flex; align-items:center; gap: 14px; }
+  .ph-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: var(--indigo);
+    border: var(--bw) solid var(--ink); box-shadow: var(--shadow-ink);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ph-icon svg { width: 24px; height: 24px; color: #fff; }
+  .ph h1 {
+    font-family: var(--display); font-weight: 800; font-size: 26px;
+    letter-spacing: -0.02em; line-height: 1.05; margin: 0; color: var(--ink);
+  }
+  .ph-sub { font-family: var(--body); font-size: 13px; font-weight: 700; color: var(--ink-50); margin-top: 4px; }
+  .crumbs {
+    font-family: var(--body); font-size: 11.5px; font-weight: 700; color: var(--ink-40);
+    display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .crumbs .sep { color: var(--ink-20); }
+
+  /* ─────────────── Buttons ─────────────── */
+  .toolbar { display:flex; align-items:center; gap: 8px; flex-wrap: wrap; }
+  .seg {
+    display:flex; background: #fff;
+    border: var(--bw-2) solid var(--ink); border-radius: 12px; padding: 3px;
+    box-shadow: var(--shadow-ink-sm);
+  }
+  .seg button {
+    border: 0; background: transparent; padding: 6px 12px; border-radius: 8px;
+    font-family: var(--body); font-size: 12px; font-weight: 800; color: var(--ink-50);
+    white-space: nowrap;
+  }
+  .seg button.on { background: var(--ink); color: #fff; }
+  .btn {
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 8px 14px; border-radius: 12px;
+    font-family: var(--body); font-size: 13px; font-weight: 800; line-height: 1;
+    background: #fff; color: var(--ink);
+    border: var(--bw-2) solid var(--ink); box-shadow: var(--shadow-ink-sm);
+    transition: transform .08s, box-shadow .08s, background .12s;
+  }
+  .btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 0 var(--ink); }
+  .btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 0 var(--ink); }
+  .btn.primary { background: var(--indigo); color: #fff; }
+  .btn.danger { background: var(--bad); color: #fff; border-color: var(--ink); }
+  .btn.ghost { background: transparent; border-color: var(--ink-20); box-shadow: none; color: var(--ink-50); }
+  .btn.ghost:hover { color: var(--ink); border-color: var(--ink); transform: none; box-shadow: none; background: var(--ink-5); }
+  .btn .ico { width: 14px; height: 14px; }
+  .btn.sm { padding: 6px 10px; font-size: 11.5px; border-radius: 10px; }
+  .btn.lg { padding: 12px 18px; font-size: 14px; border-radius: 14px; box-shadow: var(--shadow-ink); }
+  .btn.lg:hover { box-shadow: var(--shadow-ink-lg); }
+
+  /* ─────────────── Cards ─────────────── */
+  .card {
+    background: #fff;
+    border: var(--bw) solid var(--ink);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-ink);
+  }
+
+  /* ─────────────── Hero greeting + KPIs ─────────────── */
+  .hero {
+    border: var(--bw) solid var(--ink);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-ink);
+    background:
+      radial-gradient(ellipse 80% 60% at 100% 0%, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 60%),
+      linear-gradient(135deg, #2E2BE5 0%, #2F7CFF 100%);
+    color: #fff; overflow: hidden; position: relative;
+  }
+  .hero-top {
+    padding: 18px 22px 0;
+    display:flex; align-items:center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  }
+  .hero-greet {
+    display:flex; align-items: center; gap: 14px;
+  }
+  .hero-greet .calendar {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: rgba(255,255,255,0.16);
+    border: var(--bw-2) solid rgba(255,255,255,0.28);
+    display:flex; flex-direction: column; align-items:center; justify-content:center;
+    color: #fff; flex-shrink: 0;
+  }
+  .hero-greet .calendar .mon {
+    font-family: var(--body); font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: rgba(255,255,255,0.78);
+  }
+  .hero-greet .calendar .day {
+    font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .hero-greet h2 {
+    margin: 0; font-family: var(--display); font-weight: 800; font-size: 22px;
+    letter-spacing: -0.015em; line-height: 1.1;
+  }
+  .hero-greet p {
+    margin: 4px 0 0; font-family: var(--body); font-size: 13px; font-weight: 700;
+    color: rgba(255,255,255,0.78);
+  }
+  .hero-badge {
+    display:inline-flex; align-items:center; gap: 6px;
+    background: rgba(255,255,255,0.18); border: 2px solid rgba(255,255,255,0.22);
+    border-radius: 999px; padding: 5px 11px;
+    font-family: var(--body); font-weight: 800; font-size: 11px; color: #fff;
+  }
+  .hero-badge .dot { width: 6px; height: 6px; border-radius: 999px; background: #fff; }
+
+  .kpis {
+    display: grid; grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 10px; padding: 14px 18px 18px;
+  }
+  .kpi {
+    background: rgba(255,255,255,0.13);
+    border: var(--bw-2) solid rgba(255,255,255,0.22);
+    border-radius: 14px;
+    padding: 14px 16px;
+    position: relative; min-width: 0;
+  }
+  .kpi .lbl {
+    font-family: var(--body); font-size: 11px; font-weight: 800;
+    color: rgba(255,255,255,0.82); letter-spacing: 0.02em;
+    margin-bottom: 6px;
+  }
+  .kpi .val {
+    font-family: var(--display); font-weight: 800; font-size: 30px;
+    letter-spacing: -0.022em; line-height: 1; color: #fff;
+  }
+  .kpi .val .sub { font-size: 14px; opacity: 0.7; font-weight: 700; margin-left: 4px; }
+  .kpi .delta {
+    margin-top: 6px; font-family: var(--body); font-size: 11px; font-weight: 800;
+    color: rgba(255,255,255,0.78);
+  }
+  .kpi .delta .pos { color: #B6F7CE; }
+  @media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+
+  /* ─────────────── Live callout ─────────────── */
+  .live-card {
+    display:flex; align-items: stretch; gap: 0;
+    border: var(--bw) solid var(--ink);
+    border-radius: var(--r-lg);
+    background: #fff;
+    box-shadow: 4px 4px 0 0 var(--bad);
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .live-card .stripe {
+    width: 8px;
+    background: repeating-linear-gradient(
+      45deg, var(--bad), var(--bad) 8px,
+      #fff 8px, #fff 16px
+    );
+    flex-shrink: 0;
+  }
+  .live-card .body {
+    flex: 1; padding: 18px 22px;
+    display:flex; align-items:center; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+  }
+  .live-card .l { display:flex; gap: 16px; align-items: center; min-width: 0; }
+  .live-card .pulse-wrap {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--bad); color: #fff;
+    display:flex; align-items:center; justify-content:center;
+    border: var(--bw-2) solid var(--ink);
+    box-shadow: var(--shadow-ink-sm);
+    position: relative; flex-shrink: 0;
+  }
+  .live-card .pulse-wrap::after {
+    content: ""; position: absolute; inset: -6px;
+    border-radius: 18px; border: 2.5px solid var(--bad);
+    opacity: 0.6;
+    animation: pulse 1.6s ease-out infinite;
+  }
+  @keyframes pulse {
+    0%   { transform: scale(0.9); opacity: 0.7; }
+    100% { transform: scale(1.15); opacity: 0; }
+  }
+  .live-tag {
+    display:inline-flex; align-items:center; gap:5px;
+    font-family: var(--body); font-weight: 800; font-size: 11px;
+    color: var(--bad); background: var(--bad-bg);
+    border: 1.5px solid color-mix(in oklch, var(--bad) 25%, white);
+    padding: 3px 9px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .live-tag .blink {
+    width: 6px; height: 6px; border-radius: 999px; background: var(--bad);
+    animation: blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 60% { opacity: 1; }
+    80%, 100% { opacity: 0.25; }
+  }
+  .live-card h3 {
+    margin: 6px 0 2px; font-family: var(--display); font-weight: 800; font-size: 18px;
+    letter-spacing: -0.015em; color: var(--ink);
+  }
+  .live-card .meta {
+    font-family: var(--body); font-size: 12.5px; font-weight: 700; color: var(--ink-50);
+    display:flex; gap: 12px; flex-wrap: wrap;
+  }
+  .live-card .meta strong { color: var(--ink); font-weight: 800; }
+  .live-card .timer {
+    font-family: var(--mono); font-weight: 700; font-size: 12.5px;
+    color: var(--bad); font-variant-numeric: tabular-nums;
+  }
+
+  /* ─────────────── Today schedule strip ─────────────── */
+  .sched-card {
+    margin-top: 16px;
+    padding: 18px 20px;
+    background: #fff;
+    border: var(--bw) solid var(--ink);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-ink);
+  }
+  .sched-head {
+    display:flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .sched-head h3 {
+    margin: 0; font-family: var(--display); font-weight: 800; font-size: 16px;
+    letter-spacing: -0.015em; color: var(--ink);
+  }
+  .sched-head .right { font-family: var(--body); font-size: 11.5px; font-weight: 700; color: var(--ink-50); }
+  .sched {
+    display:grid; grid-template-columns: repeat(8, minmax(0,1fr));
+    gap: 8px;
+  }
+  .period {
+    border: var(--bw-2) solid var(--ink-15);
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 10px 12px;
+    min-height: 80px;
+    display:flex; flex-direction: column; justify-content: space-between;
+    position: relative;
+    transition: transform .12s, box-shadow .12s;
+  }
+  .period .top {
+    display:flex; align-items: center; justify-content: space-between;
+    font-family: var(--body); font-size: 10.5px; font-weight: 800;
+    color: var(--ink-50); text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .period .time { font-family: var(--mono); font-weight: 600; font-size: 10px; }
+  .period .label {
+    margin-top: 6px;
+    font-family: var(--display); font-weight: 800; font-size: 14px;
+    color: var(--ink); line-height: 1.1; letter-spacing: -0.01em;
+  }
+  .period .sub {
+    font-family: var(--body); font-size: 10.5px; font-weight: 700; color: var(--ink-50); margin-top: 2px;
+  }
+  .period.done {
+    background: var(--good-bg);
+    border-color: color-mix(in oklch, var(--good) 25%, white);
+  }
+  .period.done .top { color: var(--good); }
+  .period.live {
+    background: #FFF1ED;
+    border-color: var(--bad);
+    box-shadow: 2px 2px 0 0 var(--bad);
+  }
+  .period.live .top { color: var(--bad); }
+  .period.next {
+    background: var(--indigo-bg);
+    border: var(--bw-2) solid var(--indigo);
+    box-shadow: 2px 2px 0 0 var(--indigo);
+  }
+  .period.next .top { color: var(--indigo); }
+  .period.empty {
+    background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(15,23,42,0.04) 6px 7px);
+    border-style: dashed; border-color: var(--ink-15);
+  }
+  .period.empty .label { color: var(--ink-40); font-weight: 700; font-size: 13px; }
+  .period.empty .top { color: var(--ink-40); }
+  @media (max-width: 900px) {
+    .sched { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  /* ─────────────── Section heads + filters ─────────────── */
+  .section-head {
+    display:flex; align-items: baseline; gap: 10px; justify-content: space-between;
+    margin: 28px 0 14px;
+  }
+  .section-head h2 {
+    font-family: var(--display); font-weight: 800; font-size: 19px;
+    letter-spacing: -0.015em; margin: 0; color: var(--ink);
+  }
+  .section-head .meta { font-family: var(--body); font-size: 12px; font-weight: 700; color: var(--ink-50); }
+
+  .filters { display:flex; gap: 8px; align-items:center; flex-wrap: wrap; }
+  .chip {
+    display:inline-flex; align-items:center; gap: 6px;
+    padding: 6px 11px; border-radius: 10px;
+    border: var(--bw-2) solid var(--ink-20);
+    background: #fff;
+    font-family: var(--body); font-size: 12px; font-weight: 800; color: var(--ink-50);
+  }
+  .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); box-shadow: var(--shadow-ink-sm); }
+  .chip:hover:not(.on) { color: var(--ink); border-color: var(--ink); }
+  .chip .count {
+    background: var(--canvas-2); color: var(--ink);
+    padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+  }
+  .chip.on .count { background: rgba(255,255,255,.22); color: #fff; }
+  .chip .pill-dot { width: 6px; height: 6px; border-radius: 999px; }
+
+  /* ─────────────── Session cards ─────────────── */
+  .session-list { display:flex; flex-direction: column; gap: 12px; }
+  .session-card {
+    background: #fff;
+    border: var(--bw) solid var(--ink);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-ink);
+    transition: transform .08s, box-shadow .08s;
+    cursor: pointer;
+    position: relative;
+  }
+  .session-card:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--shadow-ink-lg);
+  }
+  .session-card.is-active { cursor: pointer; }
+  .session-card.is-confirming { cursor: default; }
+  .session-card.is-confirming:hover { transform: none; box-shadow: var(--shadow-ink); }
+
+  .sc-body {
+    display:grid; grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 16px; align-items: flex-start;
+  }
+  .sc-left { min-width: 0; }
+  .sc-meta-row {
+    display:flex; align-items:center; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .sc-obj {
+    font-family: var(--display); font-weight: 800; font-size: 17px;
+    letter-spacing: -0.015em; color: var(--ink); line-height: 1.25;
+    margin: 0;
+    text-wrap: pretty;
+  }
+  .sc-concepts {
+    display:flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;
+  }
+  .sc-mid {
+    display:flex; flex-direction: column; align-items:center; gap: 4px;
+    min-width: 78px;
+  }
+  .ring-wrap { position: relative; width: 56px; height: 56px; }
+  .ring-wrap svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .ring-wrap .ring-text {
+    position: absolute; inset: 0;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--display); font-weight: 800; font-size: 15px;
+    letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  }
+  .sc-mid .ring-lbl {
+    font-family: var(--body); font-size: 9.5px; font-weight: 800; color: var(--ink-50);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .sc-right {
+    display:flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    min-width: 140px;
+  }
+  .sc-when {
+    text-align: right;
+    font-family: var(--body); font-size: 11.5px; font-weight: 700; color: var(--ink-50);
+    line-height: 1.4;
+  }
+  .sc-when strong { color: var(--ink); font-weight: 800; font-family: var(--display); font-size: 13px; display:block; }
+  .sc-actions { display:flex; gap: 6px; }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 10px;
+    border: var(--bw-2) solid var(--ink-20);
+    background: #fff;
+    display:flex; align-items:center; justify-content:center;
+    color: var(--ink-50); transition: all .12s;
+  }
+  .icon-btn:hover { border-color: var(--ink); color: var(--ink); background: var(--ink-5); }
+  .icon-btn.danger:hover { border-color: var(--bad); color: var(--bad); background: var(--bad-bg); }
+  .icon-btn.indigo:hover { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-bg); }
+
+  /* Status badges */
+  .status {
+    display:inline-flex; align-items:center; gap: 5px;
+    font-family: var(--body); font-size: 11px; font-weight: 800; padding: 3px 9px;
+    border-radius: 999px; line-height: 1; border: 1.5px solid;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .status.pending { color: var(--warn); background: var(--warn-bg); border-color: color-mix(in oklch, var(--warn) 25%, white); }
+  .status.live    { color: var(--bad);  background: var(--bad-bg);  border-color: color-mix(in oklch, var(--bad)  25%, white); }
+  .status.done    { color: var(--good); background: var(--good-bg); border-color: color-mix(in oklch, var(--good) 25%, white); }
+  .status .ico { width: 11px; height: 11px; }
+  .status .blink { width: 6px; height: 6px; border-radius: 999px; background: var(--bad); animation: blink 1.2s ease-in-out infinite; }
+
+  .tag {
+    display:inline-flex; align-items:center;
+    font-family: var(--body); font-size: 11px; font-weight: 800;
+    padding: 3px 9px; border-radius: 999px; line-height: 1;
+    border: 1.5px solid var(--ink-15); color: var(--ink-50); background: #fff;
+    white-space: nowrap;
+  }
+  .tag.subject { color: var(--blue); background: var(--blue-soft); border-color: color-mix(in oklch, var(--blue) 22%, white); }
+  .tag.class   { color: var(--indigo); background: var(--indigo-bg); border-color: color-mix(in oklch, var(--indigo) 22%, white); }
+
+  .concept {
+    font-family: var(--body); font-size: 10.5px; font-weight: 800;
+    padding: 3px 8px; border-radius: 999px; line-height: 1.2;
+    border: 1.5px solid;
+    display:inline-flex; align-items:center; gap: 4px;
+  }
+  .concept.covered { color: var(--good); background: var(--good-bg); border-color: color-mix(in oklch, var(--good) 25%, white); }
+  .concept.missed  { color: var(--bad);  background: var(--bad-bg);  border-color: color-mix(in oklch, var(--bad)  25%, white); }
+  .concept.pending { color: var(--blue); background: var(--blue-soft); border-color: color-mix(in oklch, var(--blue) 22%, white); }
+  .concept.more    { color: var(--ink-50); background: var(--canvas-2); border-color: var(--ink-10); }
+  .concept .dot { width: 5px; height: 5px; border-radius: 999px; }
+  .concept.covered .dot { background: var(--good); }
+  .concept.missed  .dot { background: var(--bad); }
+
+  /* Resume CTA for live card */
+  .resume-cta {
+    background: var(--bad); color: #fff;
+    border: var(--bw-2) solid var(--ink);
+    box-shadow: var(--shadow-ink-sm);
+    padding: 10px 16px;
+    font-family: var(--body); font-weight: 800; font-size: 13px;
+    border-radius: 12px;
+    display:inline-flex; align-items: center; gap: 6px;
+    transition: transform .08s, box-shadow .08s;
+  }
+  .resume-cta:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-ink); }
+
+  /* Confirm strip */
+  .confirm {
+    margin-top: 16px; padding-top: 14px;
+    border-top: 2px solid var(--ink-10);
+    display:flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .confirm .qmsg { font-family: var(--body); font-size: 12.5px; font-weight: 800; color: var(--ink); }
+  .confirm .sub { font-family: var(--body); font-size: 11px; font-weight: 700; color: var(--ink-50); margin-top: 2px; }
+  .confirm .actions { display:flex; gap: 8px; align-items: center; }
+
+  /* Empty state */
+  .empty {
+    padding: 60px 24px; text-align: center;
+    background: #fff;
+    border: var(--bw) dashed var(--ink-20);
+    border-radius: var(--r-lg);
+    color: var(--ink-50);
+  }
+  .empty .emoji {
+    width: 56px; height: 56px; margin: 0 auto 14px;
+    border: var(--bw-2) solid var(--ink); border-radius: 14px;
+    background: var(--canvas-2); display:flex; align-items:center; justify-content:center;
+    color: var(--ink-50); box-shadow: var(--shadow-ink-sm);
+  }
+  .empty h3 { font-family: var(--display); font-weight: 800; font-size: 17px; color: var(--ink); margin: 0 0 6px; }
+  .empty p { font-family: var(--body); font-size: 13px; font-weight: 700; margin: 0 0 16px; }
+
+  /* ─────────────── Modal ─────────────── */
+  .scrim {
+    position: fixed; inset: 0; background: rgba(15,23,42,.50);
+    backdrop-filter: blur(4px);
+    z-index: 80;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+    display:flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .modal {
+    width: 100%; max-width: 540px; max-height: 92vh;
+    overflow-y: auto;
+    background: #fff;
+    border: var(--bw) solid var(--ink);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-ink-lg);
+    transform: translateY(8px) scale(0.98);
+    transition: transform .2s;
+  }
+  .scrim.open .modal { transform: translateY(0) scale(1); }
+  .modal-head {
+    padding: 18px 22px;
+    border-bottom: var(--bw-2) solid var(--ink);
+    display:flex; align-items: center; justify-content: space-between;
+    background: var(--canvas);
+    border-radius: 17px 17px 0 0;
+  }
+  .modal-head h3 {
+    margin: 0; font-family: var(--display); font-weight: 800; font-size: 19px;
+    letter-spacing: -0.015em; color: var(--ink);
+  }
+  .modal-head .sub { font-family: var(--body); font-size: 12px; font-weight: 700; color: var(--ink-50); margin-top: 2px; }
+
+  .modal-body { padding: 20px 22px 4px; }
+  .field { margin-bottom: 16px; }
+  .field label {
+    display:block;
+    font-family: var(--body); font-size: 12px; font-weight: 800;
+    color: var(--ink); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .field label .req { color: var(--bad); margin-left: 2px; }
+  .field label .hint { color: var(--ink-50); font-weight: 700; text-transform: none; letter-spacing: 0; margin-left: 6px; font-size: 11px; }
+  .input, .textarea, .select {
+    width: 100%; padding: 11px 14px;
+    border: var(--bw-2) solid var(--ink-20);
+    border-radius: 12px;
+    font-family: var(--body); font-size: 14px; font-weight: 700;
+    color: var(--ink); background: #fff;
+    outline: none; transition: border-color .12s, box-shadow .12s, background .12s;
+  }
+  .input:focus, .textarea:focus, .select:focus {
+    border-color: var(--indigo);
+    box-shadow: 0 0 0 4px var(--indigo-bg);
+  }
+  .textarea { resize: vertical; min-height: 88px; }
+  .select {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+    background-position: calc(100% - 16px) calc(50% - 1px), calc(100% - 12px) calc(50% - 1px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 36px;
+  }
+  .field .hint-row {
+    display:flex; align-items: center; gap: 5px; margin-top: 8px;
+    font-family: var(--body); font-size: 11px; font-weight: 700;
+    color: var(--indigo);
+  }
+  .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .preview-tags { display:flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+
+  .modal-foot {
+    padding: 16px 22px;
+    border-top: var(--bw-2) solid var(--ink-10);
+    background: var(--canvas);
+    display:flex; align-items:center; justify-content: space-between; gap: 12px;
+    border-radius: 0 0 17px 17px;
+  }
+  .modal-foot .left { font-family: var(--body); font-size: 11.5px; font-weight: 700; color: var(--ink-50); }
+  .modal-foot .right { display:flex; gap: 8px; }
+
+  /* Footer */
+  .pagefoot {
+    margin-top: 36px; padding-top: 16px;
+    border-top: 1.5px solid var(--ink-10);
+    display:flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    font-family: var(--body); font-size: 11.5px; font-weight: 700; color: var(--ink-50);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+
+  /* ─────────────── Tweaks panel ─────────────── */
+  .tw-fab {
+    position: fixed; right: 18px; bottom: 18px; z-index: 60;
+    width: 44px; height: 44px; border-radius: 14px;
+    background: #fff; border: var(--bw-2) solid var(--ink);
+    box-shadow: var(--shadow-ink); color: var(--ink);
+    display:flex; align-items:center; justify-content: center;
+    transition: transform .08s, box-shadow .08s;
+  }
+  .tw-fab:hover { transform: translate(-1px,-1px); box-shadow: var(--shadow-ink-lg); }
+  .tw-panel {
+    position: fixed; right: 18px; bottom: 70px; z-index: 70;
+    width: 280px; background: #fff;
+    border: var(--bw) solid var(--ink); border-radius: var(--r-lg);
+    box-shadow: var(--shadow-ink-lg);
+    padding: 16px; display: none;
+  }
+  .tw-panel.open { display: block; }
+  .tw-panel h4 {
+    margin: 0 0 12px;
+    font-family: var(--body); font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-50);
+  }
+  .tw-row {
+    display:flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; gap: 10px;
+    font-family: var(--body); font-size: 12.5px; font-weight: 700; color: var(--ink);
+  }
+  .tw-row .seg button { font-size: 11px; padding: 5px 9px; }
+  .tw-toggle {
+    width: 38px; height: 22px; border-radius: 999px;
+    border: 2px solid var(--ink); background: var(--canvas-2);
+    position: relative; cursor: pointer; transition: background .15s;
+  }
+  .tw-toggle::after {
+    content: ""; position: absolute; top: 1px; left: 1px;
+    width: 16px; height: 16px; border-radius: 999px;
+    background: #fff; border: 1.5px solid var(--ink);
+    transition: transform .15s;
+  }
+  .tw-toggle.on { background: var(--indigo); }
+  .tw-toggle.on::after { transform: translateX(16px); }
+
+  /* small util */
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+
+</head>
+<body data-density="comfortable">
+
+<template id="__bundler_thumbnail" data-bg-color="#F8F9FF">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect x="120" y="120" width="960" height="200" rx="28" fill="#2E2BE5" stroke="#0F172A" stroke-width="8"/>
+    <circle cx="240" cy="220" r="44" fill="#fff" opacity="0.18"/>
+    <rect x="300" y="180" width="380" height="32" rx="8" fill="#fff" opacity="0.9"/>
+    <rect x="300" y="232" width="240" height="20" rx="6" fill="#fff" opacity="0.55"/>
+    <rect x="120" y="360" width="960" height="120" rx="20" fill="#fff" stroke="#DC2626" stroke-width="8"/>
+    <circle cx="200" cy="420" r="28" fill="#DC2626"/>
+    <rect x="260" y="400" width="320" height="22" rx="6" fill="#0F172A"/>
+    <rect x="260" y="432" width="200" height="14" rx="4" fill="#0F172A" opacity="0.4"/>
+    <rect x="120" y="520" width="465" height="240" rx="20" fill="#fff" stroke="#0F172A" stroke-width="8"/>
+    <rect x="615" y="520" width="465" height="240" rx="20" fill="#fff" stroke="#0F172A" stroke-width="8"/>
+    <circle cx="170" cy="570" r="14" fill="#16A56B"/>
+    <rect x="200" y="560" width="240" height="22" rx="6" fill="#0F172A"/>
+    <circle cx="665" cy="570" r="14" fill="#C77800"/>
+    <rect x="695" y="560" width="240" height="22" rx="6" fill="#0F172A"/>
+  </svg>
+</template>
+
+  <!-- ═══════════════ Top bar ═══════════════ -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L12 4l8 16"></path><path d="M7.5 14h9"></path></svg>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="brand-text">Class<em>Pulse</em></span>
+          <span class="brand-pill">by AceTerus</span>
+        </div>
+      </div>
+      <nav class="topnav">
+        <a href="#">Dashboard</a>
+        <a href="#" class="active">My Sessions</a>
+        <a href="#">Reports</a>
+        <a href="#">Coaching</a>
+      </nav>
+      <div class="topbar-right">
+        <button class="btn ghost">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4-4"></path></svg>
+          Search
+        </button>
+        <div class="userchip">
+          <div class="avatar">AF</div>
+          <div class="who">
+            En. Ahmad Faizi
+            <small>Cikgu · SMK Tinggi BM</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════ Page ═══════════════ -->
+  <main class="page">
+
+    <!-- Page header -->
+    <div class="ph">
+      <div class="ph-left">
+        <div class="ph-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"></rect><path d="M3 9h18"></path><path d="M8 2v4M16 2v4"></path><path d="M8 13h3M8 17h6M14 13h2"></path></svg>
+        </div>
+        <div>
+          <div class="crumbs">
+            <span>ClassPulse</span><span class="sep">›</span>
+            <span>Mathematics &amp; Physics</span><span class="sep">›</span>
+            <span style="color: var(--ink)">My Sessions</span>
+          </div>
+          <h1>My Sessions</h1>
+          <p class="ph-sub">
+            <strong style="color:var(--ink); font-weight:800">12 sessions</strong> this month
+            &nbsp;·&nbsp; <strong style="color:var(--ink); font-weight:800">3 today</strong>
+            &nbsp;·&nbsp; coverage <strong style="color:var(--ink); font-weight:800">83%</strong>
+          </p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn ghost">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 9v6l-4-2v-4z"></path></svg>
+          Filter
+        </button>
+        <button class="btn primary lg" id="open-new-session">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+          New Session
+        </button>
+      </div>
+    </div>
+
+    <!-- Hero: today greeting + KPIs -->
+    <section class="hero" aria-label="Today">
+      <div class="hero-top">
+        <div class="hero-greet">
+          <div class="calendar">
+            <span class="mon">Wed</span>
+            <span class="day">27</span>
+          </div>
+          <div>
+            <h2>Selamat pagi, Cikgu Faizi 👋</h2>
+            <p>You have <strong style="color:#fff; font-weight:800">3 classes</strong> today, <strong style="color:#fff; font-weight:800">1 currently recording</strong>.</p>
+          </div>
+        </div>
+        <div class="hero-badge">
+          <span class="dot"></span> Connected · synced 1 min ago
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="lbl">CLASSES TODAY</div>
+          <div class="val tnum">3 <span class="sub">/ 4</span></div>
+          <div class="delta">Period 3 in progress</div>
+        </div>
+        <div class="kpi">
+          <div class="lbl">AVG COVERAGE</div>
+          <div class="val tnum">83<span class="sub">%</span></div>
+          <div class="delta"><span class="pos">↑ +4%</span> vs last week</div>
+        </div>
+        <div class="kpi">
+          <div class="lbl">GOALS HIT</div>
+          <div class="val tnum">10 <span class="sub">/ 12</span></div>
+          <div class="delta">2 partial · this month</div>
+        </div>
+        <div class="kpi">
+          <div class="lbl">STUDENT TALK</div>
+          <div class="val tnum">52<span class="sub">%</span></div>
+          <div class="delta"><span class="pos">↑ +6%</span> above target</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live session callout -->
+    <div class="live-card" id="live-callout">
+      <div class="stripe"></div>
+      <div class="body">
+        <div class="l">
+          <div class="pulse-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" fill="currentColor"></circle><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14M16.24 7.76a6 6 0 0 1 0 8.48M7.76 7.76a6 6 0 0 0 0 8.48"></path></svg>
+          </div>
+          <div style="min-width:0">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="live-tag"><span class="blink"></span> Recording now</span>
+              <span class="tag subject">Physics</span>
+              <span class="tag class">4 Amanah</span>
+            </div>
+            <h3>Newton's Laws of Motion &amp; their applications</h3>
+            <div class="meta">
+              <span>Period 3 · <strong>09:40 – 10:20</strong></span>
+              <span>·</span>
+              <span class="timer">●&nbsp; 24:18 elapsed</span>
+              <span>·</span>
+              <span><strong>3 of 4</strong> concepts covered so far</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn ghost">Pause</button>
+          <button class="resume-cta">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Resume recording
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's schedule -->
+    <section class="sched-card" id="sched-card">
+      <div class="sched-head">
+        <h3>Today's Schedule</h3>
+        <div class="right">Wednesday, 27 May 2026 · 4 periods scheduled</div>
+      </div>
+      <div class="sched">
+        <div class="period done">
+          <div class="top">
+            <span>P1 · Done</span>
+            <span class="time">07:40</span>
+          </div>
+          <div>
+            <div class="label">5 Bestari</div>
+            <div class="sub">Mathematics · Integration</div>
+          </div>
+        </div>
+        <div class="period done">
+          <div class="top">
+            <span>P2 · Done</span>
+            <span class="time">08:30</span>
+          </div>
+          <div>
+            <div class="label">4 Bestari</div>
+            <div class="sub">Physics · Heat capacity</div>
+          </div>
+        </div>
+        <div class="period live">
+          <div class="top">
+            <span>● Live</span>
+            <span class="time">09:40</span>
+          </div>
+          <div>
+            <div class="label">4 Amanah</div>
+            <div class="sub">Physics · Newton's Laws</div>
+          </div>
+        </div>
+        <div class="period empty">
+          <div class="top">
+            <span>P4 · Break</span>
+            <span class="time">10:30</span>
+          </div>
+          <div>
+            <div class="label">Recess</div>
+            <div class="sub">No class</div>
+          </div>
+        </div>
+        <div class="period next">
+          <div class="top">
+            <span>P5 · Up next</span>
+            <span class="time">11:00</span>
+          </div>
+          <div>
+            <div class="label">5 Cemerlang</div>
+            <div class="sub">Mathematics · Vectors</div>
+          </div>
+        </div>
+        <div class="period empty">
+          <div class="top">
+            <span>P6</span>
+            <span class="time">11:50</span>
+          </div>
+          <div>
+            <div class="label">Free</div>
+            <div class="sub">—</div>
+          </div>
+        </div>
+        <div class="period empty">
+          <div class="top">
+            <span>P7</span>
+            <span class="time">12:40</span>
+          </div>
+          <div>
+            <div class="label">Free</div>
+            <div class="sub">—</div>
+          </div>
+        </div>
+        <div class="period empty">
+          <div class="top">
+            <span>P8</span>
+            <span class="time">13:30</span>
+          </div>
+          <div>
+            <div class="label">Free</div>
+            <div class="sub">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section: All sessions -->
+    <div class="section-head">
+      <h2>All Sessions</h2>
+      <div class="meta" id="session-count">6 of 6 sessions</div>
+    </div>
+
+    <!-- Filter chips + sort -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:12px;">
+      <div class="filters" id="filter-chips">
+        <button class="chip on" data-filter="all">All <span class="count">6</span></button>
+        <button class="chip" data-filter="live"><span class="pill-dot" style="background:var(--bad);"></span> Live <span class="count">1</span></button>
+        <button class="chip" data-filter="pending"><span class="pill-dot" style="background:var(--warn);"></span> Pending <span class="count">1</span></button>
+        <button class="chip" data-filter="done"><span class="pill-dot" style="background:var(--good);"></span> Completed <span class="count">4</span></button>
+      </div>
+      <div class="filters">
+        <div class="seg" role="tablist" aria-label="Sort">
+          <button class="on">Recent</button>
+          <button>Coverage</button>
+          <button>Subject</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session list -->
+    <div class="session-list" id="session-list">
+
+      <!-- LIVE -->
+      <article class="session-card" data-status="live" data-id="s-live">
+        <div class="sc-body">
+          <div class="sc-left">
+            <div class="sc-meta-row">
+              <span class="status live"><span class="blink"></span> Recording</span>
+              <span class="tag subject">Physics</span>
+              <span class="tag class">4 Amanah</span>
+              <span class="tag">Period 3</span>
+            </div>
+            <p class="sc-obj">Students understand Newton's Laws of Motion and their real-world applications.</p>
+            <div class="sc-concepts">
+              <span class="concept covered"><span class="dot"></span>Newton's 1st Law</span>
+              <span class="concept covered"><span class="dot"></span>Newton's 2nd Law</span>
+              <span class="concept covered"><span class="dot"></span>Newton's 3rd Law</span>
+              <span class="concept pending">Friction</span>
+            </div>
+          </div>
+          <div class="sc-mid">
+            <div class="ring-wrap">
+              <svg width="56" height="56">
+                <circle cx="28" cy="28" r="24" stroke="rgba(15,23,42,0.10)" stroke-width="5" fill="none"></circle>
+                <circle cx="28" cy="28" r="24" stroke="var(--bad)" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="37.7"></circle>
+              </svg>
+              <div class="ring-text" style="color:var(--bad)">75%</div>
+            </div>
+            <div class="ring-lbl">Live · 24m</div>
+          </div>
+          <div class="sc-right">
+            <div class="sc-when">
+              <strong>Today</strong>
+              09:40 – 10:20
+            </div>
+            <div class="sc-actions">
+              <button class="resume-cta">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                Resume
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- PENDING (Up next) -->
+      <article class="session-card" data-status="pending" data-id="s-pending">
+        <div class="sc-body">
+          <div class="sc-left">
+            <div class="sc-meta-row">
+              <span class="status pending">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+                Up next
+              </span>
+              <span class="tag subject">Mathematics</span>
+              <span class="tag class">5 Cemerlang</span>
+              <span class="tag">Period 5</span>
+            </div>
+            <p class="sc-obj">Students will understand vectors in two dimensions — addition, magnitude, and direction.</p>
+            <div class="sc-concepts">
+              <span class="concept pending">Vector Addition</span>
+              <span class="concept pending">Magnitude</span>
+              <span class="concept pending">Direction Cosines</span>
+              <span class="concept pending">Unit Vectors</span>
+            </div>
+          </div>
+          <div class="sc-mid">
+            <div class="ring-wrap">
+              <svg width="56" height="56">
+                <circle cx="28" cy="28" r="24" stroke="rgba(15,23,42,0.10)" stroke-width="5" fill="none"></circle>
+              </svg>
+              <div class="ring-text" style="color: var(--ink-40); font-size: 12px;">—</div>
+            </div>
+            <div class="ring-lbl">In 28 min</div>
+          </div>
+          <div class="sc-right">
+            <div class="sc-when">
+              <strong>Today</strong>
+              11:00 – 11:40
+            </div>
+            <div class="sc-actions">
+              <button class="btn primary sm">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" fill="currentColor"></circle></svg>
+                Start
+              </button>
+              <button class="icon-btn danger" data-act="delete" data-target="s-pending" aria-label="Delete">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- COMPLETED #1 -->
+      <article class="session-card" data-status="done" data-id="s-1">
+        <div class="sc-body">
+          <div class="sc-left">
+            <div class="sc-meta-row">
+              <span class="status done">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>
+                Completed
+              </span>
+              <span class="tag subject">Physics</span>
+              <span class="tag class">4 Bestari</span>
+              <span class="tag">Period 2</span>
+            </div>
+            <p class="sc-obj">Heat — specific heat capacity, latent heat &amp; calorimetry.</p>
+            <div class="sc-concepts">
+              <span class="concept covered"><span class="dot"></span>Specific Heat</span>
+              <span class="concept covered"><span class="dot"></span>Latent Heat</span>
+              <span class="concept covered"><span class="dot"></span>Phase Change</span>
+              <span class="concept covered"><span class="dot"></span>Calorimetry</span>
+            </div>
+          </div>
+          <div class="sc-mid">
+            <div class="ring-wrap">
+              <svg width="56" height="56">
+                <circle cx="28" cy="28" r="24" stroke="rgba(15,23,42,0.10)" stroke-width="5" fill="none"></circle>
+                <circle cx="28" cy="28" r="24" stroke="var(--good)" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="21.1"></circle>
+              </svg>
+              <div class="ring-text" style="color:var(--good)">86%</div>
+            </div>
+            <div class="ring-lbl">Coverage</div>
+          </div>
+          <div class="sc-right">
+            <div class="sc-when">
+              <strong>Today</strong>
+              08:30 · 40 min
+            </div>
+            <div class="sc-actions">
+              <button class="btn sm">View report</button>
+              <button class="icon-btn indigo" data-act="rerecord" data-target="s-1" aria-label="Re-record">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path><path d="M3 21v-5h5"></path></svg>
+              </button>
+              <button class="icon-btn danger" data-act="delete" data-target="s-1" aria-label="Delete">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- COMPLETED #2 -->
+      <article class="session-card" data-status="done" data-id="s-2">
+        <div class="sc-body">
+          <div class="sc-left">
+            <div class="sc-meta-row">
+              <span class="status done">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>
+                Completed
+              </span>
+              <span class="tag subject">Mathematics</span>
+              <span class="tag class">5 Bestari</span>
+              <span class="tag">Period 1</span>
+            </div>
+            <p class="sc-obj">Introduction to integration techniques.</p>
+            <div class="sc-concepts">
+              <span class="concept covered"><span class="dot"></span>Integration</span>
+              <span class="concept covered"><span class="dot"></span>Substitution Method</span>
+              <span class="concept missed"><span class="dot"></span>Definite Integrals</span>
+              <span class="concept missed"><span class="dot"></span>Area Under Curve</span>
+            </div>
+          </div>
+          <div class="sc-mid">
+            <div class="ring-wrap">
+              <svg width="56" height="56">
+                <circle cx="28" cy="28" r="24" stroke="rgba(15,23,42,0.10)" stroke-width="5" fill="none"></circle>
+                <circle cx="28" cy="28" r="24" stroke="var(--warn)" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="40.7"></circle>
+              </svg>
+              <div class="ring-text" style="color:var(--warn)">73%</div>
+            </div>
+            <div class="ring-lbl">Coverage</div>
+          </div>
+          <div class="sc-right">
+            <div class="sc-when">
+              <strong>Today</strong>
+              07:40 · 38 min
+            </div>
+            <div class="sc-actions">
+              <button class="btn sm">View report</button>
+              <button class="icon-btn indigo" data-act="rerecord" data-target="s-2" aria-label="Re-record">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path><path d="M3 21v-5h5"></path></svg>
+              </button>
+              <button class="icon-btn danger" data-act="delete" data-target="s-2" aria-label="Delete">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- COMPLETED #3 -->
+      <article class="session-card" data-status="done" data-id="s-3">
+        <div class="sc-body">
+          <div class="sc-left">
+            <div class="sc-meta-row">
+              <span class="status done">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>
+                Completed
+              </span>
+              <span class="tag subject">Mathematics</span>
+              <span class="tag class">4 Amanah</span>
+              <span class="tag">Yesterday</span>
+            </div>
+            <p class="sc-obj">Students will understand differentiation and its applications.</p>
+            <div class="sc-concepts">
+              <span class="concept covered"><span class="dot"></span>Differentiation</span>
+              <span class="concept covered"><span class="dot"></span>Chain Rule</span>
+              <span class="concept covered"><span class="dot"></span>Product Rule</span>
+              <span class="concept covered"><span class="dot"></span>Applications</span>
+            </div>
+          </div>
+          <div class="sc-mid">
+            <div class="ring-wrap">
+              <svg width="56" height="56">
+                <circle cx="28" cy="28" r="24" stroke="rgba(15,23,42,0.10)" stroke-width="5" fill="none"></circle>
+                <circle cx="28" cy="28" r="24" stroke="var(--good)" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="19.6"></circle>
+              </svg>
+              <div class="ring-text" style="color:var(--good)">87%</div>
+            </div>
+            <div class="ring-lbl">Coverage</div>
+          </div>
+          <div class="sc-right">
+            <div class="sc-when">
+              <strong>26 May</strong>
+              10:20 · 45 min
+            </div>
+            <div class="sc-actions">
+              <button class="btn sm">View report</button>
+              <button class="icon-btn indigo" data-act="rerecord" data-target="s-3" aria-label="Re-record">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path><path d="M3 21v-5h5"></path></svg>
+              </button>
+              <button class="icon-btn danger" data-act="delete" data-target="s-3" aria-label="Delete">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- COMPLETED #4 -->
+      <article class="session-card" data-status="done" data-id="s-4">
+        <div class="sc-body">
+          <div class="sc-left">
+            <div class="sc-meta-row">
+              <span class="status done">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>
+                Completed
+              </span>
+              <span class="tag subject">Physics</span>
+              <span class="tag class">4 Amanah</span>
+              <span class="tag">2 days ago</span>
+            </div>
+            <p class="sc-obj">Forces and friction — static, kinetic, rolling.</p>
+            <div class="sc-concepts">
+              <span class="concept covered"><span class="dot"></span>Static Friction</span>
+              <span class="concept covered"><span class="dot"></span>Kinetic Friction</span>
+              <span class="concept covered"><span class="dot"></span>Normal Force</span>
+              <span class="concept missed"><span class="dot"></span>Rolling Friction</span>
+              <span class="concept more">+1 more</span>
+            </div>
+          </div>
+          <div class="sc-mid">
+            <div class="ring-wrap">
+              <svg width="56" height="56">
+                <circle cx="28" cy="28" r="24" stroke="rgba(15,23,42,0.10)" stroke-width="5" fill="none"></circle>
+                <circle cx="28" cy="28" r="24" stroke="var(--blue)" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="30.2"></circle>
+              </svg>
+              <div class="ring-text" style="color:var(--blue)">80%</div>
+            </div>
+            <div class="ring-lbl">Coverage</div>
+          </div>
+          <div class="sc-right">
+            <div class="sc-when">
+              <strong>25 May</strong>
+              11:00 · 42 min
+            </div>
+            <div class="sc-actions">
+              <button class="btn sm">View report</button>
+              <button class="icon-btn indigo" data-act="rerecord" data-target="s-4" aria-label="Re-record">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path><path d="M3 21v-5h5"></path></svg>
+              </button>
+              <button class="icon-btn danger" data-act="delete" data-target="s-4" aria-label="Delete">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+    </div>
+
+    <div class="pagefoot">
+      <div>ClassPulse v2.4 · Teacher Dashboard</div>
+      <div>Showing last 30 days · Auto-saved 14:02</div>
+    </div>
+  </main>
+
+  <!-- ═══════════════ New Session Modal ═══════════════ -->
+  <div class="scrim" id="modal-scrim">
+    <form class="modal" id="new-session-form" onsubmit="event.preventDefault(); closeModal();">
+      <div class="modal-head">
+        <div>
+          <h3>New Session</h3>
+          <div class="sub">Fill in lesson details. We'll start recording when you're ready.</div>
+        </div>
+        <button type="button" class="icon-btn" onclick="closeModal()" aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field">
+          <label>Subject <span class="req">*</span></label>
+          <select class="select" required>
+            <option value="">Select subject…</option>
+            <option>Matematik</option>
+            <option>Sains</option>
+            <option>Bahasa Melayu</option>
+            <option>English</option>
+            <option>Sejarah</option>
+            <option>Geografi</option>
+            <option>Pendidikan Islam</option>
+            <option>Pendidikan Moral</option>
+            <option selected>Fizik</option>
+            <option>Kimia</option>
+            <option>Biologi</option>
+            <option>Ekonomi</option>
+            <option>Perniagaan</option>
+            <option>Pendidikan Jasmani</option>
+            <option>Seni Visual</option>
+            <option>Muzik</option>
+            <option>Teknologi Maklumat</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Class name <span class="req">*</span></label>
+          <input class="input" type="text" placeholder="e.g. 4 Amanah" value="4 Amanah" required />
+        </div>
+
+        <div class="field">
+          <label>Lesson objective <span class="req">*</span></label>
+          <textarea class="textarea" placeholder="e.g. Students understand osmosis and concentration gradient" required>Students understand Newton's Laws of Motion and their applications.</textarea>
+        </div>
+
+        <div class="field">
+          <label>Key concepts to track <span class="hint">comma-separated</span></label>
+          <input id="concepts-input" class="input" type="text" placeholder="osmosis, concentration gradient, semi-permeable membrane" value="Newton's 1st Law, Newton's 2nd Law, Newton's 3rd Law, Friction" />
+          <div class="hint-row">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5M12 16v5M3 12h5M16 12h5M5.5 5.5l3 3M15.5 15.5l3 3M5.5 18.5l3-3M15.5 8.5l3-3"></path></svg>
+            We'll auto-detect concepts from your objective if you leave this empty.
+          </div>
+          <div class="preview-tags" id="concept-preview"></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label>Date</label>
+            <input class="input" type="date" value="2026-05-27" />
+          </div>
+          <div class="field">
+            <label>Period</label>
+            <select class="select">
+              <option>Period 1</option>
+              <option>Period 2</option>
+              <option selected>Period 3</option>
+              <option>Period 4</option>
+              <option>Period 5</option>
+              <option>Period 6</option>
+              <option>Period 7</option>
+              <option>Period 8</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <div class="left">Required fields marked <span style="color:var(--bad); font-weight:800">*</span></div>
+        <div class="right">
+          <button type="button" class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn primary">
+            Create &amp; Go to Session
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ═══════════════ Tweaks panel ═══════════════ -->
+  <button class="tw-fab" id="tw-fab" aria-label="Tweaks">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+  </button>
+  <div class="tw-panel" id="tw-panel">
+    <h4>Tweaks</h4>
+    <div class="tw-row">
+      <span>Density</span>
+      <div class="seg" id="tw-density">
+        <button data-val="compact">Compact</button>
+        <button class="on" data-val="comfortable">Comfy</button>
+      </div>
+    </div>
+    <div class="tw-row">
+      <span>Today schedule</span>
+      <div class="tw-toggle on" data-target="sched-card"></div>
+    </div>
+    <div class="tw-row">
+      <span>Hero stats</span>
+      <div class="tw-toggle on" data-target=".hero"></div>
+    </div>
+    <div class="tw-row">
+      <span>Live callout</span>
+      <div class="tw-toggle on" data-target="live-callout"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ Behaviour ═══════════════ -->
+  <script>
+    // Open / close modal
+    const scrim = document.getElementById("modal-scrim");
+    document.getElementById("open-new-session").addEventListener("click", () => {
+      scrim.classList.add("open");
+      document.body.style.overflow = "hidden";
+    });
+    function closeModal() {
+      scrim.classList.remove("open");
+      document.body.style.overflow = "";
+    }
+    scrim.addEventListener("click", (e) => {
+      if (e.target === scrim) closeModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { closeModal(); closeAnyConfirm(); }
+    });
+
+    // Concept preview chips in modal
+    const conceptsInput = document.getElementById("concepts-input");
+    const preview = document.getElementById("concept-preview");
+    function renderPreview() {
+      const parts = conceptsInput.value.split(",").map(s => s.trim()).filter(Boolean);
+      preview.innerHTML = parts.map(c =>
+        `<span class="concept pending">${c}</span>`
+      ).join("");
+    }
+    conceptsInput.addEventListener("input", renderPreview);
+    renderPreview();
+
+    // Filter chips
+    const chips = document.querySelectorAll("#filter-chips .chip");
+    const cards = document.querySelectorAll(".session-card");
+    const countEl = document.getElementById("session-count");
+    const total = cards.length;
+    chips.forEach(c => c.addEventListener("click", () => {
+      chips.forEach(x => x.classList.remove("on"));
+      c.classList.add("on");
+      const f = c.dataset.filter;
+      let shown = 0;
+      cards.forEach(card => {
+        const ok = f === "all" || card.dataset.status === f;
+        card.style.display = ok ? "" : "none";
+        if (ok) shown++;
+      });
+      countEl.textContent = `${shown} of ${total} sessions`;
+    }));
+
+    // Inline confirm strip (delete / re-record)
+    function closeAnyConfirm() {
+      document.querySelectorAll(".session-card .confirm").forEach(n => n.remove());
+      document.querySelectorAll(".session-card.is-confirming").forEach(c => c.classList.remove("is-confirming"));
+    }
+    document.querySelectorAll("[data-act]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeAnyConfirm();
+        const card = btn.closest(".session-card");
+        card.classList.add("is-confirming");
+        const isDelete = btn.dataset.act === "delete";
+        const strip = document.createElement("div");
+        strip.className = "confirm";
+        strip.innerHTML = `
+          <div>
+            <div class="qmsg">${isDelete ? "Delete this session permanently?" : "Reset and re-record this session?"}</div>
+            <div class="sub">${isDelete ? "This will remove all session data and the report. This cannot be undone." : "The existing report will be deleted and you'll re-record from scratch."}</div>
+          </div>
+          <div class="actions">
+            <button class="btn ghost sm" data-cancel>Cancel</button>
+            <button class="btn ${isDelete ? "danger" : "primary"} sm" data-confirm>
+              ${isDelete ? "Delete session" : "Re-record"}
+            </button>
+          </div>
+        `;
+        card.appendChild(strip);
+        strip.addEventListener("click", (ev) => ev.stopPropagation());
+        strip.querySelector("[data-cancel]").addEventListener("click", () => {
+          card.classList.remove("is-confirming");
+          strip.remove();
+        });
+        strip.querySelector("[data-confirm]").addEventListener("click", () => {
+          if (isDelete) {
+            card.style.transition = "opacity .25s, transform .25s";
+            card.style.opacity = "0";
+            card.style.transform = "translateX(-10px)";
+            setTimeout(() => card.remove(), 250);
+          } else {
+            card.classList.remove("is-confirming");
+            strip.remove();
+          }
+        });
+      });
+    });
+
+    // Stop card-click bubbling on interactive elements
+    document.querySelectorAll(".sc-actions, .icon-btn, .btn, .resume-cta").forEach(el => {
+      el.addEventListener("click", (e) => e.stopPropagation());
+    });
+
+    // Tweaks panel
+    const fab = document.getElementById("tw-fab");
+    const panel = document.getElementById("tw-panel");
+    fab.addEventListener("click", () => panel.classList.toggle("open"));
+    document.querySelectorAll("#tw-density button").forEach(b => {
+      b.addEventListener("click", () => {
+        document.querySelectorAll("#tw-density button").forEach(x => x.classList.remove("on"));
+        b.classList.add("on");
+        document.body.setAttribute("data-density", b.dataset.val);
+      });
+    });
+    document.querySelectorAll(".tw-toggle").forEach(t => {
+      t.addEventListener("click", () => {
+        t.classList.toggle("on");
+        const sel = t.dataset.target;
+        const el = sel.startsWith(".") ? document.querySelector(sel) : document.getElementById(sel);
+        if (el) el.style.display = t.classList.contains("on") ? "" : "none";
+      });
+    });
+  </script>
+
+</body>
+</html>
