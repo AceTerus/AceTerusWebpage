@@ -7,6 +7,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isAdmin: boolean;
+  username: string | null;
   isNewUser: boolean;
   setIsNewUser: React.Dispatch<React.SetStateAction<boolean>>;
   aceCoins: number;
@@ -52,10 +53,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
   const [aceCoins, setAceCoins] = useState<number>(0);
+  const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
     const syncProfile = async (userId: string | undefined) => {
-      if (!userId) { setIsAdmin(false); setAceCoins(0); return; }
+      if (!userId) { setIsAdmin(false); setAceCoins(0); setUsername(null); return; }
 
       const { data, error } = await supabase
         .from("profiles")
@@ -76,6 +78,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       setIsAdmin((data as any)?.is_admin ?? false);
+      setUsername((data as any)?.username ?? null);
 
       // Only mark as new if they truly have no username AND haven't just finished onboarding
       const onboardingDone = localStorage.getItem('ace_onboarding_done') === '1';
@@ -177,6 +180,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     session,
     isLoading,
     isAdmin,
+    username,
     isNewUser,
     setIsNewUser,
     aceCoins,

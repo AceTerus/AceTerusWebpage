@@ -61,7 +61,7 @@ const getCategoryImage = (name: string): string | null => {
 };
 
 const Quiz = () => {
-  const { user, isLoading: authLoading, isAdmin, aceCoins, setAceCoins } = useAuth();
+  const { user, isLoading: authLoading, isAdmin, username, aceCoins, setAceCoins } = useAuth();
   const { streak, updateStreak } = useStreak();
   const { pushMessage } = useMascot();
   useEffect(() => {
@@ -982,7 +982,7 @@ const Quiz = () => {
 
                     {activeReviewTab === "ai" && (
                       <div ref={refAiAnalysis}>
-                        <QuizAnalysis analysis={analysisResult} loading={analysisLoading} error={analysisError} />
+                        <QuizAnalysis analysis={analysisResult} loading={analysisLoading} error={analysisError} userName={username} />
                       </div>
                     )}
 
