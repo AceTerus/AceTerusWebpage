@@ -9,14 +9,16 @@ const ALLOWED_ORIGINS = [
   'https://classpulse.aceterus.com',
 ];
 
-// Also allow localhost in development
-if (Deno.env.get('ENVIRONMENT') !== 'production') {
-  ALLOWED_ORIGINS.push('http://localhost:5173', 'http://localhost:8001', 'http://localhost:3000');
-}
+// Match any localhost / 127.0.0.1 origin on any port (Vite picks whatever port
+// is free — 8001, 8002, …), so local dev is not tied to a hardcoded port.
+const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('Origin') ?? '';
-  const isAllowed = ALLOWED_ORIGINS.includes(origin);
+  const isProduction = Deno.env.get('ENVIRONMENT') === 'production';
+  const isAllowed =
+    ALLOWED_ORIGINS.includes(origin) ||
+    (!isProduction && LOCALHOST_ORIGIN.test(origin));
 
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : ALLOWED_ORIGINS[0],
