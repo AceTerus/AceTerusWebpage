@@ -11,6 +11,17 @@ const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
+  // Request-scoped so it closes over corsHeaders. Defining this at module scope
+  // throws "ReferenceError: corsHeaders is not defined" on every error path,
+  // which crashes the worker and surfaces to the browser as the misleading
+  // "Failed to send a request to the Edge Function".
+  function jsonError(status: number, message: string): Response {
+    return new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   if (req.method === "OPTIONS") {
     return handleCorsOptions(req);
   }
@@ -74,6 +85,91 @@ serve(async (req) => {
                 `${i + 1}. "${h.deck_name}" (${h.category}) — ${Number(h.score).toFixed(1)}% on ${new Date(h.completed_at ?? "").toLocaleDateString()}`
             )
             .join("\n")}`;
+
+    // === Behavioral signals (computed facts) ===
+    // These are the ONLY basis the model may use for habit / learning-style claims.
+    // Each signal is included only when there is enough data to make it honest; a
+    // first attempt therefore yields a near-empty block and a minimal learner_profile.
+    const total = Number(current.total_count) || 0;
+    const wrong = Number(current.wrong_count) || 0;
+    const skipped = Number(current.skipped_count) || 0;
+    const attemptsAnalyzed = history.length + 1;
+
+    // Scores across attempts are stored as percentages (0–100).
+    const historyScores = (history as HistoryRecord[])
+      .map((h) => Number(h.score))
+      .filter((n) => Number.isFinite(n));
+    const currentScore = Number(current.score);
+    const allScores = [
+      ...(Number.isFinite(currentScore) ? [currentScore] : []),
+      ...historyScores,
+    ];
+
+    // Study hours in MYT (UTC+8) from timestamps. current has no timestamp → use "now".
+    const studyHours: number[] = [];
+    const nowMyt = new Date(Date.now() + 8 * 3600 * 1000);
+    studyHours.push(nowMyt.getUTCHours());
+    for (const h of history as HistoryRecord[]) {
+      if (!h.completed_at) continue;
+      const t = new Date(h.completed_at);
+      if (Number.isNaN(t.getTime())) continue;
+      studyHours.push(new Date(t.getTime() + 8 * 3600 * 1000).getUTCHours());
+    }
+
+    const distinctCategories = new Set(
+      [current.category, ...(history as HistoryRecord[]).map((h) => h.category)]
+        .filter((c): c is string => typeof c === "string" && c.length > 0)
+    );
+
+    const signalLines: string[] = [];
+    signalLines.push(`- Attempts analysed: ${attemptsAnalyzed}`);
+    if (total > 0) {
+      const skipRate = ((skipped / total) * 100).toFixed(0);
+      const wrongRate = ((wrong / total) * 100).toFixed(0);
+      signalLines.push(
+        `- This quiz: ${wrong} answered-but-wrong (${wrongRate}%), ${skipped} skipped/unattempted (${skipRate}%)`
+      );
+      if (skipped > 0 || wrong > 0) {
+        signalLines.push(
+          skipped > wrong
+            ? `- Skip-vs-wrong: the student SKIPS more than they attempt-and-miss (avoidance of uncertainty rather than guessing)`
+            : wrong > skipped
+            ? `- Skip-vs-wrong: the student ATTEMPTS-and-misses more than they skip (willing to guess; errors are knowledge gaps, not avoidance)`
+            : `- Skip-vs-wrong: roughly equal skipping and wrong answers`
+        );
+      }
+    }
+    if (historyScores.length >= 1 && Number.isFinite(currentScore)) {
+      const mean = historyScores.reduce((a, b) => a + b, 0) / historyScores.length;
+      const delta = currentScore - mean;
+      const dir = delta > 3 ? "above" : delta < -3 ? "below" : "in line with";
+      signalLines.push(
+        `- Trend: this score (${currentScore.toFixed(0)}%) is ${dir} the student's recent average (${mean.toFixed(0)}%)`
+      );
+    }
+    if (allScores.length >= 3) {
+      const range = Math.max(...allScores) - Math.min(...allScores);
+      const volLabel = range >= 30 ? "HIGH (erratic — inconsistent preparation)" : range >= 15 ? "MODERATE" : "LOW (consistent)";
+      signalLines.push(
+        `- Score volatility across attempts: ${range.toFixed(0)} percentage-point spread — ${volLabel}`
+      );
+    }
+    if (studyHours.length >= 3) {
+      const lateNight = studyHours.filter((h) => h >= 22 || h < 5).length;
+      if (lateNight / studyHours.length >= 0.5) {
+        signalLines.push(`- Study timing (MYT): most attempts happen late at night (after 22:00)`);
+      } else {
+        const avgHour = Math.round(studyHours.reduce((a, b) => a + b, 0) / studyHours.length);
+        signalLines.push(`- Study timing (MYT): attempts cluster around ${avgHour}:00`);
+      }
+    }
+    if (distinctCategories.size >= 3) {
+      signalLines.push(`- Subject spread: studies across ${distinctCategories.size} different subjects/categories`);
+    } else if (distinctCategories.size === 1) {
+      signalLines.push(`- Subject spread: focused on a single subject/category`);
+    }
+
+    const behavioralSignals = signalLines.join("\n");
 
     const SPM_SEJARAH_SYLLABUS = `
 SILIBUS SEJARAH SPM (KSSM)
@@ -234,10 +330,26 @@ Bab 7: Malaysia dan Kerjasama Antarabangsa
     const categoryLower = (current.category ?? "").toLowerCase();
     const isSejarah = categoryLower.includes("sejarah") && categoryLower.includes("spm");
 
-    const prompt = isSejarah
-      ? `You are an expert educational AI tutor specialising in SPM Sejarah. Analyze this student's quiz performance and return ONLY a valid JSON object (no markdown, no code fences). Write ALL text fields in Bahasa Malaysia.
+    // Shared instruction block: honesty guardrail + v2 JSON schema. All output BM.
+    const OUTPUT_CONTRACT = `BEHAVIORAL SIGNALS (computed facts — the ONLY basis for habit/learning-style claims):
+${behavioralSignals}
 
-Use the SPM Sejarah syllabus below to identify the exact BAB (chapter) and SUBTOPIK the student is weak or strong in, based on the questions they got wrong or skipped. Be specific — name the bab number and subtopik title from the syllabus.
+RULES for "learner_profile":
+- Base every study_habits / learning_style_note / consistency_note claim STRICTLY on the BEHAVIORAL SIGNALS above. Do NOT invent behaviors (e.g. do not mention timing, rushing, or volatility if no signal supports it).
+- If there is little data (e.g. first attempt), keep learner_profile short and honest — an empty study_habits array is acceptable.
+
+RULES for "study_plan":
+- Provide EXACTLY 7 day-objects, ordered day 1 to day 7.
+- Front-load the most severe weak areas onto the earliest days; include at least one lighter review/consolidation day.
+- Each day: a specific "focus" topic, 2-4 concrete practice "tasks", and a realistic "est_minutes" (15-60).
+
+Return ONLY a valid JSON object (no markdown, no code fences) with EXACTLY this structure. Write ALL text values in ENGLISH:
+{"schema_version":2,"overall_trend":"improving|declining|stable|first_attempt","performance_summary":"1-2 sentence summary of performance","comparison_note":"1 sentence comparing to past attempts","learner_profile":{"study_habits":["habit observation grounded strictly in the signals above"],"learning_style_note":"1-2 sentences on how the student approaches quizzes","consistency_note":"1 sentence on consistency / preparation pattern"},"strong_areas":[{"topic":"specific topic","detail":"why this is a strength","confidence":"high|medium"}],"weak_areas":[{"topic":"specific topic","detail":"what specifically is wrong","severity":"high|medium|low","cause":"conceptual|careless|unattempted"}],"improvement_tips":["tip1","tip2","tip3"],"study_plan":[{"day":1,"focus":"focus topic","tasks":["task1","task2"],"est_minutes":30}]}`;
+
+    const prompt = isSejarah
+      ? `You are an expert educational AI tutor specialising in SPM Sejarah. Analyze this student's quiz performance and return ONLY a valid JSON object (no markdown, no code fences). Write ALL analysis text in ENGLISH (syllabus chapter/subtopic proper names may stay in their original Malay, e.g. "Chapter 8: Kesultanan Melayu Melaka").
+
+Use the SPM Sejarah syllabus below to identify the exact BAB (chapter) and SUBTOPIK the student is weak or strong in, based on the questions they got wrong or skipped. Be specific — name the chapter number and subtopic from the syllabus in weak_areas, strong_areas, and each study_plan "focus".
 
 ${SPM_SEJARAH_SYLLABUS}
 
@@ -251,11 +363,10 @@ ${skippedList ? `\nSoalan yang dilangkau:\n${skippedList}` : ""}
 
 ${historySection}
 
-Return this JSON structure only (all values in Bahasa Malaysia):
-{"overall_trend":"improving atau declining atau stable atau first_attempt","performance_summary":"1-2 ayat ringkasan prestasi","weak_areas":["Bab X: Nama Bab — Subtopik"],"strong_areas":["Bab X: Nama Bab — Subtopik"],"improvement_tips":["tip1","tip2","tip3"],"comparison_note":"1 ayat perbandingan dengan percubaan lepas"}`
-      : `You are an expert educational AI tutor. Analyze this student's quiz performance and return ONLY a valid JSON object (no markdown, no code fences). Write ALL text fields in Bahasa Malaysia.
+${OUTPUT_CONTRACT}`
+      : `You are an expert educational AI tutor. Analyze this student's quiz performance and return ONLY a valid JSON object (no markdown, no code fences). Write ALL text fields in ENGLISH.
 
-Identify what topics or concepts the student is weak or strong in based on the actual question content below. Do NOT assume a specific subject — base your analysis solely on the questions and answers provided.
+Identify what topics or concepts the student is weak or strong in based on the actual question content below. Do NOT assume a specific subject — base your topic analysis solely on the questions and answers provided.
 
 Current quiz: "${current.deck_name}" (${current.category})
 Score: ${Number(current.score).toFixed(1)}% — ${current.correct_count} betul, ${current.wrong_count} salah, ${current.skipped_count} dilangkau daripada ${current.total_count}
@@ -265,8 +376,7 @@ ${skippedList ? `\nSoalan yang dilangkau:\n${skippedList}` : ""}
 
 ${historySection}
 
-Return this JSON structure only (all values in Bahasa Malaysia):
-{"overall_trend":"improving atau declining atau stable atau first_attempt","performance_summary":"1-2 ayat ringkasan prestasi berdasarkan soalan-soalan ini","weak_areas":["Topik atau konsep yang perlu diperbaiki berdasarkan soalan yang salah"],"strong_areas":["Topik atau konsep yang dikuasai berdasarkan soalan yang betul"],"improvement_tips":["tip1","tip2","tip3"],"comparison_note":"1 ayat perbandingan dengan percubaan lepas"}`;
+${OUTPUT_CONTRACT}`;
 
     // Call Gemini — same pattern as pdf-quiz-generator
     const geminiRes = await fetch(
@@ -318,10 +428,3 @@ Return this JSON structure only (all values in Bahasa Malaysia):
     return jsonError(500, msg);
   }
 });
-
-function jsonError(status: number, message: string): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
