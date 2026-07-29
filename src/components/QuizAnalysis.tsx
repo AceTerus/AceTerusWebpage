@@ -68,15 +68,15 @@ function toAreaItem(area: string | AreaItem): AreaItem {
 const severityRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 const severityStyle: Record<string, { bg: string; color: string; label: string }> = {
-  high:   { bg: "#FFE4E6", color: C.pop,     label: "Utama" },
-  medium: { bg: "#FFF3C4", color: "#B45309", label: "Sederhana" },
-  low:    { bg: "#F1F5F9", color: "#475569", label: "Ringan" },
+  high:   { bg: "#FFE4E6", color: C.pop,     label: "High" },
+  medium: { bg: "#FFF3C4", color: "#B45309", label: "Medium" },
+  low:    { bg: "#F1F5F9", color: "#475569", label: "Low" },
 };
 
 const causeLabel: Record<string, string> = {
-  conceptual:  "Kefahaman konsep",
-  careless:    "Silap cuai",
-  unattempted: "Tidak dicuba",
+  conceptual:  "Conceptual",
+  careless:    "Careless slip",
+  unattempted: "Not attempted",
 };
 
 // Small shared header for each insight panel.
@@ -172,7 +172,7 @@ export default function QuizAnalysis({ analysis, loading, error, userName }: Qui
           {/* How You Learn */}
           {hasProfile && (
             <div className={PANEL} style={{ background: "#FFFBEB" }}>
-              <PanelHead icon={Brain} label="Cara Kamu Belajar" iconBg={C.sun} iconColor={C.indigo} labelColor={C.ink} />
+              <PanelHead icon={Brain} label="How You Learn" iconBg={C.sun} iconColor={C.indigo} labelColor={C.ink} />
               <div className="px-4 pb-4 space-y-2">
                 {(profile?.study_habits?.length ?? 0) > 0 && (
                   <ul className="space-y-1.5">
@@ -197,7 +197,7 @@ export default function QuizAnalysis({ analysis, loading, error, userName }: Qui
           {/* Strengths */}
           {strongAreas.length > 0 && (
             <div className={PANEL} style={{ background: C.mintSoft }}>
-              <PanelHead icon={CheckCircle2} label="Kekuatan" iconBg="#86EFAC" iconColor="#15803d" labelColor="#15803d" />
+              <PanelHead icon={CheckCircle2} label="Strengths" iconBg="#86EFAC" iconColor="#15803d" labelColor="#15803d" />
               <ul className="px-4 pb-4 space-y-2.5">
                 {strongAreas.map((area, i) => (
                   <li key={i} className="text-[13px]">
@@ -205,7 +205,7 @@ export default function QuizAnalysis({ analysis, loading, error, userName }: Qui
                       <span className="font-bold text-slate-800 leading-snug">{area.topic}</span>
                       {area.confidence && (
                         <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-emerald-200 text-emerald-800">
-                          {area.confidence === "high" ? "Kukuh" : "Baik"}
+                          {area.confidence === "high" ? "Strong" : "Good"}
                         </span>
                       )}
                     </div>
@@ -219,7 +219,7 @@ export default function QuizAnalysis({ analysis, loading, error, userName }: Qui
           {/* Weaknesses */}
           {weakAreas.length > 0 && (
             <div className={PANEL} style={{ background: "#FFF1EA" }}>
-              <PanelHead icon={AlertTriangle} label="Perlu Diperbaiki" iconBg="#FFC7B0" iconColor={C.pop} labelColor={C.pop} />
+              <PanelHead icon={AlertTriangle} label="Areas to Improve" iconBg="#FFC7B0" iconColor={C.pop} labelColor={C.pop} />
               <ul className="px-4 pb-4 space-y-2.5">
                 {weakAreas.map((area, i) => {
                   const sev = severityStyle[area.severity ?? ""] ?? null;
@@ -277,16 +277,16 @@ export default function QuizAnalysis({ analysis, loading, error, userName }: Qui
                 <div className="w-7 h-7 rounded-[9px] border-[2px] border-[#0F172A] flex items-center justify-center shrink-0" style={{ background: C.cyan }}>
                   <CalendarDays className="w-4 h-4 text-[#0F172A]" />
                 </div>
-                <p className={`${DISPLAY} font-extrabold text-sm text-[#0F172A]`}>Pelan Belajar 7 Hari</p>
+                <p className={`${DISPLAY} font-extrabold text-sm text-[#0F172A]`}>7-Day Study Plan</p>
               </div>
-              <span className="text-[10px] font-bold text-slate-400 hidden sm:block">skrol untuk lihat semua →</span>
+              <span className="text-[10px] font-bold text-slate-400 hidden sm:block">scroll to see all →</span>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x" style={{ scrollbarWidth: "thin" }}>
               {plan.map((d, i) => (
                 <div key={i} className="snap-start shrink-0 w-[210px] rounded-[14px] border-[2px] border-[#0F172A] flex flex-col" style={{ background: i % 2 === 0 ? C.skySoft : "#FFFFFF" }}>
                   <div className="flex items-center justify-between gap-1 px-3 pt-3 pb-2 border-b-[1.5px] border-[#0F172A]/10">
                     <span className="inline-flex items-center justify-center h-6 px-2.5 rounded-full border-[2px] border-[#0F172A] font-extrabold text-[11px] text-white" style={{ background: C.indigo }}>
-                      Hari {d.day}
+                      Day {d.day}
                     </span>
                     {typeof d.est_minutes === "number" && d.est_minutes > 0 && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500">

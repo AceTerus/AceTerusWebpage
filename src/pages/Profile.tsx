@@ -963,7 +963,7 @@ export const Profile = () => {
                                       )}
                                       {ai.study_plan?.length > 0 && (
                                         <p className="flex items-center gap-1 font-bold pt-0.5" style={{ color: C.indigo }}>
-                                          <CalendarDays className="h-3.5 w-3.5" /> Pelan belajar {ai.study_plan.length} hari tersedia
+                                          <CalendarDays className="h-3.5 w-3.5" /> {ai.study_plan.length}-day study plan available
                                         </p>
                                       )}
                                     </div>

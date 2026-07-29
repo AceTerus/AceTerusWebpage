@@ -343,13 +343,13 @@ RULES for "study_plan":
 - Front-load the most severe weak areas onto the earliest days; include at least one lighter review/consolidation day.
 - Each day: a specific "focus" topic, 2-4 concrete practice "tasks", and a realistic "est_minutes" (15-60).
 
-Return ONLY a valid JSON object (no markdown, no code fences) with EXACTLY this structure. ALL text values in Bahasa Malaysia:
-{"schema_version":2,"overall_trend":"improving|declining|stable|first_attempt","performance_summary":"1-2 ayat ringkasan prestasi","comparison_note":"1 ayat perbandingan dengan percubaan lepas","learner_profile":{"study_habits":["pemerhatian tabiat berdasarkan isyarat di atas"],"learning_style_note":"1-2 ayat tentang cara pelajar mendekati kuiz","consistency_note":"1 ayat tentang konsistensi/corak persediaan"},"strong_areas":[{"topic":"tajuk spesifik","detail":"kenapa ini kekuatan","confidence":"high|medium"}],"weak_areas":[{"topic":"tajuk spesifik","detail":"apa yang salah secara spesifik","severity":"high|medium|low","cause":"conceptual|careless|unattempted"}],"improvement_tips":["tip1","tip2","tip3"],"study_plan":[{"day":1,"focus":"tajuk fokus","tasks":["tugasan1","tugasan2"],"est_minutes":30}]}`;
+Return ONLY a valid JSON object (no markdown, no code fences) with EXACTLY this structure. Write ALL text values in ENGLISH:
+{"schema_version":2,"overall_trend":"improving|declining|stable|first_attempt","performance_summary":"1-2 sentence summary of performance","comparison_note":"1 sentence comparing to past attempts","learner_profile":{"study_habits":["habit observation grounded strictly in the signals above"],"learning_style_note":"1-2 sentences on how the student approaches quizzes","consistency_note":"1 sentence on consistency / preparation pattern"},"strong_areas":[{"topic":"specific topic","detail":"why this is a strength","confidence":"high|medium"}],"weak_areas":[{"topic":"specific topic","detail":"what specifically is wrong","severity":"high|medium|low","cause":"conceptual|careless|unattempted"}],"improvement_tips":["tip1","tip2","tip3"],"study_plan":[{"day":1,"focus":"focus topic","tasks":["task1","task2"],"est_minutes":30}]}`;
 
     const prompt = isSejarah
-      ? `You are an expert educational AI tutor specialising in SPM Sejarah. Analyze this student's quiz performance and return ONLY a valid JSON object (no markdown, no code fences). Write ALL text fields in Bahasa Malaysia.
+      ? `You are an expert educational AI tutor specialising in SPM Sejarah. Analyze this student's quiz performance and return ONLY a valid JSON object (no markdown, no code fences). Write ALL analysis text in ENGLISH (syllabus chapter/subtopic proper names may stay in their original Malay, e.g. "Chapter 8: Kesultanan Melayu Melaka").
 
-Use the SPM Sejarah syllabus below to identify the exact BAB (chapter) and SUBTOPIK the student is weak or strong in, based on the questions they got wrong or skipped. Be specific — name the bab number and subtopik title from the syllabus in weak_areas, strong_areas, and each study_plan "focus".
+Use the SPM Sejarah syllabus below to identify the exact BAB (chapter) and SUBTOPIK the student is weak or strong in, based on the questions they got wrong or skipped. Be specific — name the chapter number and subtopic from the syllabus in weak_areas, strong_areas, and each study_plan "focus".
 
 ${SPM_SEJARAH_SYLLABUS}
 
@@ -364,7 +364,7 @@ ${skippedList ? `\nSoalan yang dilangkau:\n${skippedList}` : ""}
 ${historySection}
 
 ${OUTPUT_CONTRACT}`
-      : `You are an expert educational AI tutor. Analyze this student's quiz performance and return ONLY a valid JSON object (no markdown, no code fences). Write ALL text fields in Bahasa Malaysia.
+      : `You are an expert educational AI tutor. Analyze this student's quiz performance and return ONLY a valid JSON object (no markdown, no code fences). Write ALL text fields in ENGLISH.
 
 Identify what topics or concepts the student is weak or strong in based on the actual question content below. Do NOT assume a specific subject — base your topic analysis solely on the questions and answers provided.
 
