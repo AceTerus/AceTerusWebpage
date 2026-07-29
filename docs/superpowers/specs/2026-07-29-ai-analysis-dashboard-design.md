@@ -133,8 +133,8 @@ Both prompt variants (Sejarah-syllabus and generic) are updated to:
 - Keep the Sejarah variant's requirement to name exact `Bab` + subtopik from the syllabus
   in `weak_areas`, `strong_areas`, and `study_plan.focus`.
 
-Model & config: switch to `gemini-2.5-flash` (from `-flash-lite`) for stronger reasoning;
-keep `temperature 0.4`; keep `maxOutputTokens 8192` (sufficient for the larger payload).
+Model & config: keep `gemini-2.5-flash-lite` (unchanged); keep `temperature 0.4`; keep
+`maxOutputTokens 8192` (sufficient for the larger payload).
 Keep the existing robust JSON extraction (code-fence stripping + first `{` … last `}`).
 
 The edge function response envelope (`{ analysis }`) and the client's save-to-`ai_analysis`

@@ -24,6 +24,7 @@ import {
   Settings, CheckCircle, XCircle, SkipForward, BarChart2,
   Zap, Target, PenLine, GraduationCap, MapPin, Plus,
   BookOpen, BookMarked, Compass, Award, Building2, Microscope, ShieldCheck,
+  CalendarDays,
 } from 'lucide-react';
 import { NotificationsBell } from '@/components/NotificationsBell';
 import { SchoolPicker } from '@/components/SchoolPicker';
@@ -945,13 +946,13 @@ export const Profile = () => {
                                       {ai.weak_areas?.length > 0 && (
                                         <div>
                                           <p className="font-bold text-red-500 mb-1">Weak areas</p>
-                                          <div className="flex flex-wrap gap-1">{ai.weak_areas.map((a: string, i: number) => <span key={i} className="px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">{a}</span>)}</div>
+                                          <div className="flex flex-wrap gap-1">{ai.weak_areas.map((a: any, i: number) => <span key={i} className="px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">{typeof a === 'string' ? a : a?.topic}</span>)}</div>
                                         </div>
                                       )}
                                       {ai.strong_areas?.length > 0 && (
                                         <div>
                                           <p className="font-bold text-emerald-600 mb-1">Strong areas</p>
-                                          <div className="flex flex-wrap gap-1">{ai.strong_areas.map((a: string, i: number) => <span key={i} className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 font-semibold">{a}</span>)}</div>
+                                          <div className="flex flex-wrap gap-1">{ai.strong_areas.map((a: any, i: number) => <span key={i} className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 font-semibold">{typeof a === 'string' ? a : a?.topic}</span>)}</div>
                                         </div>
                                       )}
                                       {ai.improvement_tips?.length > 0 && (
@@ -959,6 +960,11 @@ export const Profile = () => {
                                           <p className="font-bold mb-1">Tips</p>
                                           <ul className="list-disc list-inside space-y-0.5 text-slate-600 font-medium">{ai.improvement_tips.map((tip: string, i: number) => <li key={i}>{tip}</li>)}</ul>
                                         </div>
+                                      )}
+                                      {ai.study_plan?.length > 0 && (
+                                        <p className="flex items-center gap-1 font-bold pt-0.5" style={{ color: C.indigo }}>
+                                          <CalendarDays className="h-3.5 w-3.5" /> Pelan belajar {ai.study_plan.length} hari tersedia
+                                        </p>
                                       )}
                                     </div>
                                   )}
