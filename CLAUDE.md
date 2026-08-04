@@ -39,14 +39,15 @@ Key routing rules:
 AceTerus is a Malaysian student learning platform. Core features:
 - **Quiz system** — objective and subjective quizzes, AI-generated from text/PDF, OMR scanning, OMR exams (admin answer keys + user self-grading)
 - **Social feed** — posts, comments, likes, following (Twitter-like)
-- **AI tools** — mascot chat companion, performance analysis, subjective grading, ClassPulse session reports
+- **AI tools** — mascot chat companion, performance analysis, subjective grading
 - **Study tools** — Pomodoro timer, materials library, goals/reminders, streaks, AR scanner
 - **Gamification** — ACE Coins currency, streaks, achievements, Boss Raids
 - **Events platform** — event registration, promoter/organizer flows, reward codes, deals
-- **ClassPulse (sub-app)** — teacher/school-facing session monitoring at `classpulse.aceterus.com`
 - **Malaysian-specific** — schools/universities reference table covering all states
 
 Deployed to Vercel. Backend is entirely Supabase (Postgres + Auth + Storage + Edge Functions), plus a separate FastAPI service for OMR image processing.
+
+> **ClassPulse removed 2026-08-05** — the teacher/school sub-app was temporarily removed. Full source, migrations, edge functions, and design assets are preserved at [`AceTerus/aceterus-classpulse-archive`](https://github.com/AceTerus/aceterus-classpulse-archive) (tag `classpulse-preserved-2026-08-05`). See `archive/RESTORE.md` in that repo to bring it back. Production DB tables (`classpulse_users`, `class_sessions`, `conclusion_reports`, `student_session_summaries`, `flagged_concepts`) are left in place. `classpulse.aceterus.com` serves a static maintenance page (`public/classpulse.html`).
 
 ## Architecture
 
@@ -64,16 +65,17 @@ Deployed to Vercel. Backend is entirely Supabase (Postgres + Auth + Storage + Ed
 - **Sonner** — toast notifications
 
 ### Multi-entry Vite build
-`vite.config.ts` builds four HTML entry points, each shipping its own bundle:
+`vite.config.ts` builds three HTML entry points, each shipping its own bundle:
 
 | Entry | Path | Purpose |
 |---|---|---|
 | `index.html` | `/` | Main student SPA (React Router) |
 | `events.html` | `/events` | Events platform surface |
 | `admin.html` | `/admin` | Admin console |
-| `classpulse.html` | `/classpulse` | ClassPulse teacher/school app |
 
 Vendor code is split into `vendor`, `supabase`, `ui`, and `query` chunks via `manualChunks`.
+
+A static maintenance page lives at `public/classpulse.html` (served at `classpulse.aceterus.com` via `vercel.json` host routing) — no Vite entry, just a copy-through asset.
 
 ### Routing & Auth (main SPA — `src/App.tsx`)
 Top-level routes: `/`, `/feed`, `/quiz`, `/omr-scan`, `/ar-scanner`, `/admin`, `/materials`, `/profile` (+ `/profile/:userId`), `/discover`, `/chat`, `/auth`, `/onboarding`, `*` (NotFound).
@@ -104,8 +106,6 @@ Top-level routes: `/`, `/feed`, `/quiz`, `/omr-scan`, `/ar-scanner`, `/admin`, `
   - `text-quiz-parser`, `pdf-quiz-generator` — AI quiz generation
   - `quiz-performance-analyzer`, `subjective-quiz-grader` — AI grading/analysis
   - `mascot-chat` — mascot companion chat
-  - `classpulse-report` — ClassPulse session AI report
-  - `deepgram-key` — issues Deepgram speech API keys
   - `event-matcher` — events platform matching logic
   - `_shared` — shared utilities
 
@@ -117,8 +117,8 @@ Top-level routes: `/`, `/feed`, `/quiz`, `/omr-scan`, `/ar-scanner`, `/admin`, `
 - **OMR exams**: `omr_exams`, `omr_scan_results` (see `20260618000000_omr_exams.sql`)
 - **Gamification**: `notifications`, `streaks`, `goals`, `boss_raids`, `boss_raid_questions`, `boss_raid_attempts`, `coin_transactions`
 - **Events platform**: `events`, `event_registrations`, `event_organizers`, `event_promoters`, `event_form_fields`, `event_registration_responses`, `event_reward_codes`, `event_code_redemptions`, `deals`
-- **ClassPulse**: `classpulse_users`, `class_sessions`, `conclusion_reports`, `student_session_summaries`, `flagged_concepts` (see `20260521000000_classpulse_schema.sql` and `20260528000000_add_teaching_effectiveness.sql`)
 - **Ops**: `api_rate_limits`
+- **Zombie tables** (kept in prod after ClassPulse removal, no code references): `classpulse_users`, `class_sessions`, `conclusion_reports`, `student_session_summaries`, `flagged_concepts` — see archive repo to restore usage.
 
 ### Design System
 All pages use a consistent "sticker" aesthetic defined inline in each file:
@@ -127,7 +127,7 @@ All pages use a consistent "sticker" aesthetic defined inline in each file:
 - **Buttons**: thick borders, neomorphic shadows, `translateY(-1px)` on hover
 - **Font**: `font-['Baloo_2']` for display/headings
 
-These patterns are repeated directly in JSX via Tailwind — there's no shared design token file. When adding UI, match the existing sticker style in the surrounding code. The ClassPulse and OMR surfaces follow the same system.
+These patterns are repeated directly in JSX via Tailwind — there's no shared design token file. When adding UI, match the existing sticker style in the surrounding code. The OMR surface follows the same system.
 
 ### Migrations
 Supabase migrations live in `supabase/migrations/`. Always create new migration files rather than editing applied ones. Use `IF NOT EXISTS` / `DO $$ BEGIN ... END $$` guards for idempotent migrations. Push with:
@@ -141,5 +141,4 @@ supabase migration repair --status applied <version>  # mark migration as applie
 `omr-scanner/` is a Python FastAPI service (`main.py`, `uvicorn main:socket_app`) that wraps the vendored `OMRChecker/` package to grade scanned answer sheets. Run locally via `npm run omr-api` (port 8080). Deployed separately (see `render.yaml`, `Dockerfile`). Results are POSTed back to Supabase via `omr-client.ts`.
 
 ### Sub-app source folders
-- `TeacherDashboard/` — legacy/reference JSX prototypes for the teacher dashboard (informs `classpulse.html` output).
 - `Claude Design/` — design source drops.
