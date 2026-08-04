@@ -6,7 +6,6 @@ const ALLOWED_ORIGINS = [
   'https://www.aceterus.com',
   'https://admin.aceterus.com',
   'https://events.aceterus.com',
-  'https://classpulse.aceterus.com',
 ];
 
 // Match any localhost / 127.0.0.1 origin on any port (Vite picks whatever port

@@ -133,27 +133,6 @@ export const AppSidebar = ({ collapsed, onCollapseToggle }: AppSidebarProps) => 
           </div>
           {!collapsed && <span className="text-[17px] flex-1">Events &amp; Deals</span>}
         </button>
-
-        {/* ClassPulse cross-link */}
-        <button
-          onClick={async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            const base = "https://classpulse.aceterus.com";
-            if (session) {
-              const hash = `#access_token=${session.access_token}&refresh_token=${session.refresh_token}&token_type=bearer&type=magiclink`;
-              window.open(`${base}/${hash}`, "_blank");
-            } else {
-              window.open(base, "_blank");
-            }
-          }}
-          title={collapsed ? "ClassPulse" : undefined}
-          className={`relative flex items-center rounded-xl transition-all duration-150 group cursor-pointer text-foreground/70 hover:bg-muted/60 hover:text-foreground hover:-translate-y-0.5 ${collapsed ? "justify-center px-0 py-4" : "px-5 py-4 space-x-4"}`}
-        >
-          <div className="relative flex-shrink-0">
-            <School className="w-6 h-6 stroke-[1.8]" />
-          </div>
-          {!collapsed && <span className="text-[17px] flex-1">ClassPulse</span>}
-        </button>
       </nav>
 
       {/* Collapse toggle */}

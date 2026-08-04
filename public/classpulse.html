@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en-MY">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClassPulse is getting an upgrade — AceTerus</title>
+    <meta name="description" content="ClassPulse is temporarily paused while we rework it into something even better. Follow AceTerus for updates on when it's back." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#2F7CFF" />
+    <link rel="icon" type="image/png" href="/Round Logo.png" />
+    <link rel="apple-touch-icon" href="/Round Logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { height: 100%; }
+      body {
+        font-family: 'Nunito', system-ui, sans-serif;
+        color: #0F172A;
+        background:
+          radial-gradient(circle at 12% 18%, rgba(59, 214, 245, 0.35), transparent 40%),
+          radial-gradient(circle at 88% 82%, rgba(46, 43, 229, 0.28), transparent 45%),
+          linear-gradient(135deg, #EAF3FF 0%, #F8F9FF 60%, #FFF3FB 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 560px;
+        background: #FFFFFF;
+        border: 2.5px solid #0F172A;
+        border-radius: 24px;
+        box-shadow: 8px 8px 0 0 #0F172A;
+        padding: 40px 32px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 100% 0%, rgba(59, 214, 245, 0.18), transparent 45%),
+          radial-gradient(circle at 0% 100%, rgba(47, 124, 255, 0.14), transparent 45%);
+        pointer-events: none;
+      }
+
+      .card > * { position: relative; }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: #FFF3B0;
+        border: 2px solid #0F172A;
+        border-radius: 999px;
+        font-family: 'Nunito', sans-serif;
+        font-weight: 800;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        box-shadow: 3px 3px 0 0 #0F172A;
+        margin-bottom: 24px;
+      }
+
+      .badge-dot {
+        width: 8px; height: 8px;
+        background: #F97316;
+        border-radius: 999px;
+        border: 1.5px solid #0F172A;
+      }
+
+      .logo {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+        border: 2.5px solid #0F172A;
+        box-shadow: 4px 4px 0 0 #0F172A;
+        margin: 0 auto 20px;
+        display: block;
+        background: #FFFFFF;
+      }
+
+      h1 {
+        font-family: 'Baloo 2', 'Nunito', sans-serif;
+        font-weight: 800;
+        font-size: 40px;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+        margin-bottom: 14px;
+      }
+
+      h1 .pulse { color: #2F7CFF; }
+
+      .subtitle {
+        font-family: 'Baloo 2', 'Nunito', sans-serif;
+        font-weight: 600;
+        font-size: 20px;
+        color: #0F172A;
+        margin-bottom: 18px;
+      }
+
+      p {
+        font-size: 15px;
+        line-height: 1.6;
+        color: rgba(15, 23, 42, 0.72);
+        margin-bottom: 12px;
+      }
+
+      p.hint {
+        font-size: 13px;
+        color: rgba(15, 23, 42, 0.55);
+        margin-top: 20px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 28px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 22px;
+        border: 2.5px solid #0F172A;
+        border-radius: 14px;
+        font-family: 'Nunito', sans-serif;
+        font-weight: 800;
+        font-size: 14px;
+        text-decoration: none;
+        transition: transform 120ms ease, box-shadow 120ms ease;
+        cursor: pointer;
+      }
+
+      .btn-primary {
+        background: #2E2BE5;
+        color: #FFFFFF;
+        box-shadow: 4px 4px 0 0 #0F172A;
+      }
+
+      .btn-secondary {
+        background: #FFFFFF;
+        color: #0F172A;
+        box-shadow: 4px 4px 0 0 #0F172A;
+      }
+
+      .btn:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 5px 5px 0 0 #0F172A;
+      }
+
+      .btn:active {
+        transform: translate(1px, 1px);
+        box-shadow: 2px 2px 0 0 #0F172A;
+      }
+
+      .divider {
+        height: 2px;
+        background: rgba(15, 23, 42, 0.08);
+        margin: 28px 0 20px;
+        border-radius: 999px;
+      }
+
+      .whats-next {
+        text-align: left;
+        display: grid;
+        gap: 10px;
+        margin-top: 4px;
+      }
+
+      .whats-next h3 {
+        font-family: 'Baloo 2', 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 16px;
+        text-align: center;
+        margin-bottom: 12px;
+        color: #0F172A;
+      }
+
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 12px 14px;
+        background: #F8FAFF;
+        border: 2px solid rgba(15, 23, 42, 0.08);
+        border-radius: 14px;
+      }
+
+      .row .emoji {
+        font-size: 22px;
+        line-height: 1;
+        margin-top: 2px;
+      }
+
+      .row .text {
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: rgba(15, 23, 42, 0.78);
+      }
+
+      .row .text strong {
+        color: #0F172A;
+        font-weight: 800;
+      }
+
+      footer {
+        margin-top: 28px;
+        font-size: 12px;
+        color: rgba(15, 23, 42, 0.5);
+        letter-spacing: 0.02em;
+      }
+
+      footer a {
+        color: #2F7CFF;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      @media (max-width: 480px) {
+        .card { padding: 32px 22px; }
+        h1 { font-size: 32px; }
+        .subtitle { font-size: 17px; }
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      try { localStorage.setItem('theme', 'light'); } catch (_) {}
+    </script>
+
+    <main class="card" role="main">
+      <span class="badge"><span class="badge-dot"></span> New feature coming soon</span>
+
+      <img class="logo" src="/Round Logo.png" alt="AceTerus" />
+
+      <h1>Class<span class="pulse">Pulse</span> is being reimagined</h1>
+      <p class="subtitle">We paused it to build something a lot better.</p>
+
+      <p>Thanks for using ClassPulse. We're taking what we learned from teachers and schools and turning it into a stronger v2. This page will come back to life the moment it's ready.</p>
+
+      <div class="actions">
+        <a class="btn btn-primary" href="https://aceterus.com">← Back to AceTerus</a>
+        <a class="btn btn-secondary" href="mailto:hello@aceterus.com?subject=ClassPulse%20v2%20interest">Notify me when it's back</a>
+      </div>
+
+      <div class="divider"></div>
+
+      <section class="whats-next" aria-label="What to do in the meantime">
+        <h3>What to do in the meantime</h3>
+        <div class="row">
+          <span class="emoji">🎯</span>
+          <span class="text"><strong>Students:</strong> keep practising on AceTerus — quizzes, streaks, and study tools are all live.</span>
+        </div>
+        <div class="row">
+          <span class="emoji">🏫</span>
+          <span class="text"><strong>Teachers &amp; schools:</strong> email us to be first in line for v2 access when it launches.</span>
+        </div>
+      </section>
+
+      <footer>
+        Made in Malaysia by <a href="https://aceterus.com">AceTerus</a>
+      </footer>
+    </main>
+  </body>
+</html>

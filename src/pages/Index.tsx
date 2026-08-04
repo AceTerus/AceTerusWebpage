@@ -252,15 +252,6 @@ const Index = () => {
               <a href="#rewards" className="atl-nav-link hover:text-[#2F7CFF]">Rewards</a>
             </nav>
             <div className="flex items-center gap-2">
-              <a href="https://classpulse.aceterus.com" target="_blank" rel="noopener noreferrer" className="hidden sm:block">
-                <button
-                  className={`${BTN} !py-2 !px-5 !text-sm text-white gap-1.5`}
-                  style={{ background: `linear-gradient(135deg, ${C.indigo} 0%, #7C3AED 100%)` }}
-                >
-                  <span className="text-base leading-none">👩‍🏫</span>
-                  ClassPulse
-                </button>
-              </a>
               <Link to="/auth">
                 <button className={`${BTN} !py-2 !px-4 !text-sm text-white`} style={{ background: C.blue }}>
                   <span className="hidden sm:inline">Jump in</span>
