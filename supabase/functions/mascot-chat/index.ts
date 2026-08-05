@@ -43,6 +43,11 @@ serve(async (req) => {
       return jsonError(500, "GEMINI_API_KEY is not configured");
     }
 
+    // Fire-and-forget engagement log — count only, no message content stored.
+    supabase.from("mascot_messages").insert({ user_id: user.id }).then(({ error }) => {
+      if (error) console.error("mascot_messages insert failed:", error.message);
+    });
+
     const body = await req.json();
     const message: string = body?.message ?? "";
     const history: { role: "user" | "model"; text: string }[] =

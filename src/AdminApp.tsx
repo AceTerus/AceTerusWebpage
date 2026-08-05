@@ -1,13 +1,14 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, NavLink } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import AdminQuiz from "./pages/AdminQuiz";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import Logo from "./assets/logo.webp";
-import { Loader2, ExternalLink } from "lucide-react";
+import { Loader2, ExternalLink, BarChart3, Wrench } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 2 } },
@@ -18,14 +19,31 @@ const DISPLAY = "font-['Baloo_2'] tracking-tight";
 function AdminNavbar() {
   const { user, isAdmin, signOut } = useAuth();
 
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-[2px] text-[13px] font-bold font-['Nunito'] transition-all ${
+      isActive
+        ? "border-[#0F172A] bg-[#2E2BE5] text-white shadow-[2px_2px_0_0_#0F172A]"
+        : "border-[#0F172A]/20 text-[#0F172A]/60 hover:border-[#0F172A] hover:text-[#0F172A]"
+    }`;
+
   return (
     <header className="sticky top-0 z-50 border-b-[2.5px] border-[#0F172A] bg-white shadow-[0_2px_0_0_#0F172A]">
-      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <img src={Logo} alt="AceTerus" className="w-8 h-8 rounded-xl" />
           <span className={`${DISPLAY} font-extrabold text-[17px] text-[#0F172A]`}>
             AceTerus <span className="text-[#2E2BE5]">Admin</span>
           </span>
+          {isAdmin && (
+            <nav className="hidden sm:flex items-center gap-2 ml-4">
+              <NavLink to="/" end className={navLinkClass}>
+                <Wrench className="w-3.5 h-3.5" /> Tools
+              </NavLink>
+              <NavLink to="/analytics" className={navLinkClass}>
+                <BarChart3 className="w-3.5 h-3.5" /> Analytics
+              </NavLink>
+            </nav>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <a
@@ -132,7 +150,7 @@ function AdminSignIn() {
   );
 }
 
-function AdminGuard() {
+function AdminGuard({ children }: { children?: ReactNode }) {
   const { user, isAdmin, isLoading } = useAuth();
 
   if (isLoading) {
@@ -163,7 +181,7 @@ function AdminGuard() {
     );
   }
 
-  return <AdminQuiz />;
+  return <>{children ?? <AdminQuiz />}</>;
 }
 
 const AdminApp = () => (
@@ -176,6 +194,7 @@ const AdminApp = () => (
             <AdminNavbar />
             <Routes>
               <Route path="/" element={<AdminGuard />} />
+              <Route path="/analytics" element={<AdminGuard><AdminAnalytics /></AdminGuard>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
