@@ -35,12 +35,6 @@
     <meta name="twitter:description" content="Free AI-powered study platform for Malaysian students. Practice SPM and PT3 quizzes, get instant AI tutoring, and track your progress." />
     <meta name="twitter:image" content="https://aceterus.com/og-image.png" />
 
-    <!-- Fonts (async — non-blocking) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Baloo+2:wght@500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Baloo+2:wght@500;600;700;800&display=swap" /></noscript>
-
     <!-- Structured data -->
     <script type="application/ld+json">
     {
@@ -51,12 +45,7 @@
           "name": "AceTerus",
           "alternateName": ["Ace Terus", "ace terus"],
           "url": "https://aceterus.com",
-          "description": "AI-powered adaptive learning platform for Malaysian students",
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://aceterus.com/discover?q={search_term_string}",
-            "query-input": "required name=search_term_string"
-          }
+          "description": "AI-powered adaptive learning platform for Malaysian students"
         },
         {
           "@type": "SoftwareApplication",
@@ -76,73 +65,208 @@
             "@type": "EducationalAudience",
             "educationalRole": "student"
           }
+        },
+        {
+          "@type": "Organization",
+          "name": "AceTerus",
+          "url": "https://aceterus.com",
+          "logo": "https://aceterus.com/Round Logo.png",
+          "email": "support@aceterus.com",
+          "sameAs": ["https://aceterus.com"]
         }
       ]
     }
     </script>
+
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: #0F172A;
+        background: #F3FAFF;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      body { padding: 24px; }
+      .container { max-width: 880px; margin: 0 auto; }
+
+      header.brand {
+        text-align: center;
+        padding: 48px 24px 32px;
+        background: #FFFFFF;
+        border: 2.5px solid #0F172A;
+        border-radius: 20px;
+        box-shadow: 4px 4px 0 0 #0F172A;
+        margin-bottom: 32px;
+      }
+      header.brand img.logo {
+        width: 96px;
+        height: 96px;
+        border-radius: 24px;
+        border: 2.5px solid #0F172A;
+        box-shadow: 3px 3px 0 0 #0F172A;
+        margin-bottom: 20px;
+      }
+      header.brand h1 {
+        font-size: 56px;
+        font-weight: 900;
+        color: #2F7CFF;
+        letter-spacing: -0.02em;
+        margin-bottom: 8px;
+      }
+      header.brand .tagline {
+        font-size: 20px;
+        color: #334155;
+        margin-bottom: 24px;
+      }
+      header.brand .cta {
+        display: inline-block;
+        padding: 14px 32px;
+        background: #2F7CFF;
+        color: #FFFFFF;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 16px;
+        border: 2.5px solid #0F172A;
+        border-radius: 12px;
+        box-shadow: 3px 3px 0 0 #0F172A;
+      }
+
+      section.card {
+        background: #FFFFFF;
+        border: 2.5px solid #0F172A;
+        border-radius: 20px;
+        box-shadow: 4px 4px 0 0 #0F172A;
+        padding: 32px;
+        margin-bottom: 24px;
+      }
+      section.card h2 {
+        font-size: 26px;
+        font-weight: 800;
+        color: #0F172A;
+        margin-bottom: 16px;
+      }
+      section.card p { font-size: 16px; color: #334155; margin-bottom: 12px; }
+      section.card p:last-child { margin-bottom: 0; }
+      section.card ul { padding-left: 24px; margin-top: 12px; }
+      section.card li { font-size: 16px; color: #334155; margin-bottom: 8px; }
+      section.card li strong { color: #0F172A; }
+
+      a { color: #2F7CFF; text-decoration: underline; }
+      a:hover { color: #2E2BE5; }
+
+      footer {
+        text-align: center;
+        padding: 24px;
+        font-size: 14px;
+        color: #64748B;
+      }
+      footer a { margin: 0 8px; }
+
+      @media (max-width: 640px) {
+        header.brand h1 { font-size: 40px; }
+        header.brand .tagline { font-size: 17px; }
+        section.card { padding: 24px; }
+        section.card h2 { font-size: 22px; }
+      }
+    </style>
   </head>
 
   <body>
-    <script>
-      localStorage.setItem('theme', 'light');
-      document.documentElement.classList.remove('dark');
-    </script>
-    <div id="root">
-      <!--
-        Pre-render fallback content — visible to search engines, OAuth verification crawlers,
-        and users without JavaScript. React clears and replaces this on mount via createRoot().
-      -->
-      <div style="max-width:760px;margin:40px auto;padding:24px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#0F172A;">
-        <h1 style="font-size:36px;margin:0 0 8px;">AceTerus</h1>
-        <p style="font-size:20px;margin:0 0 20px;color:#334155;">
-          <strong>AceTerus</strong> is a free, AI-powered learning platform built for Malaysian secondary
-          and pre-university students preparing for SPM, PT3, STPM, and university coursework.
-        </p>
+    <div class="container">
 
-        <h2 style="font-size:22px;margin:24px 0 8px;">What AceTerus does</h2>
+      <header class="brand">
+        <img class="logo" src="/Round Logo.png" alt="AceTerus logo" />
+        <h1>AceTerus</h1>
+        <p class="tagline">
+          <strong>AceTerus</strong> — AI Tutor &amp; Quiz Platform for Malaysian Students
+        </p>
+        <a class="cta" href="/auth">Sign in to AceTerus</a>
+      </header>
+
+      <section class="card">
+        <h2>About AceTerus</h2>
         <p>
-          AceTerus helps students study more effectively by combining AI-generated quizzes, an AI study
-          companion, and social learning tools into a single platform. Students can generate quizzes from
-          their own notes or textbook PDFs, practise with objective and subjective questions, receive
-          instant AI grading and feedback, and track their progress through streaks, achievements, and
-          performance analytics.
+          <strong>AceTerus</strong> is a free, AI-powered learning platform built for Malaysian secondary
+          and pre-university students preparing for SPM, PT3, STPM, and university coursework. The purpose
+          of AceTerus is to help Malaysian students study more effectively by combining AI-generated
+          quizzes, an AI study companion, and social learning tools into a single web application.
         </p>
+        <p>
+          AceTerus is owned and operated by the AceTerus team. The official website of AceTerus is
+          <a href="https://aceterus.com">https://aceterus.com</a>.
+        </p>
+      </section>
 
-        <h2 style="font-size:22px;margin:24px 0 8px;">Key features of AceTerus</h2>
+      <section class="card">
+        <h2>What AceTerus does</h2>
+        <p>
+          AceTerus provides Malaysian students with a modern set of study tools in one place. Students
+          can generate quizzes from their own notes or textbook PDFs, practise with objective and
+          subjective questions, receive instant AI grading and feedback, and track their progress
+          through streaks, achievements, and performance analytics.
+        </p>
         <ul>
-          <li><strong>AI-generated quizzes</strong> from text or PDF uploads, tailored to Malaysian syllabuses.</li>
-          <li><strong>OMR (optical mark recognition)</strong> scanning of physical answer sheets for instant grading.</li>
+          <li><strong>AI-generated quizzes</strong> from text or PDF uploads, tailored to Malaysian syllabuses (SPM, PT3, STPM).</li>
+          <li><strong>OMR scanning</strong> of physical answer sheets for instant grading of paper-based quizzes.</li>
           <li><strong>Ace mascot</strong> — an AI study companion that answers questions in English or Bahasa Malaysia.</li>
           <li><strong>Subjective answer grading</strong> and personalised performance analysis powered by AI.</li>
-          <li><strong>Study tools</strong>: Pomodoro timer, materials library, goals, reminders, and streaks.</li>
+          <li><strong>Study tools</strong>: Pomodoro timer, materials library, goals, reminders, and streak tracking.</li>
           <li><strong>Social feed</strong>: posts, comments, likes, and direct messaging between students.</li>
-          <li><strong>Gamification</strong>: ACE Coins, achievements, and Boss Raid challenges.</li>
-          <li><strong>Events platform</strong>: registration, reward codes, and deals for student events.</li>
+          <li><strong>Gamification</strong>: ACE Coins virtual currency, achievements, and Boss Raid challenges.</li>
+          <li><strong>Events platform</strong>: student event registration, reward codes, and deals.</li>
         </ul>
+      </section>
 
-        <h2 style="font-size:22px;margin:24px 0 8px;">Who AceTerus is for</h2>
+      <section class="card">
+        <h2>How AceTerus uses Google Sign-In</h2>
+        <p>
+          AceTerus uses Google Sign-In to let students create and access their AceTerus account without
+          managing a separate password. When you sign in with Google, AceTerus requests only your basic
+          profile information (name, email address, and profile picture). AceTerus does not access your
+          Gmail, Google Drive, Calendar, Contacts, or any other Google service.
+        </p>
+        <p>
+          The information AceTerus receives from Google is used solely to create and identify your
+          AceTerus account. For full details on how AceTerus handles your data, please read the
+          <a href="/privacy">AceTerus Privacy Policy</a>.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Who AceTerus is for</h2>
         <p>
           AceTerus is designed for Malaysian students aged 13 and above who want a modern, engaging way
-          to prepare for major examinations and daily coursework. It is used by SPM and PT3 candidates,
-          matriculation and STPM students, and university undergraduates.
+          to prepare for major examinations and daily coursework. AceTerus is used by SPM and PT3
+          candidates, matriculation and STPM students, and university undergraduates across Malaysia.
         </p>
+      </section>
 
-        <h2 style="font-size:22px;margin:24px 0 8px;">Get started with AceTerus</h2>
+      <section class="card">
+        <h2>Get started with AceTerus</h2>
         <p>
           Visit <a href="https://aceterus.com/auth">https://aceterus.com/auth</a> to create a free
           AceTerus account. AceTerus is available as a web application at
-          <a href="https://aceterus.com">https://aceterus.com</a>.
+          <a href="https://aceterus.com">https://aceterus.com</a> and works in any modern web browser
+          on desktop or mobile.
         </p>
+      </section>
 
-        <p style="margin-top:32px;font-size:14px;color:#64748B;">
-          Legal:
-          <a href="https://aceterus.com/privacy">Privacy Policy</a> ·
-          <a href="https://aceterus.com/terms">Terms of Service</a> ·
-          Contact: <a href="mailto:support@aceterus.com">support@aceterus.com</a>
+      <section class="card">
+        <h2>Contact AceTerus</h2>
+        <p>
+          For all enquiries, support requests, or privacy questions, contact AceTerus at
+          <a href="mailto:support@aceterus.com">support@aceterus.com</a>.
         </p>
-      </div>
+      </section>
+
     </div>
 
-    <script type="module" src="/src/main.tsx"></script>
+    <footer>
+      <a href="/privacy">Privacy Policy</a> ·
+      <a href="/terms">Terms of Service</a> ·
+      <a href="mailto:support@aceterus.com">support@aceterus.com</a>
+      <p style="margin-top:12px;">&copy; 2026 AceTerus. All rights reserved.</p>
+    </footer>
   </body>
 </html>
