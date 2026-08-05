@@ -590,11 +590,13 @@ const Index = () => {
             <img src={Logo} className="w-8 h-8 rounded-lg" alt="AceTerus" loading="lazy" />
             <span className={`${DISPLAY} font-extrabold`}>AceTerus</span>
           </div>
-          <div className="flex gap-5 font-bold text-sm">
+          <div className="flex flex-wrap gap-x-5 gap-y-2 font-bold text-sm">
             <a href="#play"  className="hover:text-[#2F7CFF] transition-colors">Features</a>
             <a href="#learn" className="hover:text-[#2F7CFF] transition-colors">How it works</a>
             <a href="#squad" className="hover:text-[#2F7CFF] transition-colors">Community</a>
             <Link to="/auth" className="hover:text-[#2F7CFF] transition-colors">Sign up</Link>
+            <Link to="/privacy" className="hover:text-[#2F7CFF] transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-[#2F7CFF] transition-colors">Terms</Link>
           </div>
           <div className="font-bold text-xs opacity-70">Made with 💙 for Malaysian students.</div>
         </div>
