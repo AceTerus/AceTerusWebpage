@@ -25,6 +25,9 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [awaitingCode, setAwaitingCode] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -72,6 +75,19 @@ const Auth = () => {
     }
   };
 
+  const handleGoogle = async () => {
+    setIsLoading(true);
+    setError("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+    if (error) {
+      setError(error.message);
+      setIsLoading(false);
+    }
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -109,10 +125,12 @@ const Auth = () => {
         // When email confirmation is enabled, duplicate emails return an empty identities array
         setError("An account with this email already exists. Please sign in instead.");
       } else {
-        setSuccess("Check your email for the confirmation link!");
+        setAwaitingCode(true);
+        setOtpCode("");
+        setResendCooldown(30);
         toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account.",
+          title: "Check your email",
+          description: `We sent a 6-digit code to ${email}.`,
         });
       }
     } catch (err) {
@@ -121,6 +139,55 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    const token = otpCode.replace(/\D/g, "");
+    if (token.length !== 6) {
+      setError("Enter the 6-digit code from your email.");
+      setIsLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+    if (error) {
+      setError(error.message);
+      setIsLoading(false);
+      return;
+    }
+    // Session now active — the onAuthStateChange listener will navigate.
+    toast({ title: "Verified!", description: "Welcome to AceTerus." });
+  };
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
+    setIsLoading(true);
+    setError("");
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    setIsLoading(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setResendCooldown(30);
+    toast({ title: "Code resent", description: `New code sent to ${email}.` });
+  };
+
+  const handleBackToSignup = () => {
+    setAwaitingCode(false);
+    setOtpCode("");
+    setError("");
+    setSuccess("");
+  };
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setInterval(() => setResendCooldown((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, [resendCooldown]);
 
   const inputCls =
     "w-full border-[2.5px] border-[#0F172A] rounded-[14px] px-4 py-3 font-medium bg-white focus:outline-none focus:border-[#2F7CFF] focus:shadow-[0_0_0_3px_rgba(47,124,255,0.15)] transition-all placeholder:text-slate-400 pl-10";
@@ -227,6 +294,69 @@ const Auth = () => {
 
             {/* card */}
             <div className="border-[3px] border-[#0F172A] rounded-[28px] shadow-[8px_8px_0_0_#0F172A] bg-white p-8">
+              {awaitingCode ? (
+                <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5">
+                  <div className="text-center flex flex-col gap-2">
+                    <div className="mx-auto w-14 h-14 rounded-2xl border-[2.5px] border-[#0F172A] bg-[#DDF3FF] shadow-[3px_3px_0_0_#0F172A] flex items-center justify-center">
+                      <Mail className="w-6 h-6" />
+                    </div>
+                    <h2 className={`${DISPLAY} font-extrabold text-2xl`}>Check your email</h2>
+                    <p className="text-sm text-slate-600 font-medium">
+                      We sent a 6-digit code to<br />
+                      <span className="font-extrabold text-[#0F172A]">{email}</span>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="font-extrabold text-sm text-center" htmlFor="otp-code">Verification code</label>
+                    <input
+                      id="otp-code"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      placeholder="000000"
+                      required
+                      autoFocus
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className={`${DISPLAY} w-full border-[2.5px] border-[#0F172A] rounded-[14px] px-4 py-4 font-extrabold bg-white focus:outline-none focus:border-[#2F7CFF] focus:shadow-[0_0_0_3px_rgba(47,124,255,0.15)] transition-all placeholder:text-slate-300 text-center text-3xl tracking-[0.5em]`}
+                    />
+                  </div>
+
+                  {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+
+                  <button
+                    type="submit"
+                    disabled={isLoading || otpCode.length !== 6}
+                    className={`${DISPLAY} w-full py-3.5 rounded-full border-[3px] border-[#0F172A] font-extrabold text-white shadow-[5px_5px_0_0_#0F172A] transition-all hover:-translate-y-0.5 hover:shadow-[7px_7px_0_0_#0F172A] active:translate-y-0.5 active:shadow-[2px_2px_0_0_#0F172A] flex items-center justify-center gap-2 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_0_#0F172A]`}
+                    style={{ background: C.indigo }}
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {isLoading ? "Verifying…" : "Verify & continue"}
+                  </button>
+
+                  <div className="flex flex-col items-center gap-2 text-sm">
+                    <button
+                      type="button"
+                      onClick={handleResendCode}
+                      disabled={isLoading || resendCooldown > 0}
+                      className="font-bold text-[#2F7CFF] hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+                    >
+                      {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBackToSignup}
+                      className="font-bold opacity-60 hover:opacity-100 transition-opacity flex items-center gap-1"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" /> Use a different email
+                    </button>
+                  </div>
+                </form>
+              ) : (
+              <>
               {/* tab switcher */}
               <div className="flex gap-2 p-1 rounded-full border-[2.5px] border-[#0F172A] bg-[#F3FAFF] mb-7">
                 {(["signin", "signup"] as const).map((t) => (
@@ -238,6 +368,29 @@ const Auth = () => {
                     {t === "signin" ? "Sign In" : "Sign Up"}
                   </button>
                 ))}
+              </div>
+
+              {/* Google */}
+              <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={isLoading}
+                className={`${DISPLAY} w-full py-3 mb-4 rounded-full border-[3px] border-[#0F172A] bg-white font-extrabold text-[#0F172A] shadow-[5px_5px_0_0_#0F172A] transition-all hover:-translate-y-0.5 hover:shadow-[7px_7px_0_0_#0F172A] active:translate-y-0.5 active:shadow-[2px_2px_0_0_#0F172A] flex items-center justify-center gap-2 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_0_#0F172A]`}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Continue with Google
+              </button>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px bg-[#0F172A]/15" />
+                <span className="text-[11px] font-extrabold opacity-50 tracking-widest">OR</span>
+                <div className="flex-1 h-px bg-[#0F172A]/15" />
               </div>
 
               {activeTab === "signin" ? (
@@ -304,11 +457,19 @@ const Auth = () => {
 
                 </form>
               )}
+              </>
+              )}
             </div>
 
             <Link to="/" className="flex items-center justify-center gap-1.5 font-bold text-sm opacity-60 hover:opacity-100 transition-opacity">
               <ArrowLeft className="w-4 h-4" /> Back to home
             </Link>
+
+            <div className="flex items-center justify-center gap-4 text-xs font-bold opacity-50">
+              <Link to="/privacy" className="hover:opacity-100 hover:text-[#2F7CFF] transition-all">Privacy</Link>
+              <span aria-hidden>•</span>
+              <Link to="/terms" className="hover:opacity-100 hover:text-[#2F7CFF] transition-all">Terms</Link>
+            </div>
           </div>
         </div>
       </div>
