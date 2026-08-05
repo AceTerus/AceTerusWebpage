@@ -277,19 +277,21 @@ const Index = () => {
           {/* left: copy */}
           <div>
             <span className={`${TAG} atl-hero-in`} style={{ background: C.cyan, animationDelay: "100ms" }}>
-              <Zap className="w-3.5 h-3.5" /> Malaysia's #1 study sidekick
+              <Zap className="w-3.5 h-3.5" /> AI Tutor & Quiz Platform for Malaysian Students
             </span>
             <h1
               className={`${DISPLAY} font-extrabold mt-5 leading-[0.95] atl-hero-in`}
               style={{ fontSize: "clamp(44px,7vw,96px)", animationDelay: "220ms" }}
             >
-              Learn stuff.<br />
+              <span style={{ color: C.blue }}>AceTerus</span><br />
               <span className="atl-underline">Ace quizzes.</span><br />
-              <span style={{ color: C.blue }}>Have Fun</span><br />
-              doing it!
+              Learn faster.<br />
+              Have fun.
             </h1>
             <p className="mt-6 text-lg md:text-xl max-w-xl font-medium atl-hero-in" style={{ animationDelay: "380ms" }}>
-              AceTerus turns studying into a game you actually want to play. Quizzes, streaks, squads, and an AI companion — all in one platform. Built for Malaysian students, powered by AI.
+              <strong>AceTerus</strong> is a free AI-powered study platform for Malaysian students preparing
+              for SPM, PT3, and STPM. Generate quizzes from your notes, get instant AI tutoring, scan OMR
+              answer sheets, track your streaks — all in one place.
             </p>
             <div className="mt-8 flex flex-wrap gap-4 atl-hero-in" style={{ animationDelay: "500ms" }}>
               <Link to="/auth">
