@@ -6,7 +6,7 @@ import {
   Plus, Pencil, Trash2, ChevronLeft, Loader2, ShieldAlert,
   ImagePlus, X, Globe, EyeOff, Sparkles, FolderOpen, BookOpen,
   FileText, CheckSquare, Eye, BadgeCheck, Building2, MapPin,
-  Calendar, Clock, CheckCircle2, XCircle,
+  Calendar, Clock, CheckCircle2, XCircle, Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -659,6 +659,9 @@ const AdminQuiz = () => {
         </Button>
         <Button variant="outline" onClick={() => navigate("/analytics")} className="gap-2">
           <ShieldAlert className="w-4 h-4" /> Analytics
+        </Button>
+        <Button variant="outline" onClick={() => navigate("/admin/contacts")} className="gap-2">
+          <Inbox className="w-4 h-4" /> Contacts
         </Button>
       </div>
 

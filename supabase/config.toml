@@ -1,1 +1,7 @@
 project_id = "lsqkfzuymgkmvnudkktv"
+
+# The contact-notify function is invoked by a Supabase Database Webhook on
+# INSERT into public.contact_submissions. It authenticates via a shared secret
+# header (x-webhook-secret), not a Supabase JWT.
+[functions.contact-notify]
+verify_jwt = false

@@ -35,6 +35,7 @@ const Chat = lazy(() => import("./pages/Chat").then(m => ({ default: m.Chat })))
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Contacts = lazy(() => import("./pages/Contacts"));
+const AdminContacts = lazy(() => import("./pages/AdminContacts"));
 
 const queryClient = new QueryClient();
 
@@ -107,6 +108,7 @@ const AnimatedRoutes = () => {
             <Route path="/omr-scan" element={<OmrScanner />} />
             <Route path="/ar-scanner" element={<ArScanner />} />
             <Route path="/admin" element={<AdminQuiz />} />
+            <Route path="/admin/contacts" element={<AdminContacts />} />
             <Route path="/materials" element={<Materials />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/:userId" element={<Profile />} />
