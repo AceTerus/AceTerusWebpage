@@ -10,6 +10,7 @@ import {
   Send,
   CheckCircle2,
   Building2,
+  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +28,8 @@ const DISPLAY = "font-['Baloo_2'] tracking-tight";
 const PHONE_INTL = "+60195796233";
 const PHONE_DISPLAY = "+6019-579 6233";
 const WHATSAPP_URL = "https://wa.me/60195796233";
-const EMAIL = "chinwei@aceterus.com";
+const CEO_EMAIL = "chinwei@aceterus.com";
+const GENERAL_EMAIL = "hello@aceterus.com";
 const WEBSITE_URL = "https://aceterus.com";
 const WEBSITE_DISPLAY = "aceterus.com";
 const INSTAGRAM_URL = "https://instagram.com/aceterus";
@@ -44,7 +46,11 @@ const colorMap: Record<ActionColor, string> = {
   green: "#25D366",
 };
 
-const Contacts = () => {
+type ContactsProps = { variant?: "ceo" | "general" };
+
+const Contacts = ({ variant = "general" }: ContactsProps) => {
+  const isCeo = variant === "ceo";
+  const email = isCeo ? CEO_EMAIL : GENERAL_EMAIL;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -53,11 +59,11 @@ const Contacts = () => {
 
   useEffect(() => {
     const prev = document.title;
-    document.title = "Contact Us – AceTerus";
+    document.title = isCeo ? "Chin Wei · AceTerus" : "Contact Us – AceTerus";
     return () => {
       document.title = prev;
     };
-  }, []);
+  }, [isCeo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +90,7 @@ const Contacts = () => {
           name: trimmedName,
           email: trimmedEmail,
           message: trimmedMessage,
-          source: "qr-contacts-page",
+          source: isCeo ? "qr-contacts-ceo" : "web-contacts-general",
           user_agent: navigator.userAgent.slice(0, 500),
         });
 
@@ -97,7 +103,11 @@ const Contacts = () => {
       toast.success("Thanks! We'll get back to you soon.");
     } catch (err) {
       console.error("contact submission failed", err);
-      toast.error("Couldn't send just yet. Please try WhatsApp or email us directly.");
+      toast.error(
+        isCeo
+          ? "Couldn't send just yet. Please try WhatsApp or email us directly."
+          : "Couldn't send just yet. Please email us directly."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -130,6 +140,41 @@ const Contacts = () => {
           </span>
         </div>
 
+        {/* Persona card — CEO variant only */}
+        {isCeo && (
+          <section
+            className="mt-5 border-[3px] border-[#0F172A] rounded-[22px] shadow-[5px_5px_0_0_#0F172A] bg-white p-4 flex items-center gap-4"
+            style={{
+              backgroundImage: `linear-gradient(135deg, #ffffff 0%, ${C.cloud} 100%)`,
+            }}
+          >
+            <div
+              className="shrink-0 w-14 h-14 rounded-[18px] border-[2.5px] border-[#0F172A] shadow-[3px_3px_0_0_#0F172A] flex items-center justify-center"
+              style={{
+                background: `linear-gradient(135deg, ${C.cyan} 0%, ${C.blue} 100%)`,
+              }}
+            >
+              <UserRound className="w-7 h-7 text-white" strokeWidth={2.5} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`${DISPLAY} font-extrabold text-[22px] leading-none`}>
+                Chin Wei
+              </p>
+              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                <span
+                  className={`${DISPLAY} inline-block text-[11px] font-extrabold uppercase tracking-[0.18em] px-2.5 py-0.5 rounded-full border-[2px] border-[#0F172A] text-white`}
+                  style={{ background: C.indigo }}
+                >
+                  CEO
+                </span>
+                <span className="text-[13px] font-bold text-[#0F172A]/60">
+                  AceTerus
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Headline card */}
         <section
           className="mt-6 border-[3px] border-[#0F172A] rounded-[26px] shadow-[6px_6px_0_0_#0F172A] bg-white p-6 text-center"
@@ -155,26 +200,30 @@ const Contacts = () => {
 
         {/* Contact action buttons */}
         <section className="mt-6 space-y-3">
+          {isCeo && (
+            <>
+              <ActionButton
+                href={`tel:${PHONE_INTL}`}
+                icon={<Phone className="w-6 h-6" strokeWidth={2.5} />}
+                label="Call us"
+                value={PHONE_DISPLAY}
+                color="blue"
+              />
+              <ActionButton
+                href={WHATSAPP_URL}
+                external
+                icon={<MessageCircle className="w-6 h-6" strokeWidth={2.5} />}
+                label="WhatsApp us"
+                value={PHONE_DISPLAY}
+                color="green"
+              />
+            </>
+          )}
           <ActionButton
-            href={`tel:${PHONE_INTL}`}
-            icon={<Phone className="w-6 h-6" strokeWidth={2.5} />}
-            label="Call us"
-            value={PHONE_DISPLAY}
-            color="blue"
-          />
-          <ActionButton
-            href={WHATSAPP_URL}
-            external
-            icon={<MessageCircle className="w-6 h-6" strokeWidth={2.5} />}
-            label="WhatsApp us"
-            value={PHONE_DISPLAY}
-            color="green"
-          />
-          <ActionButton
-            href={`mailto:${EMAIL}`}
+            href={`mailto:${email}`}
             icon={<Mail className="w-6 h-6" strokeWidth={2.5} />}
             label="Email us"
-            value={EMAIL}
+            value={email}
             color="cyan"
           />
           <ActionButton

@@ -116,7 +116,8 @@ const AnimatedRoutes = () => {
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
-            <Route path="/contacts/ceo" element={<Contacts />} />
+            <Route path="/contacts" element={<Contacts variant="general" />} />
+            <Route path="/contacts/ceo" element={<Contacts variant="ceo" />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

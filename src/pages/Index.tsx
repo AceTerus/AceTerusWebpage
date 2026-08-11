@@ -252,6 +252,11 @@ const Index = () => {
               <a href="#rewards" className="atl-nav-link hover:text-[#2F7CFF]">Rewards</a>
             </nav>
             <div className="flex items-center gap-2">
+              <Link to="/contacts" className="hidden sm:inline-block">
+                <button className={`${BTN} !py-2 !px-4 !text-sm bg-white`}>
+                  Contact us
+                </button>
+              </Link>
               <Link to="/auth">
                 <button className={`${BTN} !py-2 !px-4 !text-sm text-white`} style={{ background: C.blue }}>
                   <span className="hidden sm:inline">Jump in</span>
@@ -597,6 +602,7 @@ const Index = () => {
             <a href="#learn" className="hover:text-[#2F7CFF] transition-colors">How it works</a>
             <a href="#squad" className="hover:text-[#2F7CFF] transition-colors">Community</a>
             <Link to="/auth" className="hover:text-[#2F7CFF] transition-colors">Sign up</Link>
+            <Link to="/contacts" className="hover:text-[#2F7CFF] transition-colors">Contact</Link>
             <Link to="/privacy" className="hover:text-[#2F7CFF] transition-colors">Privacy</Link>
             <Link to="/terms" className="hover:text-[#2F7CFF] transition-colors">Terms</Link>
           </div>
