@@ -72,7 +72,11 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Dhiren23\\\\Documents\\\\AceTerusRebrand-1\\\\omr-scanner\" -File)",
       "Bash(Select-Object Name)",
       "Bash(gh --version)",
-      "WebFetch(domain:aceterus.com)"
+      "WebFetch(domain:aceterus.com)",
+      "Bash(command -v supabase)",
+      "Bash(supabase --version)",
+      "Bash(supabase projects *)",
+      "Bash(supabase status *)"
     ]
   },
   "enabledPlugins": {

@@ -34,6 +34,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Chat = lazy(() => import("./pages/Chat").then(m => ({ default: m.Chat })));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
+const Contacts = lazy(() => import("./pages/Contacts"));
 
 const queryClient = new QueryClient();
 
@@ -115,6 +116,7 @@ const AnimatedRoutes = () => {
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/contacts/ceo" element={<Contacts />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
