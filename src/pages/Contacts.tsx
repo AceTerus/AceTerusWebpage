@@ -50,7 +50,7 @@ type ContactsProps = { variant?: "ceo" | "general" };
 
 const Contacts = ({ variant = "general" }: ContactsProps) => {
   const isCeo = variant === "ceo";
-  const email = isCeo ? CEO_EMAIL : GENERAL_EMAIL;
+  const contactEmail = isCeo ? CEO_EMAIL : GENERAL_EMAIL;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -220,10 +220,10 @@ const Contacts = ({ variant = "general" }: ContactsProps) => {
             </>
           )}
           <ActionButton
-            href={`mailto:${email}`}
+            href={`mailto:${contactEmail}`}
             icon={<Mail className="w-6 h-6" strokeWidth={2.5} />}
             label="Email us"
-            value={email}
+            value={contactEmail}
             color="cyan"
           />
           <ActionButton
