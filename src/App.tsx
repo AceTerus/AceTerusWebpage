@@ -20,6 +20,7 @@ const MascotChat = lazy(() => import("./components/MascotChat"));
 const PomodoroFloatingWidget = lazy(() => import("./components/PomodoroFloatingWidget").then(m => ({ default: m.PomodoroFloatingWidget })));
 
 const Index = lazy(() => import("./pages/Index"));
+const Home = lazy(() => import("./pages/Home"));
 const Profile = lazy(() => import("./pages/Profile").then(m => ({ default: m.Profile })));
 const Discover = lazy(() => import("./pages/Discover").then(m => ({ default: m.Discover })));
 const Feed = lazy(() => import("./pages/Feed").then(m => ({ default: m.Feed })));
@@ -103,6 +104,7 @@ const AnimatedRoutes = () => {
         }>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/home" element={<Home />} />
             <Route path="/feed" element={<Feed />} />
             <Route path="/quiz" element={<Quiz />} />
             <Route path="/omr-scan" element={<OmrScanner />} />

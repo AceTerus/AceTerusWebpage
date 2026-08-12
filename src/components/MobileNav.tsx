@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, User, Compass, School, MessageCircle, ScanLine } from "lucide-react";
+import { BookOpen, User, Compass, School, MessageCircle, ScanLine, Home } from "lucide-react";
 import { useChatNotifications } from "@/context/ChatNotificationsContext";
 
 export const MobileNav = () => {
@@ -10,6 +10,7 @@ export const MobileNav = () => {
   const isActive = (path: string) => location.pathname === path;
 
   const items = [
+    { href: "/home", label: "Home", icon: Home },
     { href: "/feed", label: "Feed", icon: Compass },
     {
       href: "/chat",

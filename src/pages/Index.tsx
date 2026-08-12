@@ -192,7 +192,7 @@ const Index = () => {
   }, []);
 
   if (isLoading) return null;
-  if (user) return <Navigate to="/feed" replace />;
+  if (user) return <Navigate to="/home" replace />;
 
   return (
     <div
